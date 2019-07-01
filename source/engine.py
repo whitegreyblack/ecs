@@ -79,11 +79,6 @@ class Engine(object):
             raise Exception("world already initialized")
         self.world = world
 
-    def add_screen(self, name, screen):
-        if hasattr(self, name):
-            raise AttributeError(f"Attribute already set: {name}.")
-        self.__setattr__(name, screen)
-
     def add_terminal(self, terminal):
         if not terminal:
             return
