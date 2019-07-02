@@ -28,7 +28,7 @@ class Component(object):
 
 @dataclass
 class AI(Component):
-    ...
+    behavior: str = 'wander'
     manager: str = 'ais'
 
 
@@ -114,7 +114,9 @@ class Position(Component):
     manager: str = 'positions'
     def __eq__(self, other):
         return (self.x, self.y) == (other.x, other.y)
-
+    def __add__(self, other):
+        return Position(self.x + other.x, self.y + other.y)
+        
 
 @dataclass
 class Render(Component):
@@ -157,6 +159,26 @@ class Inventory(Component):
 @dataclass
 class Item(Component):
     manager = 'items'
+
+
+# @dataclass
+# class Behavior(Component):
+#     current: str = 'wander'
+
+# @dataclass
+# class WanderBehavior(Component):
+#     manager = 'behaviors'
+
+
+# @dataclass
+# class AttackBehavior(Component):
+#     manager = 'behaviors'
+
+
+# @dataclass
+# class RunBehavior(Component):
+#     manager = 'behaviors'
+
 
 components = Component.__subclasses__()
 

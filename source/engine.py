@@ -7,10 +7,11 @@ import random
 import time
 from dataclasses import dataclass, field
 
-from source.ecs.components import Collision, Movement, Position, Information, Openable
-from source.logging import Logger
+from source.ecs.components import (Collision, Information, Movement, Openable,
+                                   Position)
 from source.ecs.managers import ComponentManager, EntityManager
 from source.ecs.systems import RenderSystem
+from source.logging import Logger
 
 
 class Engine(object):
@@ -109,5 +110,6 @@ class Engine(object):
             self.render_system.render_fov()
             self.render_system.process()
             self.input_system.process()
-            if not self.running:
+            if not self.running or self.player is None:
+                self.render_system.death_menu.process()
                 break

@@ -5,7 +5,7 @@
 import curses
 import time
 
-from source.ecs.managers import join
+from source.common import join
 from source.ecs.systems.system import System
 from source.raycast import raycast
 
@@ -23,11 +23,35 @@ def border(screen: object, x: int, y: int, dx: int, dy: int) -> None:
     screen.addch(y + dy - 1, x, curses.ACS_SSBB)
     screen.addch(y + dy - 1, x + dx - 1, curses.ACS_SBBS)
 
-class InventoryMenu:
+class Menu:
     def __init__(self, engine, terminal):
         self.engine = engine
         self.terminal = terminal
-    
+
+    def process(self):
+        while True:
+            self.render()
+            keep_open = self.get_input()
+            if not keep_open:
+                break
+
+class DeathMenu(Menu):
+    def render(self):
+        x = self.engine.width // 2
+        y = self.engine.height // 2
+        string = "you died"
+
+        self.terminal.clear()
+        self.terminal.border()
+        self.terminal.addstr(0, 1, '[death screen]')
+        self.terminal.addstr(y, x-len(string)//2, string)
+        self.terminal.refresh()
+
+    def get_input(self):
+        self.terminal.getch()
+        return False
+
+class InventoryMenu(Menu):
     def render_items(self):
         inventory = self.engine.inventories.find(self.engine.player)
         self.terminal.addstr(1, 1, f"{inventory}")
@@ -42,24 +66,19 @@ class InventoryMenu:
         self.terminal.clear()
         self.terminal.border()
         self.terminal.addstr(0, 1, '[inventory]')
-
         self.render_items()
-
         self.terminal.refresh()
     
     def get_input(self):
-        char = self.engine.get_input()
-        self.terminal.addstr(1, 1, f"{char}")
-        self.terminal.refresh()
+        char = self.terminal.getch()
         return False
 
-class MainMenu:
+class MainMenu(Menu):
     def __init__(self, engine, terminal):
-        self.engine = engine
-        self.terminal = terminal
+        super().__init__(engine, terminal)
         self.index = 0
         self.options = ['back', 'save', 'quit']
-    
+
     def render(self):
         x = self.engine.width // 2
         y = self.engine.height // 2
@@ -85,9 +104,7 @@ class MainMenu:
 
     def get_input(self) -> (bool, bool):
         # keep_open, exit_prog
-        char = self.engine.get_input()
-        self.terminal.addstr(1, 1, f"{char}")
-        self.terminal.refresh()
+        char = self.terminal.getch()
         q_keypress = char == ord('q')
         quit_select = char == 10 and self.options[self.index] == 'quit'
         back_select = char == 10 and self.options[self.index] == 'back'
@@ -102,8 +119,7 @@ class MainMenu:
         elif char == 259:
             self.index = (self.index - 1) % len(self.options) 
             return True
-        else:
-            return self.get_input()
+        return True
 
 class RenderSystem(System):
     def __init__(self, engine, terminal, logger=None):
@@ -111,6 +127,7 @@ class RenderSystem(System):
         self.terminal = terminal
         self.main_menu = MainMenu(engine, terminal) 
         self.inventory_menu = InventoryMenu(engine, terminal)
+        self.death_menu = DeathMenu(engine, terminal)
 
         self.height, self.width = terminal.getmaxyx()
 
@@ -231,7 +248,7 @@ class RenderSystem(System):
         for eid, (health, u_position, render, info) in units:
             tiles = join(self.engine.positions, self.engine.visibilities)
             for tid, (t_position, visibility) in tiles:
-                if u_position == t_position and visibility.level > 1:
+                if u_position == t_position: # and visibility.level > 1:
                     self.render_char(
                         self.map_x + u_position.x,
                         self.map_y + u_position.y,

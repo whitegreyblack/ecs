@@ -5,17 +5,6 @@
 from dataclasses import dataclass, field
 
 
-def join(*managers):
-    # at least two needed else returns dict items
-    if len(managers) == 1:
-        return managers.components.items()
-    first, *rest = managers
-    keys = set(first.components.keys())
-    for manager in rest:
-        keys = keys.intersection(set(manager.components.keys()))
-    for eid in keys:
-        yield eid, (m.components[eid] for m in managers)
-
 class ComponentManager(object):
 
     __slots__ = ['ctype', 'components']

@@ -10,11 +10,11 @@ import time
 
 import click
 
+from source.common import join
 from source.ecs import (AI, Collision, Destroy, Effect, Experience, Health,
                         Information, Input, Inventory, Item, Movement,
                         Openable, Position, Render, Tile, TileMap, Visibility,
                         components)
-from source.ecs.managers import join
 from source.ecs.systems import systems
 from source.engine import Engine
 from source.keyboard import keyboard
@@ -25,8 +25,8 @@ from source.maps import dungeons
 def curses_setup(screen):
     curses.curs_set(0)
     # screen.nodelay(1)
-    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
-    curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_BLACK)
+    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
+    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)
     curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_RED)
     screen.border()
     screen.addstr(0, 1, '[__main__]')
@@ -54,7 +54,7 @@ def add_player(engine):
     # engine.ais.add(player, AI())
     engine.positions.add(player, Position(*space))
     engine.renders.add(player, Render('@'))
-    engine.healths.add(player, Health(20, 20))
+    engine.healths.add(player, Health(10, 20))
     engine.infos.add(player, Information("you"))
     engine.inventories.add(player, Inventory())
     engine.add_player(player)
@@ -127,9 +127,7 @@ def ecs_setup(terminal, dungeon, npcs, items):
         terminal=terminal,
         keyboard=keyboard
     )
-    print(engine)
     add_map(engine, dungeon)
-    # add_screens(engine)
     add_player(engine)
     add_computers(engine, npcs)
     add_items(engine, items)

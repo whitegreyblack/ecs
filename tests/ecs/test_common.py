@@ -1,4 +1,4 @@
-from source.ecs.common import squares
+from source.common import squares
 
 def test_squares_inclusive():
     assert len(list(squares())) == 9

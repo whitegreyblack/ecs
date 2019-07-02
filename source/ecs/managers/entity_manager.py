@@ -30,8 +30,8 @@ class EntityManager(object):
         if not entity_id:
             entity_id = self.next_id
             self.next_id += 1
-        entity = Entity(entity_id)
         self.ids.add(entity_id)
+        entity = Entity(entity_id)
         self.entities.append(entity)
         return entity
 
@@ -43,7 +43,6 @@ class EntityManager(object):
 
     def remove(self, entity):
         self.ids -= {entity.id}
-        # careful though. components not removed entirely can be accesed if id is reused
         self.removed.add(entity.id)
         self.entities.remove(entity)
 

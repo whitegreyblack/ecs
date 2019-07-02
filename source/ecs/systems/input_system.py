@@ -7,11 +7,10 @@ import random
 import time
 from dataclasses import dataclass, field
 
-from source.common import eight_square, nine_square
+from source.common import eight_square, join, nine_square
 from source.ecs.components import Collision, Movement, Position
-from source.ecs.managers import join
 from source.ecs.systems.system import System
-
+from source.astar import astar
 
 @dataclass
 class Command:
@@ -33,7 +32,6 @@ class DoorAction:
         return self.position.y + self.direction.y
 
 class InputSystem(System):
-
     def direction_from_random(self, entity):
         position = self.engine.position_manager.find(entity)
         possible_spaces = []
@@ -130,14 +128,14 @@ class InputSystem(System):
             char = self.engine.get_input()
             # invalid keypress
             if not 258 <= char < 262:
-                self.engine.logger.add(f"You cancel closing a door due to input error")
+                self.engine.logger.add(f"You cancel closing a door")
                 return turn_over
             keypress = self.engine.keyboard[char]
             movement = Movement.from_input(keypress)
             # valid direction keypress but not valid door direction
             door = doors.get((movement.x, movement.y), None)
             if not door:
-                self.engine.logger.add(f"You cancel closing a door direction invalid error")
+                self.engine.logger.add(f"You cancel closing a door")
             door_to_close = ((movement.x, movement.y), door)
         if door_to_close:
             ((x, y), (openable, position, render)) = door_to_close
@@ -155,16 +153,19 @@ class InputSystem(System):
         health = self.engine.healths.find(eid=collision.entity_id)
         if not health and entity == self.engine.player:
             self.engine.logger.add(f'collided with a {info.name}({collision.entity_id})')
+            return False
         elif health:
-            print(other, info, health)
             cur_hp = health.cur_hp
             max_hp = health.max_hp
             health.cur_hp -= 1
             log = f"Attacked {info.name} for 1 damage ({cur_hp}->{health.cur_hp})."
             if health.cur_hp < 1:
                 self.delete(other)
+                if other == self.engine.player:
+                    self.engine.player = None
                 log += f" {info.name.capitalize()} died."
             self.engine.logger.add(log)
+            return True
 
     def delete(self, entity):
         for system in self.engine.systems:
@@ -183,11 +184,18 @@ class InputSystem(System):
                 (x, y) == (other_position.x, other_position.y)
             )
             if future_position_blocked:
-                self.collide(entity, Collision(other_id))
-                return True
+                return self.collide(entity, Collision(other_id))
         position.x += movement.x
         position.y += movement.y
         return True
+
+    def wander(self, entity):
+        possible_spaces = []
+        for x, y in nine_square():
+            possible_spaces.append((x, y))
+        index = random.randint(0, len(possible_spaces)-1)
+        movement = Movement(*possible_spaces[index])
+        return self.move(entity, movement)
 
     def pick_item(self, entity):
         position = self.engine.positions.find(entity)
@@ -218,11 +226,9 @@ class InputSystem(System):
 
     def player_command(self, entity):
         while True:
-            # self.engine.logger.add(f"Turn for {entity.id}")
             exit_prog = False
             turn_over = False
             char = self.engine.get_input()
-            # print(char)
             if char == -1:
                 break
             keypress = self.engine.keypress_from_input(char)
@@ -230,23 +236,13 @@ class InputSystem(System):
                 self.engine.running = False
                 break
             elif keypress in ('up', 'down', 'left', 'right'):
-                movement = Movement.from_input(keypress)
-                # self.engine.movements.add(entity, movement)
-                turn_over = self.move(entity, movement)
+                turn_over = self.move(entity, Movement.from_input(keypress))
             elif keypress == 'escape':
-                while True:
-                    self.engine.render_system.main_menu.render()
-                    keep_open = self.engine.render_system.main_menu.get_input()
-                    if not self.engine.running:
-                        return
-                    if not keep_open:
-                        break
+                self.engine.render_system.main_menu.process()
+                if not self.engine.running:
+                    break
             elif keypress == 'i':
-                while True:
-                    self.engine.render_system.inventory_menu.render()
-                    keep_open = self.engine.render_system.inventory_menu.get_input()
-                    if not keep_open:
-                        break
+                self.engine.render_system.inventory_menu.process()
             elif keypress == 'o':
                 turn_over = self.open_door(entity)
             elif keypress == 'c':
@@ -261,13 +257,43 @@ class InputSystem(System):
 
     def computer_command(self, entity):
         """Computer commands currently only support mindless movement"""
+        # simple ai logic (move, attack if enemy exists, run away)
+        
+        # check to see if computer is an pre-determined enemy entity
         position = self.engine.positions.find(entity)
-        possible_spaces = []
-        for x, y in nine_square():
-            possible_spaces.append((x, y))
-        index = random.randint(0, len(possible_spaces)-1)
-        movement = Movement(*possible_spaces[index])
-        return self.move(entity, movement)
+        info = self.engine.infos.find(entity)
+        ai = self.engine.ais.find(entity)
+
+        tiles = join(
+            self.engine.visibilities,
+            self.engine.positions,
+        )
+        for tid, (visibility, t_position) in tiles:
+            if t_position == position and visibility.level > 1:
+                ai.behavior = 'attack'
+                self.engine.logger.add(f"{info.name} attacking")
+                break
+
+        if ai.behavior == 'wander':
+            return self.wander(entity)
+        elif ai.behavior == 'attack':
+            location = self.engine.positions.find(self.engine.player)
+            path = astar(self.engine, position, location)
+            if not path:
+                self.engine.logger.add(f'lost enemy. Wandering')
+                ai.behavior = 'wander'
+                return self.wander(entity)
+            node = path.pop(1)
+            movement = Movement(
+                node.position[0] - position.x, 
+                node.position[1] - position.y
+            )
+            self.engine.logger.add(str(len(path)) + ' ' + str(movement))
+            return self.move(entity, movement)
+        elif ai.behavior == 'run':
+            ...
+        elif ai.behavior == '...':
+            ...
 
     def process(self):
         inputs = list(self.engine.inputs)

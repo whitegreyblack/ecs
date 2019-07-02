@@ -5,7 +5,8 @@ Uses raycast algorithm to determine visibility
 """
 
 import time
-from source.ecs.managers import join
+
+from source.common import join
 
 sintable = [
     0.00000, 0.01745, 0.03490, 0.05234, 0.06976, 0.08716, 0.10453,
