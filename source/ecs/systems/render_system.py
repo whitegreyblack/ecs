@@ -35,6 +35,88 @@ class Menu:
             if not keep_open:
                 break
 
+class LookingMenu(Menu):
+    def __init__(self, engine, terminal, map_x, map_y):
+        super().__init__(engine, terminal)
+        self.map_x = map_x
+        self.map_y = map_y
+        self.cursor_x = 0
+        self.cursor_y = 0
+
+    def setup_cursor_position(self):
+        position = self.engine.positions.find(self.engine.player)
+        self.cursor_x = position.x
+        self.cursor_y = position.y
+
+    def trigger_cursor(self, state):
+        curses.curs_set(state)
+
+    def process(self):
+        self.setup_cursor_position()
+        self.trigger_cursor(True)
+        super().process()
+        self.trigger_cursor(False)
+
+    def render(self):
+        # self.terminal.move(
+        #     self.cursor_y + self.map_y, 
+        #     self.cursor_x + self.map_x
+        # )
+
+        units = join(
+            self.engine.healths,
+            self.engine.infos,
+            self.engine.positions
+        )
+        # will get items on floor
+        items = join(
+            self.engine.items,
+            self.engine.infos,
+            self.engine.positions
+        )
+
+        unit_added = True
+        for eid, (h, i, p) in units:
+            if (p.x, p.y) == (self.cursor_x, self.cursor_y):
+                self.terminal.addstr(
+                    self.cursor_y + self.map_y - 1, 
+                    self.cursor_x + self.map_x + 1,
+                    i.name
+                )
+                unit_added = True
+        for eid, (_, i, p) in items:
+            if (p.x, p.y) == (self.cursor_x, self.cursor_y):
+                self.terminal.addstr(
+                    self.cursor_y + self.map_y, 
+                    self.cursor_x + self.map_x + 1,
+                    i.name
+                )
+        self.terminal.move(
+            self.cursor_y + self.map_y, 
+            self.cursor_x + self.map_x
+        )        
+        self.terminal.refresh()
+
+    def get_input(self):
+        char = self.terminal.getch()
+        keypress = self.engine.keyboard.get(char, None)
+        if not keypress:
+            return True
+        q_keypress = keypress == 'q'
+        esc_keypress = keypress == 'escape'
+        if q_keypress or esc_keypress:
+            return False
+        elif keypress == 'up':
+            self.cursor_y -= 1
+            return True
+        elif keypress == 'down':
+            self.cursor_y += 1
+        elif keypress == 'left':
+            self.cursor_x -= 1
+        elif keypress == 'right':
+            self.cursor_x += 1
+        return True
+
 class DeathMenu(Menu):
     def render(self):
         x = self.engine.width // 2
@@ -125,11 +207,20 @@ class RenderSystem(System):
     def __init__(self, engine, terminal, logger=None):
         super().__init__(engine, logger)
         self.terminal = terminal
-        self.main_menu = MainMenu(engine, terminal) 
-        self.inventory_menu = InventoryMenu(engine, terminal)
-        self.death_menu = DeathMenu(engine, terminal)
 
-        self.height, self.width = terminal.getmaxyx()
+    def initialize_menus(self):
+        self.main_menu = MainMenu(self.engine, self.terminal) 
+        self.inventory_menu = InventoryMenu(self.engine, self.terminal)
+        self.death_menu = DeathMenu(self.engine, self.terminal)
+        self.looking_menu = LookingMenu(
+            self.engine, 
+            self.terminal, 
+            self.map_x, 
+            self.map_y
+        )
+
+    def initialize_coordinates(self):
+        self.height, self.width = self.terminal.getmaxyx()
 
         self.inventory_x = 1
         self.inventory_y = 1
@@ -142,12 +233,13 @@ class RenderSystem(System):
         self.header_height = 1
 
         # maximum bounds for map size; any larger and scroll is enabled
+        tilemap = self.engine.tilemaps.find(self.engine.world)
         self.map_x = self.inventory_x + self.inventory_width
         self.map_y = self.header_y + self.header_height
-        self.map_width = 80
-        self.map_height = 25
+        self.map_width = min(80, tilemap.width)
+        self.map_height = min(25, tilemap.height)
 
-        self.enemies_list_x = self.map_x + self.map_width + 1
+        self.enemies_list_x = self.map_x + self.map_width
         self.enemies_list_y = 1
         self.enemies_list_width = 20
         self.enemies_list_height = 24
@@ -248,7 +340,7 @@ class RenderSystem(System):
         for eid, (health, u_position, render, info) in units:
             tiles = join(self.engine.positions, self.engine.visibilities)
             for tid, (t_position, visibility) in tiles:
-                if u_position == t_position: # and visibility.level > 1:
+                if u_position == t_position and visibility.level > 1:
                     self.render_char(
                         self.map_x + u_position.x,
                         self.map_y + u_position.y,

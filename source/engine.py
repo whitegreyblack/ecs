@@ -104,12 +104,18 @@ class Engine(object):
             raise Exception(f"No component of type name: {component}")
         return manager
 
+    def startup(self):
+        self.render_system.initialize_coordinates()
+        self.render_system.initialize_menus()
+
     def run(self):
+        self.startup()
         while True:
             start = time.time()
             self.render_system.render_fov()
             self.render_system.process()
             self.input_system.process()
-            if not self.running or self.player is None:
-                self.render_system.death_menu.process()
+            if not self.running:
+                if self.player is None:
+                    self.render_system.death_menu.process()
                 break

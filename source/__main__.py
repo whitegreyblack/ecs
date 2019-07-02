@@ -72,6 +72,14 @@ def add_computers(engine, npcs):
         engine.infos.add(computer, Information("goblin"))
         engine.healths.add(computer, Health(2, 2))
 
+        # add items to inventory
+        item = engine.entities.create()
+        engine.items.add(item, Item())
+        engine.renders.add(item, Render('/'))
+        engine.infos.add(item, Information('spear'))
+        inventory = Inventory(items=[item.id])
+        engine.inventories.add(computer, inventory)
+
 def add_map(engine, mapstring):
     # add entity that holds tiles
     tilemap = engine.entities.create()

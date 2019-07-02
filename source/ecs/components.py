@@ -25,7 +25,6 @@ class Component(object):
     def classname(cls):
         return cls.__name__.lower()
 
-
 @dataclass
 class AI(Component):
     behavior: str = 'wander'
@@ -116,7 +115,16 @@ class Position(Component):
         return (self.x, self.y) == (other.x, other.y)
     def __add__(self, other):
         return Position(self.x + other.x, self.y + other.y)
-        
+    def copy(self, x=None, y=None, moveable=None, blocks_movement=None):
+        if x is None:
+            x = self.x
+        if y is None:
+            y = self.y
+        if moveable is None:
+            moveable = self.moveable
+        if blocks_movement is None:
+            blocks_movement = self.blocks_movement
+        return Position(x, y, moveable, blocks_movement)
 
 @dataclass
 class Render(Component):

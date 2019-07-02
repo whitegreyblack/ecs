@@ -7,10 +7,12 @@ import random
 import time
 from dataclasses import dataclass, field
 
-from source.common import eight_square, join, nine_square
-from source.ecs.components import Collision, Movement, Position
-from source.ecs.systems.system import System
 from source.astar import astar
+from source.common import eight_square, join, nine_square
+from source.ecs.components import (Collision, Information, Item, Movement,
+                                   Position, Render)
+from source.ecs.systems.system import System
+
 
 @dataclass
 class Command:
@@ -160,12 +162,38 @@ class InputSystem(System):
             health.cur_hp -= 1
             log = f"Attacked {info.name} for 1 damage ({cur_hp}->{health.cur_hp})."
             if health.cur_hp < 1:
+                self.drop_inventory(other)
+                self.drop_body(other)
                 self.delete(other)
                 if other == self.engine.player:
                     self.engine.player = None
+                    self.engine.running = False
                 log += f" {info.name.capitalize()} died."
             self.engine.logger.add(log)
             return True
+
+    def drop_inventory(self, entity):
+        position = self.engine.positions.find(entity)
+        inventory = self.engine.inventories.find(entity)
+        if not inventory:
+            return
+        while inventory.items:
+            item_id = inventory.items.pop()
+            item = self.engine.entities.find(eid=item_id)
+            item_position = position.copy(moveable=False, blocks_movement=False)
+            self.engine.positions.add(item, item_position)
+    
+    def drop_body(self, entity):
+        position = self.engine.positions.find(entity)
+        info = self.engine.infos.find(entity)
+        body = self.engine.entities.create()
+        self.engine.items.add(body, Item())
+        self.engine.renders.add(body, Render('%'))
+        self.engine.infos.add(body, Information(f"{info.name} corpse"))
+        self.engine.positions.add(body, position.copy(
+            moveable=False,
+            blocks_movement=False
+        ))
 
     def delete(self, entity):
         for system in self.engine.systems:
@@ -249,6 +277,8 @@ class InputSystem(System):
                 turn_over = self.close_door(entity)
             elif keypress == 'comma':
                 turn_over = self.pick_item(entity)
+            elif keypress == 'l':
+                self.engine.render_system.looking_menu.process()
             else:
                 self.engine.logger.add(f"unknown command {char} {chr(char)}")
             if turn_over:
