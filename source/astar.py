@@ -2,12 +2,39 @@
 
 """Implements astar heuristic pathfinding"""
 
-from collections import namedtuple
-from source.common import squares, join, distance
-from source.ecs.components import Position
+import math
 import time
+from collections import namedtuple
+
+from source.common import distance, join, squares
+from source.ecs.components import Position
 
 node = namedtuple("Node", "distance_f distance_g distance_h parent position")
+
+# def hueristic(node, goal):
+#     dx = abs(node[0] - goal[0])
+#     dy = abs(node[1] - goal[1])
+#     return 1 * (dx + dy) + (math.sqrt(2) - 2 * 1) * min(dx, dy)
+
+# def hueristic(node, goal):
+#     dx = abs(node[0] - goal[0])
+#     dy = abs(node[1] - goal[1])
+#     return 1 * max(dx, dy) + (math.sqrt(2) - 1) * min(dx, dy)
+
+def hueristic2(node, goal):   
+    dx = abs(node[0] - goal[0])
+    dy = abs(node[1] - goal[1])
+    if (dx > dy):
+        return 1 * (dx - dy) + math.sqrt(2) * dy
+    else:
+        return 1 * (dy - dx) + math.sqrt(2) * dx
+
+def hueristic3(node, goal):   
+    dx = abs(node[0] - goal[0])
+    dy = abs(node[1] - goal[1])
+    if (dx > dy):
+        dx, dy = dy, dx
+    return 1 * (dx - dy) + math.sqrt(2) * dy
 
 def calc(start, end):
     return int(distance(start, end) * 10)
@@ -15,22 +42,23 @@ def calc(start, end):
 def check(l, neighbor, f):
     return any(n.position == neighbor and n.distance_f < f for n in l)
 
-def astar(engine, start, end):
-    beg = time.time()
+def pathfind(engine, start, end):
+    tiles = {
+        (position.x, position.y): render.char
+            for _, (_, position, render) in join(
+                engine.tiles,
+                engine.positions,
+                engine.renders
+            )
+    }
+    path = astar(tiles, start, end)
+    return path
+
+def astar(tiles, start, end):
     openlist = set()
     closelist = []
     # convert start to x, y value
     openlist.add(node(0, 0, 0, None, (start.x, start.y)))
-
-    g = join(
-        engine.tiles,
-        engine.positions,
-        engine.renders
-    )
-    tiles = {
-        (p.x, p.y): r.char
-            for _, (_, p, r) in g
-    }
 
     while openlist:
         nodeq = min(openlist, key=lambda x: x.distance_f)
@@ -61,6 +89,7 @@ def astar(engine, start, end):
                         neighbor
                     ))
         closelist.append(nodeq)
+
     if not openlist:
         return []
     return closelist

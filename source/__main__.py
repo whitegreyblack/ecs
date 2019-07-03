@@ -1,6 +1,6 @@
 # world.py
 
-"""World created using ecs systems and msvcrt getch for input"""
+"""Initializes engine and world objects created using ecs"""
 
 import copy
 import curses
@@ -17,6 +17,7 @@ from source.ecs import (AI, Collision, Destroy, Effect, Experience, Health,
                         components)
 from source.ecs.systems import systems
 from source.engine import Engine
+from source.graph import OverworldNode, WorldNode
 from source.keyboard import keyboard
 from source.logging import Logger
 from source.maps import dungeons
@@ -31,18 +32,22 @@ def curses_setup(screen):
     screen.border()
     screen.addstr(0, 1, '[__main__]')
 
+def find_space(engine):
+    spaces = set()
+    for eid, (tile, position) in join(engine.tiles, engine.positions):
+        if not position.blocks_movement:
+            spaces.add((position.x, position.y))
+    return spaces
+
 def find_empty_space(engine):
-    open_spaces = set()
-    for entity_id, (tile, pos) in join(engine.tiles, engine.positions):
-        if not pos.blocks_movement:
-            open_spaces.add((pos.x, pos.y))
+    spaces = find_space(engine)
     for entity_id, (hp, pos) in join(engine.healths, engine.positions):
-        open_spaces.remove((pos.x, pos.y))
+        spaces.remove((pos.x, pos.y))
     for entity_id, (item, pos) in join(engine.items, engine.positions):
-        open_spaces.remove((pos.x, pos.y))
-    if not open_spaces:
+        spaces.remove((pos.x, pos.y))
+    if not spaces:
         return None
-    return open_spaces.pop()
+    return spaces.pop()
 
 def add_player(engine):
     player = engine.entities.create()
@@ -54,7 +59,7 @@ def add_player(engine):
     # engine.ais.add(player, AI())
     engine.positions.add(player, Position(*space))
     engine.renders.add(player, Render('@'))
-    engine.healths.add(player, Health(10, 20))
+    engine.healths.add(player, Health(50, 20))
     engine.infos.add(player, Information("you"))
     engine.inventories.add(player, Inventory())
     engine.add_player(player)
@@ -83,7 +88,10 @@ def add_computers(engine, npcs):
 def add_map(engine, mapstring):
     # add entity that holds tiles
     tilemap = engine.entities.create()
-    engine.world = tilemap
+    engine.world = WorldNode(tilemap.id, None)
+    print('-' * 100)
+    # engine.world = tilemap
+    # engine.world_tree = WorldTree(root=WorldNode(tilemap)) <-- constructor
     dungeon = [[c for c in row] for row in mapstring.split('\n')]
     tm = TileMap(len(dungeon[0]), len(dungeon))
     engine.tilemaps.add(tilemap, tm)
@@ -116,7 +124,7 @@ def add_map(engine, mapstring):
 def add_items(engine, items):
     for i in range(items):
         item = engine.entities.create()
-        space = find_empty_space(engine)
+        space = find_space(engine).pop()
         if not space:
             raise Exception("No empty spaces to place item")
         engine.positions.add(

@@ -7,12 +7,12 @@ import random
 import time
 from dataclasses import dataclass, field
 
-from source.astar import astar
+from source.astar import astar, pathfind
 from source.common import eight_square, join, nine_square
 from source.ecs.components import (Collision, Information, Item, Movement,
                                    Position, Render)
 from source.ecs.systems.system import System
-
+from source.keyboard import movement_keypresses
 
 @dataclass
 class Command:
@@ -209,7 +209,7 @@ class InputSystem(System):
             if other_id == entity.id or not other_position.blocks_movement:
                 continue
             future_position_blocked = (
-                (x, y) == (other_position.x, other_position.y)
+                x == other_position.x and y == other_position.y
             )
             if future_position_blocked:
                 return self.collide(entity, Collision(other_id))
@@ -222,8 +222,13 @@ class InputSystem(System):
         for x, y in nine_square():
             possible_spaces.append((x, y))
         index = random.randint(0, len(possible_spaces)-1)
-        movement = Movement(*possible_spaces[index])
-        return self.move(entity, movement)
+        x, y = possible_spaces[index]
+        if x == 0 and y == 0:
+            return True
+        return self.move(entity, Movement(x, y))
+
+    def wait(self, entity):
+        return True
 
     def pick_item(self, entity):
         position = self.engine.positions.find(entity)
@@ -253,6 +258,7 @@ class InputSystem(System):
         return True
 
     def player_command(self, entity):
+        moved = False
         while True:
             exit_prog = False
             turn_over = False
@@ -263,8 +269,9 @@ class InputSystem(System):
             if keypress == 'q':
                 self.engine.running = False
                 break
-            elif keypress in ('up', 'down', 'left', 'right'):
+            elif char in movement_keypresses:
                 turn_over = self.move(entity, Movement.from_input(keypress))
+                moved = True
             elif keypress == 'escape':
                 self.engine.render_system.main_menu.process()
                 if not self.engine.running:
@@ -279,11 +286,13 @@ class InputSystem(System):
                 turn_over = self.pick_item(entity)
             elif keypress == 'l':
                 self.engine.render_system.looking_menu.process()
+            # elif keypress == '
             else:
                 self.engine.logger.add(f"unknown command {char} {chr(char)}")
             if turn_over:
                 break
             self.engine.render_system.process()
+        return moved
 
     def computer_command(self, entity):
         """Computer commands currently only support mindless movement"""
@@ -294,21 +303,11 @@ class InputSystem(System):
         info = self.engine.infos.find(entity)
         ai = self.engine.ais.find(entity)
 
-        tiles = join(
-            self.engine.visibilities,
-            self.engine.positions,
-        )
-        for tid, (visibility, t_position) in tiles:
-            if t_position == position and visibility.level > 1:
-                ai.behavior = 'attack'
-                self.engine.logger.add(f"{info.name} attacking")
-                break
-
         if ai.behavior == 'wander':
             return self.wander(entity)
         elif ai.behavior == 'attack':
             location = self.engine.positions.find(self.engine.player)
-            path = astar(self.engine, position, location)
+            path = pathfind(self.engine, position, location)
             if not path:
                 self.engine.logger.add(f'lost enemy. Wandering')
                 ai.behavior = 'wander'
@@ -322,10 +321,38 @@ class InputSystem(System):
             return self.move(entity, movement)
         elif ai.behavior == 'run':
             ...
-        elif ai.behavior == '...':
-            ...
+        elif ai.behavior == 'wait':
+            return self.wait(entity)
+
+    def update_ai_behaviors(self):
+        units = join(
+            self.engine.healths,
+            self.engine.positions,
+            self.engine.infos,
+            self.engine.ais
+        )
+        tiles = {
+            (p.x, p.y): v
+                for _, (p, v) in join(
+                    self.engine.positions, 
+                    self.engine.visibilities
+                )
+                if v.level > 1
+        }
+        
+        for eid, (h, p, i, ai) in units:
+            v = tiles.get((p.x, p.y), None)
+            if v and ai.behavior != 'attack':
+                # for tid, (visibility, t_position) in tiles:
+                #     if t_position == position and visibility.level > 1:
+                self.engine.logger.add(f"{i.name} was {ai.behavior}ing")
+                ai.behavior = 'attack'
+                self.engine.logger.add(f"{i.name} attacking")
+                break
+        self.engine.logger.add(f"Behaviors changed")
 
     def process(self):
+        # need to make this as a list since inputs size can change during runtime
         inputs = list(self.engine.inputs)
         for entity_id, need_input in inputs:
             entity = self.engine.entities.find(entity_id)
@@ -334,5 +361,11 @@ class InputSystem(System):
             ai = self.engine.ais.find(entity)
             if ai:
                 command = self.computer_command(entity)
+                # command = self.move(entity, Movement(0, 0))
             else:
                 command = self.player_command(entity)
+                if command:
+                    self.engine.render_system.render_fov()
+                    self.update_ai_behaviors()
+            if not self.engine.running:
+                break

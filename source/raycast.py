@@ -112,37 +112,53 @@ costable = [
     0.99939, 0.99985, 1.00000
 ]
 
-def raycast(engine):
+def cast_light(engine):
+    """Wrapper for raycast so that engine is not a parameter"""
     player = engine.positions.find(engine.player)
-    tilemap = engine.tilemaps.find(engine.world)
+    tilemap = engine.tilemaps.find(eid=engine.world.entity_id)
 
-    # reset visibility level to either 0 for unexplored or 1 for all other values
-    blocked = set()    
-    for eid, (visible, position) in join(engine.visibilities, engine.positions):
+    tiles = [
+        (v, p)
+            for _, (v, p) in join(
+                engine.visibilities,
+                engine.positions
+            )
+    ]
+    raycast(tiles, tilemap, player)
+
+def raycast(tiles, tilemap, player):
+    blocked = set()
+    # for eid, (visible, position) in join(engine.visibilities, engine.positions):
+    for visible, position in tiles:
+        # reset visibility levels
         visible.level = max(0, min(visible.level, 1))
         if position.blocks_movement:
             blocked.add((position.x, position.y))
 
     # main algo to determine if light touches a block
     lighted = {(player.x, player.y)}
+    j = int
+    r = round
+    ra = range(10)
     for i in range(0, 361, 3):
         ax = sintable[i]
         ay = costable[i]
 
         x = player.x
         y = player.y
-        for z in range(10):
+        for z in ra:
             x += ax
             y += ay
             if not (0 <= x < tilemap.width and 0 <= y < tilemap.height):
                 break
-            rx = int(round(x))
-            ry = int(round(y))
+            rx = j(r(x))
+            ry = j(r(y))
             lighted.add((rx, ry))
             if (rx, ry) in blocked:
                 break
     
     # all blocks touched have their visiblities set to max visibility
-    for eid, (visible, position) in join(engine.visibilities, engine.positions):
+    # for eid, (visible, position) in join(engine.visibilities, engine.positions):
+    for visible, position in tiles:
         if (position.x, position.y) in set(lighted):
             visible.level = 2

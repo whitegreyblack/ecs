@@ -46,11 +46,11 @@ class ComponentManager(object):
         return False
 
     def find(self, entity=None, eid=None):
-        if not entity and not eid:
+        if entity is None and eid is None:
             raise Exception("need entity or eid")
-        if entity and entity.id in self.components.keys():
+        if entity is not None and entity.id in self.components.keys():
             return self.components[entity.id]
-        if eid and eid in self.components.keys():
+        if eid is not None and eid in self.components.keys():
             return self.components[eid]
         return None
 

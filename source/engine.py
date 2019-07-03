@@ -114,6 +114,7 @@ class Engine(object):
             start = time.time()
             self.render_system.render_fov()
             self.render_system.process()
+            self.movements.components.clear()
             self.input_system.process()
             if not self.running:
                 if self.player is None:

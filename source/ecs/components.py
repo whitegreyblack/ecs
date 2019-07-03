@@ -27,7 +27,7 @@ class Component(object):
 
 @dataclass
 class AI(Component):
-    behavior: str = 'wander'
+    behavior: str = 'wait'
     manager: str = 'ais'
 
 
@@ -91,7 +91,11 @@ class Movement(Component):
     def from_input(cls, keypress):
         directions = {
             'down': ( 0,  1),
+            'down-left': (-1, 1),
+            'down-right': (1, 1),
             'up': ( 0, -1),
+            'up-left': (-1, -1),
+            'up-right': (1, -1),
             'left': (-1,  0),
             'right': ( 1,  0),
         }
@@ -112,7 +116,7 @@ class Position(Component):
     blocks_movement: bool = True
     manager: str = 'positions'
     def __eq__(self, other):
-        return (self.x, self.y) == (other.x, other.y)
+        return self.x == other.x and self.y == other.y
     def __add__(self, other):
         return Position(self.x + other.x, self.y + other.y)
     def copy(self, x=None, y=None, moveable=None, blocks_movement=None):
