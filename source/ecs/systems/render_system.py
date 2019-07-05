@@ -233,9 +233,8 @@ class RenderSystem(System):
         self.header_height = 1
 
         # maximum bounds for map size; any larger and scroll is enabled
-        print(self.engine.world.entity_id)
-        tilemap = self.engine.tilemaps.find(eid=self.engine.world.entity_id)
-        print(tilemap, self.engine.tilemaps.components)
+        tilemap = self.engine.tilemaps.find(eid=self.engine.world.id)
+        # print(tilemap, self.engine.tilemaps.components)
         self.map_x = self.inventory_x + self.inventory_width
         self.map_y = self.header_y + self.header_height
         self.map_width = min(80, tilemap.width)
@@ -258,7 +257,7 @@ class RenderSystem(System):
     def render_fov(self):
         cast_light(self.engine)
 
-    def render_inventory(self, redraw=False):
+    def render_inventory(self):
         border(
             self.terminal, 
             self.inventory_x, 
@@ -284,28 +283,27 @@ class RenderSystem(System):
                     f"{i+1}. {info.name}"
                 )
 
-    def render_header(self, redraw=False):
+    def render_header(self):
         health = self.engine.healths.find(self.engine.player)
         position = self.engine.positions.find(self.engine.player)
         header = f"{health.cur_hp}/{health.max_hp} {position.x}, {position.y}"
         self.render_string(self.header_x, self.header_y, header)
 
-    def render_map(self, redraw=False):
+    def render_map(self):
         generator = join(
+            # self.engine.tiles,
             self.engine.visibilities,
             self.engine.positions,
             self.engine.renders
         )
         for _, (visibility, position, render) in generator:
-            if visibility.level > 0:
+            if position.map_id == self.engine.world.id and visibility.level > 0:
                 self.render_char(
                     position.x + self.map_x,
                     position.y + self.map_y,
                     render.char,
                     curses.color_pair(visibility.level)
                 )
-        if redraw:
-            self.redraw()
 
     def render_enemy(self, y, render, info, health):
         enemy = f"{render.char} {info.name} {health.cur_hp}/{health.max_hp}"
@@ -329,61 +327,38 @@ class RenderSystem(System):
             '[enemies]'
         )
 
-    def render_units(self, redraw=True):
-        units = join(
-            self.engine.healths,
-            self.engine.positions, 
-            self.engine.renders,
-            self.engine.infos
-        )
+    def render_units(self):
+        units = [
+            (position, render, info)
+                for _, (_, position, render, info) in join(
+                    self.engine.healths,
+                    self.engine.positions, 
+                    self.engine.renders,
+                    self.engine.infos
+                )
+                if position.map_id == self.engine.world.id
+        ]
         tiles = {
-            (p.x, p.y): v
-                for _, (p, v) in join(
+            (position.x, position.y): visibility
+                for _, (position, visibility) in join(
                     self.engine.positions, 
                     self.engine.visibilities
                 )
-                if v.level > 1
+                if visibility.level > 1
         }
         # look for all positions not in tile positions and visibilities
         # if their positions match and map is visible then show the unit
         # enemy_count = 0
-        # enemies = []
-
-        # for render (3)
-        #   for units (300) ~ 10 if moved
-        #       for tiles (1000)
-        #           operation 300 * 1000 = 300000 * 3 = 9000000 calls
-
-        for _, (_, u, r, i) in units:
-            v = tiles.get((u.x, u.y), None)
+        for (position, render, info) in units:
+            visibility = tiles.get((position.x, position.y), None)
             # for (t, v) in tiles:
-            if v:
+            if visibility:
                 self.render_char(
-                    self.map_x + u.x,
-                    self.map_y + u.y,
-                    r.char,
-                    curses.color_pair(v.level)
+                    self.map_x + position.x,
+                    self.map_y + position.y,
+                    render.char,
+                    curses.color_pair(visibility.level)
                 )
-                # break
-
-        # for tid, (t_position, visibility) in tiles:
-        #     if visibility.level > 1:
-        #         units = join(
-        #             self.engine.healths,
-        #             self.engine.positions, 
-        #             self.engine.renders,
-        #             self.engine.infos
-        #         )
-        #         for eid, (health, u_position, render, info) in units:
-        #     # tiles = join(self.engine.positions, self.engine.visibilities)
-        #     # for tid, (t_position, visibility) in tiles:
-        #             if u_position == t_position:
-        #                 self.render_char(
-        #                     self.map_x + u_position.x,
-        #                     self.map_y + u_position.y,
-        #                     render.char,
-        #                     curses.color_pair(visibility.level)
-        #                 )
         #                 if eid != self.engine.player.id:
         #                     # enemies.append((render, info, health))
         #                     # self.render_enemy(
@@ -405,35 +380,33 @@ class RenderSystem(System):
         #         self.enemies_list_y,
         #         enemy_list
         #     )
-        if redraw:
-            self.redraw()
 
-    def render_items(self, redraw=True):
+    def render_items(self):
         items = join(
             self.engine.items,
             self.engine.positions,
             self.engine.renders,
         )
         tiles = {
-            (p.x, p.y): v
-                for _, (p, v) in join(
+            (position.x, position.y): visibility
+                for _, (position, visibility) in join(
                     self.engine.positions, 
                     self.engine.visibilities
                 )
-                if v.level > 1
+                if visibility.level > 1
         }
-        for eid, (item, i_position, render) in items:
+        for _, (_, position, render) in items:
             # tiles = join(self.engine.positions, self.engine.visibilities)
-            visibility = tiles.get((i_position.x, i_position.y), None)
+            visibility = tiles.get((position.x, position.y), None)
             if visibility:
                 self.render_char(
-                    self.map_x + i_position.x,
-                    self.map_y + i_position.y,
+                    self.map_x + position.x,
+                    self.map_y + position.y,
                     render.char,
                     curses.color_pair(visibility.level)
                 )
 
-    def render_effect(self, x, y, effect, redraw=True):
+    def render_effect(self, x, y, effect):
         self.render_char(
             x + self.map_x_offset,
             y + self.map_y_offset,
@@ -444,7 +417,7 @@ class RenderSystem(System):
             self.redraw()
             time.sleep(.1)
 
-    def render_effects(self, redraw=True):
+    def render_effects(self):
         for eid, effect in self.engine.effects:
             if effect.ticks > 0:
                 entity = self.engine.entities.find(eid)
@@ -459,22 +432,20 @@ class RenderSystem(System):
                 self.redraw()
                 time.sleep(1)
 
-    def render_log(self, log, ly, lx, redraw=True):
+    def render_log(self, log, ly, lx):
         self.terminal.addstr(ly, lx, log.string)
         log.lifetime -= 1
 
-    def render_logs(self, redraw=True):
+    def render_logs(self):
         logs = filter(lambda x: x.lifetime > 0, self.engine.logger.messages)
-        tilemap = self.engine.tilemaps.find(eid=self.engine.world.entity_id)
+        tilemap = self.engine.tilemaps.find(eid=self.engine.world.id)
         for y, log in enumerate(logs):
             # stop if lines reach end of the line 
             # could also index messages by height of window
             log_y = self.logs_y + y
             if log_y > self.engine.height - 2:
                 break
-            self.render_log(log, log_y, self.logs_x, redraw)
-        if redraw:
-            self.terminal.refresh()
+            self.render_log(log, log_y, self.logs_x)
 
     def redraw(self):
         self.terminal.refresh()
@@ -483,15 +454,15 @@ class RenderSystem(System):
         self.terminal.erase()
         self.terminal.border()
 
-        self.render_inventory(False)
-        self.render_header(False)
+        self.render_inventory()
+        self.render_header()
 
-        self.render_map(False)
-        self.render_enemy_list(False)
+        self.render_map()
+        self.render_enemy_list()
 
         # self.render_effects(True)
-        self.render_items(False)
-        self.render_units(False)
+        self.render_items()
+        self.render_units()
 
-        self.render_logs(False)
+        self.render_logs()
         self.redraw()

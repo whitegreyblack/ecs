@@ -6,6 +6,8 @@ Keyboard object that maps ascii values to a string value
 
 # A-Za-z
 keyboard = { i: chr(i) for x in (65, 97) for i in range(x, x + 26) }
+
+# arrow keys and other characters
 keyboard.update({
     258: 'down',
     259: 'up',
@@ -13,10 +15,11 @@ keyboard.update({
     261: 'right',
     27: 'escape',
     44: 'comma',
-
-    # fn keypad
+    60: 'less-than',
+    62: 'greater-than'
 })
 
+# fn keypad
 keyboard.update({
     449: 'up-left',
     450: 'up',

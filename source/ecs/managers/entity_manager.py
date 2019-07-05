@@ -27,7 +27,12 @@ class EntityManager(object):
             yield entity
 
     def create(self, entity_id=None):
-        if not entity_id:
+        if entity_id:
+            if entity_id in self.ids:
+                raise ValueError(f"Entity id({entity_id}) already exists")
+            # assert entity_id not in self.ids
+            self.next_id = entity_id + 1
+        else:
             entity_id = self.next_id
             self.next_id += 1
         self.ids.add(entity_id)

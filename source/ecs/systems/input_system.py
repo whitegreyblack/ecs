@@ -34,20 +34,6 @@ class DoorAction:
         return self.position.y + self.direction.y
 
 class InputSystem(System):
-    def direction_from_random(self, entity):
-        position = self.engine.position_manager.find(entity)
-        possible_spaces = []
-        for x, y in nine_square():
-            if not 0 <= position.x + x < self.engine.world.width:
-                continue
-            if not 0 <= position.y + y < self.engine.world.height:
-                continue
-            cell = self.engine.world.array[position.y+y][position.x+x]
-            if cell not in ('#', '+'):
-                possible_spaces.append((x, y))
-        index = random.randint(0, len(possible_spaces)-1)
-        return possible_spaces[index]
-
     def open_door(self, entity):
         """TODO: render log message when opening a door of multiple doors"""
         position = self.engine.positions.find(entity)        
@@ -205,7 +191,14 @@ class InputSystem(System):
         if not position or not movement:
             return False
         x, y = position.x + movement.x, position.y + movement.y
-        for other_id, other_position in self.engine.positions:
+
+        positions = [
+            (entity_id, position)
+                for entity_id, position in self.engine.positions
+                    if position.map_id == self.engine.world.id
+        ]
+
+        for other_id, other_position in positions:
             if other_id == entity.id or not other_position.blocks_movement:
                 continue
             future_position_blocked = (
@@ -213,8 +206,93 @@ class InputSystem(System):
             )
             if future_position_blocked:
                 return self.collide(entity, Collision(other_id))
+
         position.x += movement.x
         position.y += movement.y
+        return True
+
+    def check_down_stairs(self, entity):
+        """Check if entity position is on stairs else return False"""
+        turn_over = False
+        position = self.engine.positions.find(entity)
+        tilemap = self.engine.tilemaps.find(eid=position.map_id)
+
+        # could just do a for loop b
+        tiles = join(
+            self.engine.tiles,
+            self.engine.positions,
+            self.engine.renders
+        )
+        for eid, (tile, tile_position, render) in tiles:
+            # only care about tiles with the current map id
+            if position.map_id != self.engine.world.id:
+                continue
+            if tile_position == position and render.char == '>':
+                turn_over = True
+                break
+        return turn_over
+
+    def go_down(self, entity):
+        tiles = join(
+            self.engine.tiles,
+            self.engine.positions,
+            self.engine.renders
+        )
+        up_stairs_position = None
+        for eid, (tile, tile_position, render) in tiles:
+            if tile_position.map_id != self.engine.world.id:
+                continue
+            if render.char == '<':
+                up_stairs_position = tile_position
+                break
+        if not up_stairs_position:
+            raise Exception("No upstairs tile found in tilemap")
+        position = self.engine.positions.find(entity)
+        position.x = up_stairs_position.x
+        position.y = up_stairs_position.y
+        position.map_id = self.engine.world.id
+        return True
+
+    def check_up_stairs(self, entity):
+        """Check if entity position is on stairs else return False"""
+        turn_over = False
+        position = self.engine.positions.find(entity)
+        tilemap = self.engine.tilemaps.find(eid=position.map_id)
+
+        # could just do a for loop b
+        tiles = join(
+            self.engine.tiles,
+            self.engine.positions,
+            self.engine.renders
+        )
+        for eid, (tile, tile_position, render) in tiles:
+            # only care about tiles with the current map id
+            if position.map_id != self.engine.world.id:
+                continue
+            if tile_position == position and render.char == '<':
+                turn_over = True
+                break
+        return turn_over
+
+    def go_up(self, entity):
+        tiles = join(
+            self.engine.tiles,
+            self.engine.positions,
+            self.engine.renders
+        )
+        up_stairs_position = None
+        for eid, (tile, tile_position, render) in tiles:
+            if tile_position.map_id != self.engine.world.id:
+                continue
+            if render.char == '>':
+                up_stairs_position = tile_position
+                break
+        if not up_stairs_position:
+            raise Exception("No upstairs tile found in tilemap")
+        position = self.engine.positions.find(entity)
+        position.x = up_stairs_position.x
+        position.y = up_stairs_position.y
+        position.map_id = self.engine.world.id
         return True
 
     def wander(self, entity):
@@ -286,7 +364,18 @@ class InputSystem(System):
                 turn_over = self.pick_item(entity)
             elif keypress == 'l':
                 self.engine.render_system.looking_menu.process()
-            # elif keypress == '
+            elif keypress == 'less-than':
+                stairs_exists = self.check_up_stairs(entity)
+                world_exists = self.engine.world.go_up()
+                if stairs_exists and world_exists:
+                    turn_over = self.go_up(entity)
+                elif not stairs_exists:
+                    self.engine.logger.add("No stairs to descend into")
+                else:
+                    self.engine.logger.add("No world to descend into")
+            elif keypress == 'greater-than':
+                if self.check_down_stairs(entity) and self.engine.world.go_down():
+                    turn_over = self.go_down(entity)
             else:
                 self.engine.logger.add(f"unknown command {char} {chr(char)}")
             if turn_over:
@@ -332,7 +421,7 @@ class InputSystem(System):
             self.engine.ais
         )
         tiles = {
-            (p.x, p.y): v
+            (p.x, p.y)
                 for _, (p, v) in join(
                     self.engine.positions, 
                     self.engine.visibilities
@@ -341,14 +430,13 @@ class InputSystem(System):
         }
         
         for eid, (h, p, i, ai) in units:
-            v = tiles.get((p.x, p.y), None)
+            self.engine.logger.add(f"Procesing {i.name}({eid})")
+            v = (p.x, p.y) in tiles
+            self.engine.logger.add(f"{i.name}({eid}) was {ai.behavior}ing")
+            self.engine.logger.add(f"{i.name}({eid}), Can see player: {v}")
             if v and ai.behavior != 'attack':
-                # for tid, (visibility, t_position) in tiles:
-                #     if t_position == position and visibility.level > 1:
-                self.engine.logger.add(f"{i.name} was {ai.behavior}ing")
+                self.engine.logger.add(f"{i.name}({eid}) is now attacking")
                 ai.behavior = 'attack'
-                self.engine.logger.add(f"{i.name} attacking")
-                break
         self.engine.logger.add(f"Behaviors changed")
 
     def process(self):

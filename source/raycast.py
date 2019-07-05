@@ -115,14 +115,16 @@ costable = [
 def cast_light(engine):
     """Wrapper for raycast so that engine is not a parameter"""
     player = engine.positions.find(engine.player)
-    tilemap = engine.tilemaps.find(eid=engine.world.entity_id)
+    tilemap = engine.tilemaps.find(eid=engine.world.id)
 
     tiles = [
         (v, p)
-            for _, (v, p) in join(
+            for _, (t, v, p) in join(
+                engine.tiles,
                 engine.visibilities,
                 engine.positions
             )
+            if p.map_id == engine.world.id
     ]
     raycast(tiles, tilemap, player)
 
@@ -140,7 +142,7 @@ def raycast(tiles, tilemap, player):
     j = int
     r = round
     ra = range(10)
-    for i in range(0, 361, 3):
+    for i in range(0, 361, 1):
         ax = sintable[i]
         ay = costable[i]
 
