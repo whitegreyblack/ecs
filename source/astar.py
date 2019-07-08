@@ -1,48 +1,27 @@
 # astar.py
 
-"""Implements astar heuristic pathfinding"""
+"""Implements astar A* pathfinding"""
 
 import math
 import time
 from collections import namedtuple
+from heapq import heappop, heappush
 
 from source.common import distance, join, squares
 from source.ecs.components import Position
 
-node = namedtuple("Node", "distance_f distance_g distance_h parent position")
-
-# def hueristic(node, goal):
-#     dx = abs(node[0] - goal[0])
-#     dy = abs(node[1] - goal[1])
-#     return 1 * (dx + dy) + (math.sqrt(2) - 2 * 1) * min(dx, dy)
-
-# def hueristic(node, goal):
-#     dx = abs(node[0] - goal[0])
-#     dy = abs(node[1] - goal[1])
-#     return 1 * max(dx, dy) + (math.sqrt(2) - 1) * min(dx, dy)
-
-def hueristic2(node, goal):   
-    dx = abs(node[0] - goal[0])
-    dy = abs(node[1] - goal[1])
-    if (dx > dy):
-        return 1 * (dx - dy) + math.sqrt(2) * dy
+# precompute square root (2) once vs every call
+sqrt_two = math.sqrt(2)
+def octile(a, b):
+    dx = abs(a[0] - b[0])
+    dy = abs(a[1] - b[1])
+    if (dx < dy):
+        return .4 * dx + dy
     else:
-        return 1 * (dy - dx) + math.sqrt(2) * dx
-
-def hueristic3(node, goal):   
-    dx = abs(node[0] - goal[0])
-    dy = abs(node[1] - goal[1])
-    if (dx > dy):
-        dx, dy = dy, dx
-    return 1 * (dx - dy) + math.sqrt(2) * dy
-
-def calc(start, end):
-    return int(distance(start, end) * 10)
-
-def check(l, neighbor, f):
-    return any(n.position == neighbor and n.distance_f < f for n in l)
+        return .4 * dy + dx
 
 def pathfind(engine, start, end):
+    """Wrapper for ecs engine to use astar"""
     tiles = {
         (position.x, position.y): render.char
             for _, (_, position, render) in join(
@@ -55,41 +34,93 @@ def pathfind(engine, start, end):
     return path
 
 def astar(tiles, start, end):
-    openlist = set()
-    closelist = []
-    # convert start to x, y value
-    openlist.add(node(0, 0, 0, None, (start.x, start.y)))
+    heap = []
+    path = {}
+    closed = set()
+    # holds score from current node to neighbor
+    gs = { (start.x, start.y): 0 }
+    # holds score from current node to end node
+    fs = { (start.x, start.y): octile((start.x, start.y), (end.x, end.y)) }
+    
+    heappush(heap, (fs[(start.x, start.y)], (start.x, start.y)))
 
-    while openlist:
-        nodeq = min(openlist, key=lambda x: x.distance_f)
-        openlist.remove(nodeq)
+    while heap:
+        current = heappop(heap)[1]
+        # found node: return reversed path
+        if current == (end.x, end.y):
+            data = []
+            while current in path:
+                data.append(current)
+                current = path[current]
+            data.reverse()
+            return data
+
+        closed.add(current)
+        for i, j in squares(exclude_center=True):
+            neighbor = (current[0] + i, current[1] + j)
+            new_g = gs[current] + octile(current, neighbor)
+            tile = tiles.get(neighbor, None)
+
+            if not tile or tile in ('#', '+'):
+                continue
+                
+            if neighbor in closed and new_g >= gs.get(neighbor, 0):
+                continue
+
+            faster = new_g < gs.get(neighbor, 0)
+            unexplored = neighbor not in [i[1] for i in heap]
+            if faster or unexplored:
+                path[neighbor] = current
+                gs[neighbor] = new_g
+                fs[neighbor] = new_g + octile(neighbor, (end.x, end.y))
+                heappush(heap, (fs[neighbor], neighbor))
+    return []
+
+def astar_gui(tiles, start, end):
+    heap = []
+    path = {}
+    closed = set()
+    # holds score from current node to neighbor
+    gs = { (start.x, start.y): 0 }
+    # holds score from current node to end node
+    fs = { (start.x, start.y): octile((start.x, start.y), (end.x, end.y)) }
+    
+    heappush(heap, (fs[(start.x, start.y)], (start.x, start.y)))
+
+    while heap:
+        current = heappop(heap)[1]
+        closed.add(current)
+        # found node: return reversed path
+
+        if current == (end.x, end.y):
+            for p in path:
+                yield p, 2
+            data = []
+            while current in path:
+                data.append(current)
+                current = path[current]
+            data.reverse()
+            for d in data:
+                yield d, 3
+            return
 
         for i, j in squares(exclude_center=True):
-            neighbor = (nodeq.position[0] + i, nodeq.position[1] + j)
-            if neighbor == (end.x, end.y):
-                closelist.append(nodeq)
-                closelist.append(node(1, 1, 2, nodeq.position, neighbor))
-                return closelist
-            tile = tiles.get((neighbor[0], neighbor[1]), None)
-            if tile and tile not in ("#", "+"):
-                heuristic_g = nodeq.distance_g + calc(nodeq.position, neighbor)
-                heuristic_h = calc(neighbor, (end.x, end.y))
-                heuristic_f = heuristic_g + heuristic_h
+            neighbor = (current[0] + i, current[1] + j)
+            new_g = gs[current] + octile(current, neighbor)
+            tile = tiles.get(neighbor, None)
 
-                if check(openlist, neighbor, heuristic_f):
-                    continue
-                elif check(closelist, neighbor, heuristic_f):
-                    continue
-                else:
-                    openlist.add(node(
-                        heuristic_f, 
-                        heuristic_g, 
-                        heuristic_h, 
-                        nodeq.position, 
-                        neighbor
-                    ))
-        closelist.append(nodeq)
+            if not tile or tile in ('#', '+'):
+                continue
+                
+            if neighbor in closed and new_g >= gs.get(neighbor, 0):
+                continue
 
-    if not openlist:
-        return []
-    return closelist
+            faster = new_g < gs.get(neighbor, 0)
+            unexplored = neighbor not in (i[1] for i in heap)
+            if faster or unexplored:
+                path[neighbor] = current
+                gs[neighbor] = new_g
+                fs[neighbor] = new_g + octile(neighbor, (end.x, end.y))
+                heappush(heap, (fs[neighbor], neighbor))
+    for p in path:
+        yield p, 2

@@ -27,7 +27,14 @@ class Component(object):
 
 @dataclass
 class AI(Component):
-    behavior: str = 'wait'
+    """
+    Behaviors: 
+        <> wait (path=None) 
+        <> run (path=astar) 
+        <> wander (path=None)
+    """
+    behavior: str = 'wander'
+    path: list = None
     manager: str = 'ais'
 
 @dataclass

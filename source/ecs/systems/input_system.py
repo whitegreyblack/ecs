@@ -7,7 +7,7 @@ import random
 import time
 from dataclasses import dataclass, field
 
-from source.astar import astar, pathfind
+from source.astar import pathfind
 from source.common import eight_square, join, nine_square
 from source.ecs.components import (Collision, Information, Item, Movement,
                                    Position, Render)
@@ -136,17 +136,21 @@ class InputSystem(System):
 
     def collide(self, entity, collision):
         other = self.engine.entities.find(eid=collision.entity_id)
-        info = self.engine.infos.find(other)
+        collider = self.engine.infos.find(entity)
+        collidee = self.engine.infos.find(other)
 
         health = self.engine.healths.find(eid=collision.entity_id)
         if not health and entity == self.engine.player:
-            self.engine.logger.add(f'collided with a {info.name}({collision.entity_id})')
+            self.engine.logger.add(f'collided with a {collidee.name}({collision.entity_id})')
             return False
         elif health:
+            if collider.name.startswith('goblin') and collidee.name.startswith('goblin'):
+                # self.engine.logger.add(f"bumped into friendly")
+                return True
             cur_hp = health.cur_hp
             max_hp = health.max_hp
             health.cur_hp -= 1
-            log = f"Attacked {info.name} for 1 damage ({cur_hp}->{health.cur_hp})."
+            log = f"Attacked {collidee.name} for 1 damage ({cur_hp}->{health.cur_hp})."
             if health.cur_hp < 1:
                 self.drop_inventory(other)
                 self.drop_body(other)
@@ -154,7 +158,7 @@ class InputSystem(System):
                 if other == self.engine.player:
                     self.engine.player = None
                     self.engine.running = False
-                log += f" {info.name.capitalize()} died."
+                log += f" {collidee.name.capitalize()} died."
             self.engine.logger.add(log)
             return True
 
@@ -344,6 +348,7 @@ class InputSystem(System):
             if char == -1:
                 break
             keypress = self.engine.keypress_from_input(char)
+            self.engine.logger.add(f"{char}: {chr(char)}")
             if keypress == 'q':
                 self.engine.running = False
                 break
@@ -378,6 +383,7 @@ class InputSystem(System):
                     turn_over = self.go_down(entity)
             else:
                 self.engine.logger.add(f"unknown command {char} {chr(char)}")
+            self.engine.logger.add(f"{157}: {chr(157)}")
             if turn_over:
                 break
             self.engine.render_system.process()
@@ -395,18 +401,23 @@ class InputSystem(System):
         if ai.behavior == 'wander':
             return self.wander(entity)
         elif ai.behavior == 'attack':
-            location = self.engine.positions.find(self.engine.player)
-            path = pathfind(self.engine, position, location)
-            if not path:
-                self.engine.logger.add(f'lost enemy. Wandering')
-                ai.behavior = 'wander'
-                return self.wander(entity)
-            node = path.pop(1)
-            movement = Movement(
-                node.position[0] - position.x, 
-                node.position[1] - position.y
-            )
-            self.engine.logger.add(str(len(path)) + ' ' + str(movement))
+            if ai.path:
+                path = ai.path.pop(0)
+                movement = Movement(path[0] - position.x, path[1] - position.y)
+            else:
+                target_position = self.engine.positions.find(self.engine.player)
+                # self.engine.logger.add(f"{position.x} {position.y}")
+                # self.engine.logger.add(f"{target_position.x} {target_position.y}")
+                ai.path = pathfind(self.engine, position, target_position)
+                # self.engine.logger.add(f'finding path: {ai.path}')
+                if not ai.path:
+                    # self.engine.logger.add(f'{info.name}({entity.id}) lost enemy. Wandering')
+                    ai.behavior = 'wander'
+                    return self.wander(entity)
+                path = ai.path.pop(0)
+                # self.engine.logger.add(str(path))
+                movement = Movement(path[0] - position.x, path[1] - position.y)
+            # self.engine.logger.add(str(len(path)) + ' ' + str(movement))
             return self.move(entity, movement)
         elif ai.behavior == 'run':
             ...
@@ -430,14 +441,23 @@ class InputSystem(System):
         }
         
         for eid, (h, p, i, ai) in units:
-            self.engine.logger.add(f"Procesing {i.name}({eid})")
+            # self.engine.logger.add(f"Procesing {i.name}({eid})")
             v = (p.x, p.y) in tiles
-            self.engine.logger.add(f"{i.name}({eid}) was {ai.behavior}ing")
-            self.engine.logger.add(f"{i.name}({eid}), Can see player: {v}")
-            if v and ai.behavior != 'attack':
-                self.engine.logger.add(f"{i.name}({eid}) is now attacking")
-                ai.behavior = 'attack'
-        self.engine.logger.add(f"Behaviors changed")
+            # self.engine.logger.add(f"{i.name}({eid}) was {ai.behavior}ing")
+            # self.engine.logger.add(f"{i.name}({eid}), Can see player: {v}")
+            if v:
+                if ai.behavior != 'attack':
+                    # self.engine.logger.add(f"{i.name}({eid}) is now attacking")
+                    ai.behavior = 'attack'
+                if ai.behavior == 'attack':
+                    ai.path = None # overwrite path
+            # player is not seen and monster was attacking but finished reaching path
+            if not v and ai.behavior == 'attack':
+                # self.engine.logger.add(f"goblin moving towards {ai.path}")
+                if not ai.path:
+                    # self.engine.logger.add(f"{i.name}({eid}) stopped attacking")
+                    ai.behavior = 'wander'
+        # self.engine.logger.add(f"Behaviors changed")
 
     def process(self):
         # need to make this as a list since inputs size can change during runtime

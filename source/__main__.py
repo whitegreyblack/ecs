@@ -19,7 +19,6 @@ from source.ecs.systems import systems
 from source.engine import Engine
 from source.graph import DungeonNode, WorldGraph, WorldNode, graph
 from source.keyboard import keyboard
-from source.logging import Logger
 from source.maps import dungeons
 
 
@@ -32,12 +31,17 @@ def curses_setup(screen):
     screen.border()
     screen.addstr(0, 1, '[__main__]')
 
-def add_world(engine):
+def add_world(engine, dungeon):
     world_graph = {}
-    for eid, (node, mapstring) in graph.items():
+    g = {
+        0: (DungeonNode(0, None), dungeon)
+    }
+    # create entity per node
+    for eid, (node, mapstring) in g.items():
         world_graph[eid] = node
         engine.entities.create(eid)
-    for eid, (node, mapstring) in graph.items():
+    # create components per entity
+    for eid, (node, mapstring) in g.items():
         add_map(engine, eid, mapstring)
     engine.world = WorldGraph(world_graph, 0)
 
@@ -123,7 +127,7 @@ def add_player(engine):
     engine.add_player(player)
 
 def add_computers(engine, npcs):
-    for _ in range(npcs):
+    for i in range(npcs):
         computer = engine.entities.create()
         space = find_empty_space(engine)
         if not space:
@@ -135,7 +139,7 @@ def add_computers(engine, npcs):
         )
         engine.renders.add(computer, Render('g'))
         engine.ais.add(computer, AI())
-        engine.infos.add(computer, Information("goblin"))
+        engine.infos.add(computer, Information(f"goblin {chr(i+97)}"))
         engine.healths.add(computer, Health(2, 2))
 
         # add items to inventory
@@ -149,7 +153,7 @@ def add_computers(engine, npcs):
 def add_items(engine, items):
     for i in range(items):
         item = engine.entities.create()
-        space = find_space(engine).pop()
+        space = find_empty_space(engine)
         if not space:
             raise Exception("No empty spaces to place item")
         engine.positions.add(
@@ -173,7 +177,7 @@ def ecs_setup(terminal, dungeon, npcs, items):
         terminal=terminal,
         keyboard=keyboard
     )
-    add_world(engine)
+    add_world(engine, dungeon)
     # add_map(engine, dungeon)
     add_player(engine)
     add_computers(engine, npcs)

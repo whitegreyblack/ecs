@@ -11,7 +11,7 @@ from source.ecs.components import (Collision, Information, Movement, Openable,
                                    Position)
 from source.ecs.managers import ComponentManager, EntityManager
 from source.ecs.systems import RenderSystem
-from source.logging import Logger
+from source.messenger import Logger
 
 
 class Engine(object):

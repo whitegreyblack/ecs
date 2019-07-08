@@ -139,23 +139,21 @@ def raycast(tiles, tilemap, player):
 
     # main algo to determine if light touches a block
     lighted = {(player.x, player.y)}
-    j = int
-    r = round
-    ra = range(10)
-    for i in range(0, 361, 1):
+    for i in range(0, 361, 3):
         ax = sintable[i]
         ay = costable[i]
 
         x = player.x
         y = player.y
-        for z in ra:
+        for z in range(10):
             x += ax
             y += ay
             if not (0 <= x < tilemap.width and 0 <= y < tilemap.height):
                 break
-            rx = j(r(x))
-            ry = j(r(y))
+            rx = int(round(x))
+            ry = int(round(y))
             lighted.add((rx, ry))
+            
             if (rx, ry) in blocked:
                 break
     
