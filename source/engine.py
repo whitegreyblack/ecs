@@ -15,14 +15,7 @@ from source.messenger import Logger
 
 
 class Engine(object):
-    def __init__(
-            self, 
-            components, 
-            systems,
-            # world=None, 
-            terminal, 
-            keyboard
-    ):
+    def __init__(self, components, systems, terminal, keyboard):
         self.running = True
         self.logger = Logger()
         self.debugger = Logger()
@@ -87,6 +80,7 @@ class Engine(object):
             raise Exception("terminal already initialized")
         self.terminal = terminal
         self.height, self.width = terminal.getmaxyx()
+        print(self.height, self.width)
 
     def add_player(self, entity):
         self.player = entity
@@ -111,7 +105,6 @@ class Engine(object):
     def run(self):
         self.startup()
         while True:
-            start = time.time()
             self.render_system.render_fov()
             self.render_system.process()
             self.movements.components.clear()

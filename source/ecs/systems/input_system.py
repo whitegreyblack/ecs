@@ -14,24 +14,6 @@ from source.ecs.components import (Collision, Information, Item, Movement,
 from source.ecs.systems.system import System
 from source.keyboard import movement_keypresses
 
-@dataclass
-class Command:
-    char: str
-    keypress: str
-
-@dataclass
-class DoorAction:
-    position: object
-    direction: object
-    def __iter__(self):
-        yield self.x
-        yield self.y
-    @property
-    def x(self):
-        return self.position.x + self.direction.x
-    @property
-    def y(self):
-        return self.position.y + self.direction.y
 
 class InputSystem(System):
     def open_door(self, entity):
@@ -43,7 +25,7 @@ class InputSystem(System):
         for x, y in eight_square():
             coordinates.append((position.x + x, position.y + y))
         g = join(
-            self.engine.openables, 
+            self.engine.openables,
             self.engine.positions, 
             self.engine.renders
         )
@@ -63,7 +45,7 @@ class InputSystem(System):
             door_to_open, = doors.items()
         else:
             self.engine.logger.add(f"Which door to open?")
-            self.engine.render_system.render_logs()
+            self.engine.render_system.render_logs_panel()
             char = self.engine.get_input()
             # invalid keypress
             if not 258 <= char < 262:
@@ -112,7 +94,7 @@ class InputSystem(System):
             door_to_close, = doors.items()
         else:
             self.engine.logger.add(f"Which door to open?")
-            self.engine.render_system.render_logs()
+            self.engine.render_system.render_logs_panel()
             char = self.engine.get_input()
             # invalid keypress
             if not 258 <= char < 262:
@@ -135,6 +117,9 @@ class InputSystem(System):
         return turn_over
 
     def collide(self, entity, collision):
+        # oob. No logged message
+        if collision.entity_id == -1:
+            return False
         other = self.engine.entities.find(eid=collision.entity_id)
         collider = self.engine.infos.find(entity)
         collidee = self.engine.infos.find(other)
@@ -195,6 +180,10 @@ class InputSystem(System):
         if not position or not movement:
             return False
         x, y = position.x + movement.x, position.y + movement.y
+
+        tilemap = self.engine.tilemaps.find(eid=position.map_id)
+        if not (0 <= x < tilemap.width and 0 <= y < tilemap.height):
+            return self.collide(entity, Collision(-1))
 
         positions = [
             (entity_id, position)
@@ -348,7 +337,6 @@ class InputSystem(System):
             if char == -1:
                 break
             keypress = self.engine.keypress_from_input(char)
-            self.engine.logger.add(f"{char}: {chr(char)}")
             if keypress == 'q':
                 self.engine.running = False
                 break
@@ -361,6 +349,8 @@ class InputSystem(System):
                     break
             elif keypress == 'i':
                 self.engine.render_system.inventory_menu.process()
+            elif keypress == 'e':
+                self.engine.render_system.equipment_menu.process()
             elif keypress == 'o':
                 turn_over = self.open_door(entity)
             elif keypress == 'c':
@@ -379,11 +369,14 @@ class InputSystem(System):
                 else:
                     self.engine.logger.add("No world to descend into")
             elif keypress == 'greater-than':
-                if self.check_down_stairs(entity) and self.engine.world.go_down():
+                self.engine.logger.add("going down")
+                can_go_down = self.check_down_stairs(entity) 
+                did_go_down = self.engine.world.go_down()
+                self.engine.logger.add(f"{can_go_down}, {did_go_down}")
+                if can_go_down and did_go_down:
                     turn_over = self.go_down(entity)
             else:
                 self.engine.logger.add(f"unknown command {char} {chr(char)}")
-            self.engine.logger.add(f"{157}: {chr(157)}")
             if turn_over:
                 break
             self.engine.render_system.process()
@@ -469,7 +462,6 @@ class InputSystem(System):
             ai = self.engine.ais.find(entity)
             if ai:
                 command = self.computer_command(entity)
-                # command = self.move(entity, Movement(0, 0))
             else:
                 command = self.player_command(entity)
                 if command:

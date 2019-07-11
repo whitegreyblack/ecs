@@ -18,8 +18,7 @@ class ComponentManager(object):
         return f"{self.__class__.__name__}(components={l})"
 
     def __iter__(self):
-        for k, v in self.components.items():
-            yield k, v
+        return iter(self.components.items())
 
     def __contains__(self, eid):
         return eid in self.components.keys()

@@ -12,7 +12,7 @@ from source.ecs.components import Position
 
 # precompute square root (2) once vs every call
 sqrt_two = math.sqrt(2)
-def octile(a, b):
+def octile(a, b, abs=abs):
     dx = abs(a[0] - b[0])
     dy = abs(a[1] - b[1])
     if (dx < dy):

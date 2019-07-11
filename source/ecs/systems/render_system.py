@@ -5,23 +5,10 @@
 import curses
 import time
 
-from source.common import join
+from source.common import join, border
 from source.ecs.systems.system import System
 from source.raycast import cast_light, raycast
 
-
-def border(screen: object, x: int, y: int, dx: int, dy: int) -> None:
-    """
-    Draws a box with given input parameters using the default characters
-    """
-    screen.vline(y, x, curses.ACS_SBSB, dy)
-    screen.vline(y, x + dx - 1, curses.ACS_SBSB, dy)
-    screen.hline(y, x, curses.ACS_BSBS, dx)
-    screen.hline(y + dy - 1, x, curses.ACS_BSBS, dx)
-    screen.addch(y, x, curses.ACS_BSSB)
-    screen.addch(y, x + dx - 1, curses.ACS_BBSS)
-    screen.addch(y + dy - 1, x, curses.ACS_SSBB)
-    screen.addch(y + dy - 1, x + dx - 1, curses.ACS_SBBS)
 
 class Menu:
     def __init__(self, engine, terminal):
@@ -58,11 +45,6 @@ class LookingMenu(Menu):
         self.trigger_cursor(False)
 
     def render(self):
-        # self.terminal.move(
-        #     self.cursor_y + self.map_y, 
-        #     self.cursor_x + self.map_x
-        # )
-
         units = join(
             self.engine.healths,
             self.engine.infos,
@@ -124,13 +106,24 @@ class DeathMenu(Menu):
         string = "you died"
 
         self.terminal.clear()
-        self.terminal.border()
+        border(self.terminal, 0, 0, self.engine.width-1, self.engine.height-1)
         self.terminal.addstr(0, 1, '[death screen]')
         self.terminal.addstr(y, x-len(string)//2, string)
         self.terminal.refresh()
 
     def get_input(self):
         self.terminal.getch()
+        return False
+
+class EquipmentMenu(Menu):
+    def render(self):
+        self.terminal.clear()
+        border(self.terminal, 0, 0, self.engine.width-1, self.engine.height-1)
+        self.terminal.addstr(0, 1, '[equipment]')
+        self.terminal.refresh()
+
+    def get_input(self):
+        char = self.terminal.getch()
         return False
 
 class InventoryMenu(Menu):
@@ -146,8 +139,20 @@ class InventoryMenu(Menu):
 
     def render(self):
         self.terminal.clear()
-        self.terminal.border()
+        border(self.terminal, 0, 0, self.engine.width-1, self.engine.height-1)
         self.terminal.addstr(0, 1, '[inventory]')
+        self.render_items()
+        self.terminal.refresh()
+    
+    def get_input(self):
+        char = self.terminal.getch()
+        return False
+
+class LogMenu(Menu):
+    def render(self):
+        self.terminal.clear()
+        border(self.terminal, 0, 0, self.engine.width-1, self.engine.height-1)
+        self.terminal.addstr(0, 1, '[logs]')
         self.render_items()
         self.terminal.refresh()
     
@@ -170,7 +175,7 @@ class MainMenu(Menu):
         current_x_offset = -2
  
         self.terminal.clear()
-        self.terminal.border()
+        border(self.terminal, 0, 0, self.engine.width-1, self.engine.height-1)
         self.terminal.addstr(0, 1, '[main_menu]')
         for i, option in enumerate(self.options):
             current_option = i == self.index
@@ -209,9 +214,12 @@ class RenderSystem(System):
         self.terminal = terminal
 
     def initialize_menus(self):
+        self.turns = 0
         self.main_menu = MainMenu(self.engine, self.terminal) 
         self.inventory_menu = InventoryMenu(self.engine, self.terminal)
+        self.equipment_menu = EquipmentMenu(self.engine, self.terminal)
         self.death_menu = DeathMenu(self.engine, self.terminal)
+        self.log_menu = LogMenu(self.engine, self.terminal)
         self.looking_menu = LookingMenu(
             self.engine, 
             self.terminal, 
@@ -222,31 +230,49 @@ class RenderSystem(System):
     def initialize_coordinates(self):
         self.height, self.width = self.terminal.getmaxyx()
 
-        self.inventory_x = 1
-        self.inventory_y = 1
-        self.inventory_width = 14
-        self.inventory_height = 24
+        tilemap = self.engine.tilemaps.find(eid=self.engine.world.id)
+        self.map_panel_x = 0
+        self.map_panel_y = 0
+        # could use percentage? or min max based on map ratio?
+        self.map_panel_width = 60
+        self.map_panel_height = 19
+        self.map_offset_x = 1
+        self.map_offset_y = 1
 
-        self.header_x = self.inventory_x + self.inventory_width
-        self.header_y = 1
-        self.header_width = 80
+        self.header_x = self.map_panel_x + self.map_offset_x
+        self.header_y = self.map_panel_y + self.map_offset_y
+        self.header_width = self.map_panel_width - self.map_offset_x * 2
         self.header_height = 1
 
-        # maximum bounds for map size; any larger and scroll is enabled
-        tilemap = self.engine.tilemaps.find(eid=self.engine.world.id)
-        # print(tilemap, self.engine.tilemaps.components)
-        self.map_x = self.inventory_x + self.inventory_width
-        self.map_y = self.header_y + self.header_height
-        self.map_width = min(80, tilemap.width)
-        self.map_height = min(25, tilemap.height)
+        self.map_x = self.map_panel_x + self.map_offset_x
+        self.map_y = self.header_y + 1
+        # maximum bounds for map size; any larger and scroll is enabled TODO: scrolling
+        self.map_width = max(self.map_panel_width - self.map_offset_x * 2, tilemap.width)
+        self.map_height = max(self.map_panel_height - self.map_offset_y * 2, tilemap.height)
+        
+        # enemy panel border and coordinates
+        self.enemy_panel_x = self.map_panel_width + 1
+        self.enemy_panel_y = 0
+        self.enemy_panel_width = self.width - self.enemy_panel_x - 1
+        self.enemy_panel_height = self.map_panel_height
+        self.enemy_panel_offset_x = 1
+        self.enemy_panel_offset_y = 1
+        self.enemy_item_x = self.enemy_panel_x + self.enemy_panel_offset_x
+        self.enemy_item_y = self.enemy_panel_y + self.enemy_panel_offset_y
+        self.enemy_item_width = self.enemy_panel_width - self.enemy_panel_offset_x * 2
+        self.enemy_items_height = self.enemy_panel_height - self.enemy_panel_offset_y * 2
 
-        self.enemies_list_x = self.map_x + self.map_width
-        self.enemies_list_y = 1
-        self.enemies_list_width = 20
-        self.enemies_list_height = 24
-
-        self.logs_x = self.inventory_x + self.inventory_width
-        self.logs_y = self.map_y + self.map_height
+        # log panel border and coordinates
+        self.logs_panel_x = 0
+        self.logs_panel_y = self.map_panel_height + 1
+        self.logs_panel_width = self.width
+        self.logs_panel_height = self.height - self.map_panel_height - 2
+        self.logs_panel_offset_x = 2
+        self.logs_panel_offset_y = 1
+        self.logs_item_x = self.logs_panel_x + self.logs_panel_offset_x
+        self.logs_item_y = self.logs_panel_y + self.logs_panel_offset_y
+        self.logs_item_width = self.logs_panel_width - self.logs_panel_offset_x * 2
+        self.logs_items_height = self.logs_panel_height - self.logs_panel_offset_y * 2
 
     def render_string(self, x, y, string):
         self.terminal.addstr(y, x, string)
@@ -257,7 +283,7 @@ class RenderSystem(System):
     def render_fov(self):
         cast_light(self.engine)
 
-    def render_inventory(self):
+    def render_inventory_panel(self):
         border(
             self.terminal, 
             self.inventory_x, 
@@ -265,7 +291,7 @@ class RenderSystem(System):
             self.inventory_width, 
             self.inventory_height
         )
-        self.terminal.addstr(1, 2, '[inventory]')
+        self.terminal.addstr(1, 2, '[equipment]')
 
         inventory = self.engine.inventories.find(self.engine.player)
         # self.terminal.addstr(1, 1, f"{inventory}")
@@ -283,21 +309,36 @@ class RenderSystem(System):
                     f"{i+1}. {info.name}"
                 )
 
+    def render_map_panel(self):
+        self.render_header()
+        self.render_map()
+        self.render_items()
+        self.render_units()
+
     def render_header(self):
         health = self.engine.healths.find(self.engine.player)
-        position = self.engine.positions.find(self.engine.player)
-        header = f"{health.cur_hp}/{health.max_hp} {position.x}, {position.y}"
+        hp_string = f"hp:{health.cur_hp}/{health.max_hp}"
+        mp_string = f"mp:0/0"
+        eq_string = "['[[==/"
+        header = f"{hp_string} {mp_string} {eq_string}"
         self.render_string(self.header_x, self.header_y, header)
 
     def render_map(self):
-        generator = join(
-            # self.engine.tiles,
+        border(
+            self.terminal, 
+            self.map_panel_x, 
+            self.map_panel_y, 
+            self.map_panel_width, 
+            self.map_panel_height
+        )
+        tiles = join(
             self.engine.visibilities,
             self.engine.positions,
             self.engine.renders
         )
-        for _, (visibility, position, render) in generator:
-            if position.map_id == self.engine.world.id and visibility.level > 0:
+        for _, (visibility, position, render) in tiles:
+            current_map_position = position.map_id == self.engine.world.id
+            if current_map_position and visibility.level > 0:
                 self.render_char(
                     position.x + self.map_x,
                     position.y + self.map_y,
@@ -308,29 +349,29 @@ class RenderSystem(System):
     def render_enemy(self, y, render, info, health):
         enemy = f"{render.char} {info.name} {health.cur_hp}/{health.max_hp}"
         self.render_string(
-            self.enemies_list_x + 1,
-            self.enemies_list_y + y + 1,
-            enemy[:self.enemies_list_width-1]
+            self.enemy_item_x + 1,
+            self.enemy_item_y + y,
+            enemy[:self.enemy_panel_width-1]
         )
 
-    def render_enemy_list(self, redraw=False):
+    def render_enemy_panel(self):
         border(
             self.terminal, 
-            self.enemies_list_x,
-            self.enemies_list_y, 
-            self.enemies_list_width, 
-            self.enemies_list_height
+            self.enemy_panel_x,
+            self.enemy_panel_y, 
+            self.enemy_panel_width,
+            self.enemy_panel_height
         )
         self.render_string(
-            self.enemies_list_x + 1,
-            self.enemies_list_y,
+            self.enemy_panel_x + 1,
+            self.enemy_panel_y,
             '[enemies]'
         )
 
     def render_units(self):
         units = [
-            (position, render, info)
-                for _, (_, position, render, info) in join(
+            (eid, health, position, render, info)
+                for eid, (health, position, render, info) in join(
                     self.engine.healths,
                     self.engine.positions, 
                     self.engine.renders,
@@ -346,10 +387,10 @@ class RenderSystem(System):
                 )
                 if visibility.level > 1
         }
-        # look for all positions not in tile positions and visibilities
+        # look for all positions not in tile positions and visibilities.
         # if their positions match and map is visible then show the unit
-        # enemy_count = 0
-        for (position, render, info) in units:
+        enemy_count = 0
+        for eid, health, position, render, info in units:
             visibility = tiles.get((position.x, position.y), None)
             # for (t, v) in tiles:
             if visibility:
@@ -359,27 +400,16 @@ class RenderSystem(System):
                     render.char,
                     curses.color_pair(visibility.level)
                 )
-        #                 if eid != self.engine.player.id:
-        #                     # enemies.append((render, info, health))
-        #                     # self.render_enemy(
-        #                     #     enemy_count,
-        #                     #     render,
-        #                     #     info,
-        #                     #     health
-        #                     # )
-        #                     enemy_count += 1
-        #                 break
-        # enemy_list = "\n".join(
-        #     f"{r.char} {i.name} {h.cur_hp}/{h.max_hp}"
-        #     for c, (r, i, h) in enumerate(enemies)
-        # )
-        # print(enemy_list)
-        # if enemy_list:
-        #     self.terminal.addstr(
-        #         self.enemies_list_x,
-        #         self.enemies_list_y,
-        #         enemy_list
-        #     )
+                non_player = eid != self.engine.player.id
+                room_for_item = enemy_count < self.enemy_panel_height - 1
+                if non_player and room_for_item:
+                    self.render_enemy(
+                        enemy_count,
+                        render,
+                        info,
+                        health
+                    )
+                    enemy_count += 1
 
     def render_items(self):
         items = join(
@@ -395,8 +425,8 @@ class RenderSystem(System):
                 )
                 if visibility.level > 1
         }
+        item_positions = set()
         for _, (_, position, render) in items:
-            # tiles = join(self.engine.positions, self.engine.visibilities)
             visibility = tiles.get((position.x, position.y), None)
             if visibility:
                 self.render_char(
@@ -433,36 +463,35 @@ class RenderSystem(System):
                 time.sleep(1)
 
     def render_log(self, log, ly, lx):
-        self.terminal.addstr(ly, lx, log.string)
+        self.terminal.addstr(ly, lx, str(log))
         log.lifetime -= 1
 
-    def render_logs(self):
-        logs = filter(lambda x: x.lifetime > 0, self.engine.logger.messages)
+    def render_logs_panel(self):
+        border(
+            self.terminal, 
+            self.logs_panel_x, 
+            self.logs_panel_y, 
+            self.logs_panel_width - 1,
+            self.logs_panel_height
+        )
+        self.terminal.addstr(20, 1, '[log]')
+
+        # logs = filter(lambda x: x.lifetime > 0, self.engine.logger.messages)
+        logs = self.engine.logger.messages
         tilemap = self.engine.tilemaps.find(eid=self.engine.world.id)
+        # only iterate slice of logs if it is larger than screen
+        if len(logs) >= self.logs_items_height:
+            logs = logs[len(logs) - self.logs_items_height - 1:]
         for y, log in enumerate(logs):
-            # stop if lines reach end of the line 
-            # could also index messages by height of window
-            log_y = self.logs_y + y
-            if log_y > self.engine.height - 2:
-                break
-            self.render_log(log, log_y, self.logs_x)
+            log_y = self.logs_item_y + y
+            self.render_log(log, log_y, self.logs_item_x)
 
     def redraw(self):
         self.terminal.refresh()
 
     def process(self):
         self.terminal.erase()
-        self.terminal.border()
-
-        self.render_inventory()
-        self.render_header()
-
-        self.render_map()
-        self.render_enemy_list()
-
-        # self.render_effects(True)
-        self.render_items()
-        self.render_units()
-
-        self.render_logs()
-        self.redraw()
+        self.render_map_panel()
+        self.render_enemy_panel()
+        self.render_logs_panel()
+        # self.redraw()
