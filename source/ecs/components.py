@@ -2,8 +2,10 @@
 
 """Component classes"""
 
+import random
 from dataclasses import dataclass, field
-
+from source.keyboard import keypress_to_direction
+from source.common import squares
 
 @dataclass
 class Component(object):
@@ -73,8 +75,16 @@ class Health(Component):
 
 @dataclass
 class Input(Component):
-    is_player: bool = False
+    needs_input: bool = False
     manager: str = 'inputs'
+
+@dataclass
+class Energy(Component):
+    amount: int
+    full: int
+    gain: int
+    ready: bool
+    manager: str = 'energies'
 
 @dataclass
 class Information(Component):
@@ -87,18 +97,15 @@ class Movement(Component):
     y: int
     manager: str = 'movements'
     @classmethod
-    def from_input(cls, keypress):
-        directions = {
-            'down': ( 0,  1),
-            'down-left': (-1, 1),
-            'down-right': (1, 1),
-            'up': ( 0, -1),
-            'up-left': (-1, -1),
-            'up-right': (1, -1),
-            'left': (-1,  0),
-            'right': ( 1,  0),
-        }
-        return cls(*directions[keypress])
+    def keypress_to_direction(cls, keypress):
+        return cls(*keypress_to_direction[keypress])
+    @classmethod
+    def random_move(cls, possible_spaces=None):
+        if not possible_spaces:
+            possible_spaces = [(x, y) for x, y in squares()]
+        index = random.randint(0, len(possible_spaces) - 1)
+        x, y = possible_spaces[index]
+        return cls(x, y)
 
 @dataclass
 class Openable(Component):
@@ -142,6 +149,7 @@ class Render(Component):
     char: str = '@'
     fore: str = None #'#ffffff'
     back: str = None #'#000000'
+    depth: int = 0
     manager: str = 'renders'
     @property
     def string(self):
@@ -173,6 +181,7 @@ class Inventory(Component):
 
 @dataclass
 class Item(Component):
+    seen: bool = False
     manager = 'items'
 
 @dataclass

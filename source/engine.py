@@ -10,6 +10,9 @@ from dataclasses import dataclass, field
 from source.ecs.components import (Collision, Information, Movement, Openable,
                                    Position)
 from source.ecs.managers import ComponentManager, EntityManager
+from source.ecs.screens import (
+    DeathMenu, EquipmentMenu, GameMenu, GameScreen, InventoryMenu, LogMenu,
+    LookingMenu, MainMenu)
 from source.ecs.systems import RenderSystem
 from source.messenger import Logger
 
@@ -27,6 +30,12 @@ class Engine(object):
         self.entities = EntityManager()
         self.init_managers(components)
         self.init_systems(systems)
+
+        self.screen = None
+        self.entity = None
+        self.entity_index = 0
+        self.requires_input = True
+        self.keypress = None
 
     def __repr__(self):
         attributes = []
@@ -65,12 +74,27 @@ class Engine(object):
     def keypress_from_input(self, char):
         return self.keyboard.get(char, None)
 
+    def initialize_screens(self):
+        self.screens = {
+        screen.__name__.lower(): screen(self, self.terminal)
+            for screen in (
+                GameMenu, 
+                GameScreen, 
+                MainMenu, 
+                InventoryMenu,
+                EquipmentMenu,
+                DeathMenu, 
+                LogMenu
+            )
+        } 
+        self.screen = self.screens['mainmenu']
+
     def find_entity(self, entity_id):
         return self.entity_manager.find(entity_id)
 
     def add_world(self, world):
-        if hasattr(self, 'world') and getattr(self, 'world'):
-            raise Exception("world already initialized")
+        # if hasattr(self, 'world') and getattr(self, 'world'):
+        #     raise Exception("world already initialized")
         self.world = world
 
     def add_terminal(self, terminal):
@@ -80,36 +104,38 @@ class Engine(object):
             raise Exception("terminal already initialized")
         self.terminal = terminal
         self.height, self.width = terminal.getmaxyx()
-        print(self.height, self.width)
 
     def add_player(self, entity):
         self.player = entity
         self.player_id = entity.id
 
-    def add_component(self, entity, component, *args):
-        manager = getattr(self, component + '_manager')
-        if not manager:
-            raise Exception(f"No component of type name: {component}")
-        manager.add(entity, self.components[component](*args))
+    def change_screen(self, name):
+        self.screen.state = 'closed'
+        self.screen = self.screens.get(name, 'gamemenu')
+        self.screen.state = 'open'
 
-    def get_manager(self, component):
-        manager = getattr(self, component)
-        if not manager:
-            raise Exception(f"No component of type name: {component}")
-        return manager
+    def next_entity(self):
+        # for entity in self.entities:
+        self.entity_index = (self.entity_index + 1) % len(self.entities.entities)
+        self.entity = self.entities.entities[self.entity_index]
 
-    def startup(self):
-        self.render_system.initialize_coordinates()
-        self.render_system.initialize_menus()
+    def update_ai_behaviors(self):
+        self.ai_system.update()
 
     def run(self):
-        self.startup()
+        self.initialize_screens()
+        self.entity = self.entities.entities[self.entity_index]
         while True:
-            self.render_system.render_fov()
-            self.render_system.process()
-            self.movements.components.clear()
-            self.input_system.process()
+            if 1:
+                self.screen.render()
+                self.screen.dirty = False
+            processed = self.screen.process()
+            if not processed:
+                if self.requires_input:
+                    self.keypress = self.input_system.process()
+                processed = self.screen.process()
             if not self.running:
+                # will not be shown if quit manually
                 if self.player is None:
-                    self.render_system.death_menu.process()
+                    self.screens['deathmenu'].process()
                 break

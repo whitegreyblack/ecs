@@ -4,7 +4,10 @@
 
 import curses
 import math
+import random
 import time
+
+from source.keyboard import keypress_to_direction
 
 
 def squares(exclude_center=False):
@@ -59,3 +62,8 @@ def border(screen: object, x: int, y: int, dx: int, dy: int) -> None:
     screen.addch(y, x + dx, curses.ACS_BBSS)
     screen.addch(y + dy, x, curses.ACS_SSBB)
     screen.insch(y + dy, x + dx, curses.ACS_SBBS)
+
+def direction_to_keypress(x, y):
+    for keypress, direction in keypress_to_direction.items():
+        if (x, y) == direction:
+            return keypress

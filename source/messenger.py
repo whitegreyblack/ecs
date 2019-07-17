@@ -1,4 +1,9 @@
+# messenger.py
+
+"""Logger and Message class"""
+
 from dataclasses import dataclass, field
+
 
 @dataclass
 class Message:
@@ -6,8 +11,9 @@ class Message:
     count: int = 0
     lifetime: int = 1
     def __str__(self):
-        count = f"x{self.count}" if self.count > 0 else ''
+        count = f" (x{self.count})" if self.count > 0 else ''
         return f"{self.string}{count}"
+
 @dataclass
 class Logger:
     last: str = None

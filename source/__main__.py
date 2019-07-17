@@ -28,11 +28,16 @@ def resize(screen):
     if (x, y) != (80, 25):
         os.system('mode con: cols=80 lines=25')
         curses.resize_term(26, 80)
-    # screen.nodelay(1)
+
+def curses_setup(screen):
+    curses.curs_set(0)
+    curses.start_color()
+    curses.use_default_colors()
+    screen.nodelay(1)
 
     # environment/visiblity colors
-    curses.init_pair(1, 245, -1) # wall visibility 1
-    curses.init_pair(2, 255, -1) # wall visibility 2
+    curses.init_pair(1, 238, -1) # wall visibility 1
+    curses.init_pair(2, 230, -1) # wall visibility 2
     curses.init_pair(3, curses.COLOR_RED, -1)
     return screen
 
@@ -56,10 +61,9 @@ def add_map(engine, eid, mapstring):
     dungeon = [[c for c in row] for row in mapstring.split('\n')]
     tilemap = TileMap(len(dungeon[0]), len(dungeon))
     engine.tilemaps.add(world, tilemap)
-    print(tilemap)
     # add tiles
     wall_info = Information('wall')
-    door_info = Information('door')
+    door_info = Information('closed door')
     floor_info = Information('floor')
     for y, row in enumerate(dungeon):
         for x, c in enumerate(row):
@@ -109,10 +113,11 @@ def add_player(engine):
         raise Exception("No empty spaces to place player")
     # engine.ais.add(player, AI())
     engine.positions.add(player, Position(*space, map_id=engine.world.id))
-    engine.renders.add(player, Render('@'))
+    engine.renders.add(player, Render('@', depth=3))
     engine.healths.add(player, Health(10, 20))
     engine.infos.add(player, Information("you"))
     engine.inventories.add(player, Inventory())
+    engine.inputs.add(player, Input(needs_input=True))
     engine.add_player(player)
 
 def add_computers(engine, npcs):
@@ -121,12 +126,12 @@ def add_computers(engine, npcs):
         space = find_empty_space(engine)
         if not space:
             break
-        engine.inputs.add(computer, Input(is_player=False))
+        engine.inputs.add(computer, Input())
         engine.positions.add(
             computer, 
             Position(*space, map_id=engine.world.id)
         )
-        engine.renders.add(computer, Render('g'))
+        engine.renders.add(computer, Render('g', depth=3))
         engine.ais.add(computer, AI())
         engine.infos.add(computer, Information("goblin"))
         engine.healths.add(computer, Health(2, 2))

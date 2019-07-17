@@ -1,3 +1,8 @@
+# astar.py
+
+"""Sample demo to test astar implementation"""
+
+
 import curses
 import time
 from dataclasses import dataclass
@@ -8,8 +13,6 @@ from source.astar import astar
 from source.ecs.components import Position
 from source.keyboard import keyboard
 from source.maps import dungeons
-
-"""Sample demo to test astar implementation"""
 
 
 d = {
