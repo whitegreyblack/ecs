@@ -3,6 +3,8 @@
 """Game screen class that renders and processes inputs for the main game"""
 
 import curses
+import random
+import time
 
 from source.astar import pathfind
 from source.color import colors
@@ -69,11 +71,11 @@ class GameScreen(Screen):
         self.logs_item_width = self.logs_panel_width - self.logs_panel_offset_x * 2
         self.logs_items_height = self.logs_panel_height - self.logs_panel_offset_y * 2
 
-    def render_string(self, x, y, string):
-        self.terminal.addstr(y, x, string)
+    def render_string(self, x, y, string, attr=0):
+        self.terminal.addstr(y, x, string, attr)
 
-    def render_char(self, x, y, character, color_pair=0):
-        self.terminal.addch(y, x, character, color_pair)
+    def render_char(self, x, y, character, attr=0):
+        self.terminal.addch(y, x, character, attr)
 
     def render_fov(self):
         cast_light(self.engine)
@@ -143,20 +145,25 @@ class GameScreen(Screen):
         tiles = join(
             self.engine.visibilities,
             self.engine.positions,
-            self.engine.renders
+            self.engine.renders,
+            self.engine.infos
         )
-        for _, (visibility, position, render) in tiles:
+        for _, (visibility, position, render, info) in tiles:
             current_map_position = position.map_id == self.engine.world.id
             if current_map_position and visibility.level > 0:
+                if visibility.level == 2:
+                    color = colors.get(info.name, 240)
+                else:
+                    color = 240
                 self.render_char(
                     position.x + self.map_x,
                     position.y + self.map_y,
                     render.char,
-                    curses.color_pair(visibility.level)
+                    curses.color_pair(color)
                 )
 
-    def enemy_description(self, eid, render, info, health, position):
-        return f"{eid}: {render.char} {info.name} {health.cur_hp}/{health.max_hp} ({position.x},{position.y})"
+    def enemy_description(self, render, info, health):
+        return f"{render.char}", f"{info.name}", f"{health.cur_hp}/{health.max_hp}"
 
     def render_units(self):
         units = [
@@ -182,42 +189,46 @@ class GameScreen(Screen):
         enemy_count = 0
         for eid, health, position, render, info in units:
             visibility = tiles.get((position.x, position.y), None)
-            # for (t, v) in tiles:
             if visibility:
+                if visibility.level == 2:
+                    color = colors.get(info.name, 0)
+                else:
+                    color = 0
                 self.render_char(
                     self.map_x + position.x,
                     self.map_y + position.y,
                     render.char,
-                    curses.color_pair(visibility.level)
+                    curses.color_pair(color)
                 )
                 non_player = eid != self.engine.player.id
                 description_space = enemy_count < self.enemy_panel_height - 1
                 if non_player and description_space:
-                    description = self.enemy_description(eid, render, info, health, position)
-                    self.render_string(
+                    char, name, hp = self.enemy_description(render, info, health)
+                    self.render_char(
                         self.enemy_item_x + 1,
                         self.enemy_item_y + enemy_count,
-                        description[:self.enemy_panel_width-1]
+                        char,
+                        curses.color_pair(colors.get(name, 240))
+                    )
+                    self.render_string(
+                        self.enemy_item_x + 3,
+                        self.enemy_item_y + enemy_count,
+                        name
+                    )
+
+                    self.render_string(
+                        self.enemy_item_x + len(name) + 4,
+                        self.enemy_item_y + enemy_count,
+                        hp
                     )
                     enemy_count += 1
-            
-        for eid, health, position, render, info in units:
-            computer = eid != self.engine.player.id
-            ai = self.engine.ais.find(eid=eid)
-            if ai and ai.path:
-                for x, y in ai.path[:len(ai.path)-1]:
-                    self.render_char(
-                        x + self.map_x,
-                        y + self.map_y,
-                        '.',
-                        curses.color_pair(3)
-                    )
 
     def render_items(self):
         items = join(
             self.engine.items,
             self.engine.positions,
             self.engine.renders,
+            self.engine.infos
         )
         tiles = {
             (position.x, position.y): visibility
@@ -228,14 +239,15 @@ class GameScreen(Screen):
                 if visibility.level > 1
         }
         item_positions = set()
-        for _, (_, position, render) in items:
+        for _, (_, position, render, info) in items:
             visibility = tiles.get((position.x, position.y), None)
             if visibility:
+                color = colors.get(info.name, 0)
                 self.render_char(
                     self.map_x + position.x,
                     self.map_y + position.y,
                     render.char,
-                    curses.color_pair(visibility.level)
+                    curses.color_pair(color)
                 )
 
     # def render_effect(self, x, y, effect):
@@ -282,16 +294,13 @@ class GameScreen(Screen):
             log_y = self.logs_item_y + y
             self.render_log(log, log_y, self.logs_item_x)
 
-    def redraw(self):
-        self.terminal.refresh()
-
     def render(self):
-        self.terminal.erase()
+        self.terminal.clear()
         self.render_fov()
         self.render_map_panel()
         self.render_enemy_panel()
         self.render_logs_panel()
-        self.redraw()
-
+        self.terminal.refresh()
+   
     def process(self):
         return self.engine.turn_system.process()

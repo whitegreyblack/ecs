@@ -29,12 +29,6 @@ class Component(object):
 
 @dataclass
 class AI(Component):
-    """
-    Behaviors: 
-        <> wait (path=None) 
-        <> run (path=astar) 
-        <> wander (path=None)
-    """
     behavior: str = 'wander'
     path: list = None
     manager: str = 'ais'
@@ -45,6 +39,11 @@ class Collision(Component):
     x: int = 0
     y: int = 0
     manager: str = 'collisions'
+
+@dataclass
+class Decay(Component):
+    lifetime: int = 1000
+    manager: str = 'decays'
 
 @dataclass
 class Destroy(Component):
@@ -147,15 +146,8 @@ class Position(Component):
 @dataclass
 class Render(Component):
     char: str = '@'
-    fore: str = None #'#ffffff'
-    back: str = None #'#000000'
     depth: int = 0
     manager: str = 'renders'
-    @property
-    def string(self):
-        if self.fore:
-            return self.fore + self.char
-        return self.char
 
 @dataclass
 class Tile(Component):
@@ -187,25 +179,6 @@ class Item(Component):
 @dataclass
 class Unit(Component):
     manager = 'units'
-
-# @dataclass
-# class Behavior(Component):
-#     current: str = 'wander'
-
-# @dataclass
-# class WanderBehavior(Component):
-#     manager = 'behaviors'
-
-
-# @dataclass
-# class AttackBehavior(Component):
-#     manager = 'behaviors'
-
-
-# @dataclass
-# class RunBehavior(Component):
-#     manager = 'behaviors'
-
 
 components = Component.__subclasses__()
 

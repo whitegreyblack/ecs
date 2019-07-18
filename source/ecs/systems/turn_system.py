@@ -7,14 +7,22 @@ class TurnSystem(System):
     def process(self):
         while True:
             entity = self.engine.entity
+            if not entity:
+                self.engine.reset_entity_index()
+                break
             takes_turn = self.engine.inputs.find(entity)
+            # if self.engine.player.id == entity.id:
+            #     print(self.engine.inputs.components)
+            #     print(self.engine.player, entity, takes_turn, self.engine.requires_input)
+            # skip entities that do not take a turn
             if not takes_turn:
                 self.engine.next_entity()
                 continue
+            # if entity needs input from user then return early indicating input
             if takes_turn.needs_input:
                 if self.engine.requires_input:
                     return False
-                command = self.engine.keypress
+                command = self.engine.get_keypress()
                 self.engine.requires_input = True
             else:
                 command = self.engine.ai_system.process(entity)
@@ -24,5 +32,10 @@ class TurnSystem(System):
                     return True
                 else:
                     self.engine.ai_system.update()
+            if not self.engine.player:
+                self.engine.change_screen('deathmenu')
+                return True
             self.engine.next_entity()
+        # end of turn stuff here
+        self.engine.decay_system.process()
         return True

@@ -17,7 +17,6 @@ class Screen:
         self.terminal = terminal
         self.state = 'closed'
         self.valid_keypresses = set()
-        self.dirty = True
 
     def process(self):
         if not self.engine.requires_input:
@@ -62,8 +61,7 @@ class MainMenu(Screen):
             self.terminal.addstr(
                 y + option_y_offset + i,
                 x + option_x_offset + current_index_offset,
-                f"{'> ' if current_option else ''}{option}",
-                curses.color_pair(2 if option != 'options' else 1)
+                f"{'> ' if current_option else ''}{option}"
             )
         self.terminal.refresh()
 
@@ -174,8 +172,8 @@ class DeathMenu(Screen):
         self.terminal.refresh()
     
     def handle_input(self):
-        key = self.engine.keypress
-        self.engine.change_screen('mainmenu')
+        self.engine.running = False
+        # self.engine.change_screen('mainmenu')
 
 class EquipmentMenu(Screen):
     def __init__(self, engine, terminal):

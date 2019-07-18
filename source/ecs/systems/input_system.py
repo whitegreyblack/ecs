@@ -195,14 +195,16 @@ class InputSystem(System):
     #     return moved
 
     def process(self, keypresses=None) -> str:
-        keypress = None
         if not keypresses:
             keypresses = self.engine.screen.valid_keypresses
-        while not keypress:
+        keypress = None
+        while keypress is None:
             char = self.engine.get_input()
             keypress = self.engine.keypress_from_input(char)
             if keypress in keypresses:
                 self.engine.requires_input = False
+            else:
+                keypress = None
             if not keypress:
-                time.sleep(.05)
-        return keypress
+                time.sleep(.005)
+        self.engine.keypress = keypress

@@ -6,9 +6,14 @@ def main(stdscr):
     for i in range(0, curses.COLORS-1):
         curses.init_pair(i + 1, i, -1)
     try:
-        for i in range(0, 255):
-            stdscr.addstr(str(i) + ' ', curses.color_pair(i))
-    except curses.ERR:
+        k = 8
+        for j in range(100):
+            for i in range(0, k):
+                index = j * k + i
+                if index > 255:
+                    break
+                stdscr.addstr(j, i * 4, str(index) + ' ', curses.color_pair(index))
+    except:
         # End of screen reached
         pass
     stdscr.getch()
