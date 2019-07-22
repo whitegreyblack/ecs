@@ -7,8 +7,8 @@ import random
 import time
 
 from source.common import eight_square, join, nine_square, squares
-from source.ecs.components import (Collision, Information, Item, Movement,
-                                   Render)
+from source.ecs.components import (Collision, Effect, Information, Item,
+                                   Movement, Render)
 from source.ecs.systems.system import System
 from source.keyboard import keypress_to_direction, movement_keypresses
 
@@ -141,7 +141,7 @@ class CommandSystem(System):
             # add to inventory
             inventory.items.append(entity.id)
         if len(items) > 2:
-            item_str = f"a {', a'.join(item_str[:len(items)-1])}, and a {items[-1]}"
+            item_str = f"a {', a'.join(items[:len(items)-1])}, and a {items[-1]}"
         elif len(items) == 2:
             item_str = f"a {items[0]} and a {items[1]}"
         else:
@@ -193,6 +193,7 @@ class CommandSystem(System):
                 strings.append(f"You attack the {collidee.name} for 1 damage")
             else:
                 strings.append(f"The {collider.name} attacks the {collidee.name} for 1 damage")
+            self.engine.effects.add(other, Effect('*', 0))
             strings.append(f"({cur_hp}->{health.cur_hp}).")
             if health.cur_hp < 1:
                 strings.append(f"The {collidee.name} dies.")

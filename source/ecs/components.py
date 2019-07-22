@@ -52,8 +52,7 @@ class Destroy(Component):
 @dataclass
 class Effect(Component):
     char: str
-    foreground: str = None
-    background: str = None
+    color: int
     ticks: int = 1
     manager: str = 'effects'
 

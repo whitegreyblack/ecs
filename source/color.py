@@ -11,5 +11,6 @@ colors = {
     'bloodied grass': 89,
     'grass': 71, # 41,
     'door': 131,
-    'door': 131
+    'door': 131,
+    'water': 33
 }

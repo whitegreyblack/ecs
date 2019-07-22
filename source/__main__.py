@@ -54,9 +54,9 @@ def add_world(engine, dungeon):
         add_map(engine, eid, mapstring)
     engine.world = WorldGraph(world_graph, 0)
 
-def add_map(engine, eid, oldmap):
+def add_map(engine, eid, mapstring):
     # add entity that holds tiles
-    mapstring = extend(oldmap, create_field_matrix)
+
     world = engine.entities.find(eid=eid)
     dungeon = [[c for c in row] for row in mapstring.split('\n')]
     tilemap = TileMap(len(dungeon[0]), len(dungeon))
@@ -83,6 +83,8 @@ def add_map(engine, eid, oldmap):
                 engine.openables.add(tile, Openable(opened=c=='/'))
             elif c == '"':
                 engine.infos.add(tile, Information('grass'))
+            elif c == '~':
+                engine.infos.add(tile, Information('water'))
             else:
                 engine.infos.add(tile, Information('floor'))
 
@@ -114,7 +116,7 @@ def add_player(engine):
     engine.positions.add(player, Position(*space, map_id=engine.world.id))
     engine.renders.add(player, Render('@', depth=3))
     engine.healths.add(player, Health(30, 20))
-    engine.infos.add(player, Information("you"))
+    engine.infos.add(player, Information("Hero"))
     engine.inventories.add(player, Inventory())
     engine.inputs.add(player, Input(needs_input=True))
     engine.add_player(player)

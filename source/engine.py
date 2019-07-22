@@ -135,18 +135,19 @@ class Engine(object):
         self.requires_input = True
         return self.keypress
 
+    def process(self, t):
+        self.screen.render()
+        processed = self.screen.process()
+        if not processed:
+            if self.requires_input:
+                self.input_system.process()
+            processed = self.screen.process()
+        # time.sleep((max(1./25 - (time.time() - t), 0)))
+
     def run(self):
         self.initialize_screens()
         self.entity = self.entities.entities[self.entity_index]
         t = time.time()
-        while True:
-            self.screen.render()
-            processed = self.screen.process()
-            if not processed:
-                if self.requires_input:
-                    self.input_system.process()
-                processed = self.screen.process()
-            if not self.running:
-                break
-            time.sleep((max(1./25 - (time.time() - t), 0)))
+        while self.running:
+            self.process(t)
             t = time.time()

@@ -61,9 +61,23 @@ def border(screen: object, x: int, y: int, dx: int, dy: int) -> None:
     screen.addch(y, x, curses.ACS_BSSB)
     screen.addch(y, x + dx, curses.ACS_BBSS)
     screen.addch(y + dy, x, curses.ACS_SSBB)
-    screen.insch(y + dy, x + dx, curses.ACS_SBBS)
+    try:
+        screen.addch(y + dy, x + dx, curses.ACS_SBBS)
+    except:
+        screen.insch(y + dy, x + dx, curses.ACS_SBBS)
 
 def direction_to_keypress(x, y):
+    """Returns the keypress that correlates with a given (x, y) direction"""
     for keypress, direction in keypress_to_direction.items():
         if (x, y) == direction:
             return keypress
+
+def scroll(position, termsize, mapsize):
+    halfscreen = termsize // 2
+    # less than half the screen - nothing
+    if position < halfscreen:
+        return 0
+    elif position >= mapsize - halfscreen:
+        return mapsize - termsize
+    else:
+        return position - halfscreen
