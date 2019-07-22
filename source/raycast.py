@@ -5,9 +5,12 @@ Uses raycast algorithm to determine visibility
 """
 
 import time
-from source.ecs.managers import join
 
-sintable = [
+from source.common import join
+
+from array import array
+
+sintable = array('f', [
     0.00000, 0.01745, 0.03490, 0.05234, 0.06976, 0.08716, 0.10453,
     0.12187, 0.13917, 0.15643, 0.17365, 0.19081, 0.20791, 0.22495, 0.24192,
     0.25882, 0.27564, 0.29237, 0.30902, 0.32557, 0.34202, 0.35837, 0.37461,
@@ -57,9 +60,9 @@ sintable = [
     -0.27564, -0.25882, -0.24192, -0.22495, -0.20791, -0.19081, -0.17365,
     -0.15643, -0.13917, -0.12187, -0.10453, -0.08716, -0.06976, -0.05234,
     -0.03490, -0.01745, -0.00000
-]
+])
  
-costable = [
+costable = array('f', [
     1.00000, 0.99985, 0.99939, 0.99863, 0.99756, 0.99619, 0.99452,
     0.99255, 0.99027, 0.98769, 0.98481, 0.98163, 0.97815, 0.97437, 0.97030,
     0.96593, 0.96126, 0.95630, 0.95106, 0.94552, 0.93969, 0.93358, 0.92718,
@@ -109,39 +112,53 @@ costable = [
     0.95106, 0.95630, 0.96126, 0.96593, 0.97030, 0.97437, 0.97815, 0.98163,
     0.98481, 0.98769, 0.99027, 0.99255, 0.99452, 0.99619, 0.99756, 0.99863,
     0.99939, 0.99985, 1.00000
-]
+])
 
-def raycast(engine):
+def cast_light(engine):
+    """Wrapper for raycast so that engine is not a parameter"""
     player = engine.positions.find(engine.player)
-    tilemap = engine.tilemaps.find(engine.world)
+    tilemap = engine.tilemaps.find(eid=engine.world.id)
 
-    # reset visibility level to either 0 for unexplored or 1 for all other values
-    blocked = set()    
-    for eid, (visible, position) in join(engine.visibilities, engine.positions):
-        visible.level = max(0, min(visible.level, 1))
+    tiles = [
+        (v, p)
+            for _, (v, p) in join(
+                engine.visibilities,
+                engine.positions
+            )
+            if p.map_id == engine.world.id
+    ]
+    raycast(tiles, tilemap, player)
+
+def raycast(tiles, tilemap, player, ma=max, mi=min, ra=range, ro=round):
+    blocked = set()
+    # for eid, (visible, position) in join(engine.visibilities, engine.positions):
+    for visible, position in tiles:
+        # reset visibility levels
+        visible.level = ma(0, mi(visible.level, 1))
         if position.blocks_movement:
             blocked.add((position.x, position.y))
 
     # main algo to determine if light touches a block
     lighted = {(player.x, player.y)}
-    for i in range(0, 361, 3):
+    for i in ra(0, 361, 3):
         ax = sintable[i]
         ay = costable[i]
 
         x = player.x
         y = player.y
-        for z in range(10):
+        for z in ra(10):
             x += ax
             y += ay
             if not (0 <= x < tilemap.width and 0 <= y < tilemap.height):
                 break
-            rx = int(round(x))
-            ry = int(round(y))
+            rx = int(ro(x))
+            ry = int(ro(y))
             lighted.add((rx, ry))
             if (rx, ry) in blocked:
                 break
     
     # all blocks touched have their visiblities set to max visibility
-    for eid, (visible, position) in join(engine.visibilities, engine.positions):
-        if (position.x, position.y) in set(lighted):
+    # for eid, (visible, position) in join(engine.visibilities, engine.positions):
+    for visible, position in tiles:
+        if (position.x, position.y) in lighted:
             visible.level = 2
