@@ -5,17 +5,6 @@
 from dataclasses import dataclass, field
 
 
-def join(*managers):
-    # at least two needed else returns dict items
-    if len(managers) == 1:
-        return managers.components.items()
-    first, *rest = managers
-    keys = set(first.components.keys())
-    for manager in rest:
-        keys = keys.intersection(set(manager.components.keys()))
-    for eid in keys:
-        yield eid, (m.components[eid] for m in managers)
-
 class ComponentManager(object):
 
     __slots__ = ['ctype', 'components']
@@ -29,8 +18,7 @@ class ComponentManager(object):
         return f"{self.__class__.__name__}(components={l})"
 
     def __iter__(self):
-        for k, v in self.components.items():
-            yield k, v
+        return iter(self.components.items())
 
     def __contains__(self, eid):
         return eid in self.components.keys()
@@ -57,11 +45,11 @@ class ComponentManager(object):
         return False
 
     def find(self, entity=None, eid=None):
-        if not entity and not eid:
+        if entity is None and eid is None:
             raise Exception("need entity or eid")
-        if entity and entity.id in self.components.keys():
+        if entity is not None and entity.id in self.components.keys():
             return self.components[entity.id]
-        if eid and eid in self.components.keys():
+        if eid is not None and eid in self.components.keys():
             return self.components[eid]
         return None
 
