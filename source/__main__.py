@@ -12,15 +12,15 @@ import click
 
 from source.color import colors
 from source.common import border, join
-from source.ecs import (AI, Collision, Decay, Destroy, Effect, Experience,
-                        Health, Information, Input, Inventory, Item, Movement,
-                        Openable, Position, Render, Tile, TileMap, Visibility,
-                        components)
+from source.ecs import (AI, Armor, Collision, Decay, Destroy, Effect,
+                        Experience, Health, Information, Input, Inventory,
+                        Item, Movement, Openable, Position, Render, Tile,
+                        TileMap, Visibility, components)
 from source.ecs.systems import systems
 from source.engine import Engine
 from source.graph import DungeonNode, WorldGraph, WorldNode, graph
 from source.keyboard import keyboard
-from source.maps import dungeons, extend, create_field_matrix
+from source.maps import create_field_matrix, dungeons, extend
 
 
 def resize(screen):
@@ -136,6 +136,8 @@ def add_computers(engine, npcs):
         engine.ais.add(computer, AI())
         engine.infos.add(computer, Information("goblin"))
         engine.healths.add(computer, Health(2, 2))
+        if i == 0:
+            engine.armors.add(computer, Armor(2))
 
         # add items to inventory
         item = engine.entities.create()

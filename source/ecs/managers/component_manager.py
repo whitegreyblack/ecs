@@ -9,9 +9,9 @@ class ComponentManager(object):
 
     __slots__ = ['ctype', 'components']
 
-    def __init__(self, ctype):
+    def __init__(self, ctype, dicttype=dict):
         self.ctype = ctype.__name__
-        self.components = dict()
+        self.components = dicttype()
 
     def __str__(self):
         l = len(self.components.keys())

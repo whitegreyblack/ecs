@@ -5,10 +5,11 @@
 import curses
 import random
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 
-from source.ecs.components import (Collision, Information, Movement, Openable,
-                                   Position)
+from source.ecs.components import (Collision, Effect, Information, Movement,
+                                   Openable, Position)
 from source.ecs.managers import ComponentManager, EntityManager
 from source.ecs.screens import (
     DeathMenu, EquipmentMenu, GameMenu, GameScreen, InventoryMenu, LogMenu,
@@ -53,10 +54,17 @@ class Engine(object):
 
     def init_managers(self, components):
         for component in components:
-            self.__setattr__(
-                component.manager,
-                ComponentManager(component)
-            )
+            if isinstance(component, Effect):
+                self.__setattr__(
+                    component.manager,
+                    ComponentManager(component),
+                    OrderedDict
+                )
+            else:
+                self.__setattr__(
+                    component.manager,
+                    ComponentManager(component)
+                )
 
     def init_systems(self, systems):
         for system_type in systems:

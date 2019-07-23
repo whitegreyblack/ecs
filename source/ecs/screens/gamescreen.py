@@ -185,39 +185,37 @@ class GameScreen(Screen):
         position = self.engine.positions.find(self.engine.player)
         tilemap = self.engine.tilemaps.find(eid=position.map_id)
         if tilemap.width < self.map_width:
-            camera_x = 0
+            cam_x = 0
         else:
-            camera_x = scroll(position.x, self.map_width, tilemap.width)
-        x0, x1 = camera_x, self.map_width + camera_x
+            cam_x = scroll(position.x, self.map_width, tilemap.width)
+        x0, x1 = cam_x, self.map_width + cam_x
         if tilemap.height < self.map_height:
-            camera_y = 0
+            cam_y = 0
         else:
-            camera_y = scroll(position.y, self.map_height, tilemap.height)
-        y0, y1 = camera_y, self.map_height + camera_y
+            cam_y = scroll(position.y, self.map_height, tilemap.height)
+        y0, y1 = cam_y, self.map_height + cam_y
 
-        self.render_map(position.map_id, camera_x, camera_y, x0, x1, y0, y1)
-        self.render_items(position.map_id, camera_x, camera_y, x0, x1, y0, y1)
+        self.render_map(position.map_id, cam_x, cam_y, x0, x1, y0, y1)
+
+        tiles = {
+            (position.x, position.y): visibility
+                for _, (position, visibility) in join(
+                    self.engine.positions, 
+                    self.engine.visibilities
+                )
+                if visibility.level > 1
+        }
+
+        self.render_items(tiles, position.map_id, cam_x, cam_y, x0, x1, y0, y1)
         while True:
-            self.render_units(position.map_id, camera_x, camera_y, x0, x1, y0, y1)
+            self.render_units(tiles, position.map_id, cam_x, cam_y, x0, x1, y0, y1)
             if not self.engine.effects.components:
                 break
             # render effects
-            self.render_effects(position.map_id, camera_x, camera_y, x0, x1, y0, y1)
-            self.terminal.noutrefresh()
-            curses.doupdate()
-            time.sleep(.085)
+            self.render_effects(tiles, position.map_id, cam_x, cam_y, x0, x1, y0, y1)
             self.engine.effects.components.clear()
 
-
-    def render_header(self):
-        health = self.engine.healths.find(self.engine.player)
-        hp_string = f"hp:{health.cur_hp}/{health.max_hp}"
-        mp_string = f"mp:0/0"
-        eq_string = "['[[==/"
-        header = f"{hp_string} {mp_string} {eq_string}"
-        self.render_string(self.header_x, self.header_y, header)
-
-    def render_map(self, player_map_id, camera_x, camera_y, x0, x1, y0, y1):
+    def render_map(self, map_id, cam_x, cam_y, x0, x1, y0, y1):
         border(
             self.terminal,
             self.map_panel_x,
@@ -232,7 +230,7 @@ class GameScreen(Screen):
             self.engine.infos
         )
         for _, (visibility, position, render, info) in tiles:
-            current_map_id = position.map_id == player_map_id
+            current_map_id = position.map_id == map_id
             visible = visibility.level > 0
             xbounds = x0 <= position.x < x1
             ybounds = y0 <= position.y < y1
@@ -243,13 +241,13 @@ class GameScreen(Screen):
                 else:
                     color = 240
                 self.render_char(
-                    position.x + self.map_x - camera_x,
-                    position.y + self.map_y - camera_y,
+                    position.x + self.map_x - cam_x,
+                    position.y + self.map_y - cam_y,
                     render.char,
                     curses.color_pair(color)
                 )
 
-    def render_units(self, player_map_id, camera_x, camera_y, x0, x1, y0, y1):
+    def render_units(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
         units = [
             (eid, health, position, render, info)
                 for eid, (health, position, render, info) in join(
@@ -260,19 +258,11 @@ class GameScreen(Screen):
                 )
                 if position.map_id == self.engine.world.id
         ]
-        tiles = {
-            (position.x, position.y): visibility
-                for _, (position, visibility) in join(
-                    self.engine.positions, 
-                    self.engine.visibilities
-                )
-                if visibility.level > 1
-        }
         # look for all positions not in tile positions and visibilities.
         # if their positions match and map is visible then show the unit
         enemy_count = 0
         for eid, health, position, render, info in units:
-            current_map_id = position.map_id == player_map_id
+            current_map_id = position.map_id == map_id
             visibility = tiles.get((position.x, position.y), None)
             inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
             if visibility and inbounds:
@@ -281,8 +271,8 @@ class GameScreen(Screen):
                 else:
                     color = 0
                 self.render_char(
-                    self.map_x + position.x - camera_x,
-                    self.map_y + position.y - camera_y,
+                    self.map_x + position.x - cam_x,
+                    self.map_y + position.y - cam_y,
                     render.char,
                     curses.color_pair(color)
                 )
@@ -299,21 +289,13 @@ class GameScreen(Screen):
                 else:
                     self.render_player_panel_details(render, info, health)
 
-    def render_items(self, player_map_id, camera_x, camera_y, x0, x1, y0, y1):
+    def render_items(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
         items = join(
             self.engine.items,
             self.engine.positions,
             self.engine.renders,
             self.engine.infos
         )
-        tiles = {
-            (position.x, position.y): visibility
-                for _, (position, visibility) in join(
-                    self.engine.positions, 
-                    self.engine.visibilities
-                )
-                if visibility.level > 1
-        }
         item_positions = set()
         for _, (_, position, render, info) in items:
             visibility = tiles.get((position.x, position.y), None)
@@ -321,32 +303,40 @@ class GameScreen(Screen):
             if visibility and inbounds:
                 color = colors.get(info.name, 0)
                 self.render_char(
-                    self.map_x + position.x - camera_x,
-                    self.map_y + position.y - camera_y,
+                    self.map_x + position.x - cam_x,
+                    self.map_y + position.y - cam_y,
                     render.char,
                     curses.color_pair(color)
                 )
 
-    def render_effects(self, player_map_id, camera_x, camera_y, x0, x1, y0, y1):
-        tiles = {
-            (position.x, position.y): visibility
-                for _, (position, visibility) in join(
-                    self.engine.positions, 
-                    self.engine.visibilities
-                )
-                if visibility.level > 1
-        }
+    def render_effects(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
+        # eid, effect = self.engine.effects.
 
-        for eid, effect in self.engine.effects:
-            position = self.engine.positions.find(eid=eid)
+        for eid, effect in self.engine.effects.components.items():
+            position = self.engine.positions.find(eid=effect.entity_id)
+            render = self.engine.renders.find(eid=effect.entity_id)
+            info = self.engine.infos.find(eid=effect.entity_id)
             visibility = tiles.get((position.x, position.y), None)
             inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
+            # only shows if inside the view area and space is lighted
             if visibility and inbounds:
                 self.render_char(
-                    self.map_x + position.x - camera_x,
-                    self.map_y + position.y - camera_y,
+                    self.map_x + position.x - cam_x,
+                    self.map_y + position.y - cam_y,
                     effect.char
                 )
+                self.terminal.noutrefresh()
+                curses.doupdate()
+                time.sleep(.085)
+                self.render_char(
+                    self.map_x + position.x - cam_x,
+                    self.map_y + position.y - cam_y,
+                    render.char,
+                    curses.color_pair(colors.get(info.name, 0))
+                )
+                self.terminal.noutrefresh()
+                curses.doupdate()
+                # time.sleep(.085)
 
     def render_log(self, log, ly, lx):
         self.terminal.addstr(ly, lx, str(log))
