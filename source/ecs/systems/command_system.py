@@ -141,7 +141,7 @@ class CommandSystem(System):
             # add to inventory
             inventory.items.append(entity.id)
         if len(items) > 2:
-            item_str = f"a {', a'.join(items[:len(items)-1])}, and a {items[-1]}"
+            item_str = f"a {', a '.join(items[:len(items)-1])}, and a {items[-1]}"
         elif len(items) == 2:
             item_str = f"a {items[0]} and a {items[1]}"
         else:
@@ -185,9 +185,6 @@ class CommandSystem(System):
             damage = 1
         health.cur_hp -= damage
 
-        # add a hit effect
-        self.engine.effects.add(entity, Effect(other.id, '*', 0))
-
         # record fight
         strings = []
         if is_player:
@@ -199,6 +196,9 @@ class CommandSystem(System):
         if health.cur_hp < 1:
             strings.append(f"The {attackee.name} dies.")
             self.engine.grave_system.process(other)
+        else:
+            # add a hit effect
+            self.engine.effects.add(entity, Effect(other.id, '*', 0))
         self.engine.logger.add(' '.join(strings))
         return True
 

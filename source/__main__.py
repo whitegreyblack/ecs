@@ -136,8 +136,8 @@ def add_computers(engine, npcs):
         engine.ais.add(computer, AI())
         engine.infos.add(computer, Information("goblin"))
         engine.healths.add(computer, Health(2, 2))
-        if i == 0:
-            engine.armors.add(computer, Armor(2))
+        # if i == 0:
+        #     engine.armors.add(computer, Armor(2))
 
         # add items to inventory
         item = engine.entities.create()
@@ -193,7 +193,7 @@ def main(terminal, dungeon, npcs, items):
 
 @click.command()
 @click.option('-d', '--dungeon', default='dungeon')
-@click.option('-n', '--npcs', default=2)
+@click.option('-n', '--npcs', default=1)
 @click.option('-i', '--items', default=2)
 def preload(dungeon, npcs, items):
     curses.wrapper(main, dungeon, npcs, items)
