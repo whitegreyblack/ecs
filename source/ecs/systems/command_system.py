@@ -235,11 +235,11 @@ class CommandSystem(System):
             (entity_id, position)
                 for entity_id, position in self.engine.positions
                     if position.map_id == self.engine.world.id
+                        and entity_id != entity.id
+                        and position.blocks_movement
         ]
 
         for other_id, other_position in positions:
-            if other_id == entity.id or not other_position.blocks_movement:
-                continue
             future_position_blocked = (
                 x == other_position.x and y == other_position.y
             )

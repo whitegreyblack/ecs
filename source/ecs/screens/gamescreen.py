@@ -257,37 +257,39 @@ class GameScreen(Screen):
                     self.engine.infos
                 )
                 if position.map_id == self.engine.world.id
+                    and (position.x, position.y) in tiles
+                    and x0 <= position.x < x1 and y0 <= position.y < y1
         ]
         # look for all positions not in tile positions and visibilities.
         # if their positions match and map is visible then show the unit
         enemy_count = 0
         for eid, health, position, render, info in units:
-            current_map_id = position.map_id == map_id
-            visibility = tiles.get((position.x, position.y), None)
-            inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
-            if visibility and inbounds:
-                if visibility.level == 2:
-                    color = colors.get(info.name, 0)
-                else:
-                    color = 0
-                self.render_char(
-                    self.map_x + position.x - cam_x,
-                    self.map_y + position.y - cam_y,
-                    render.char,
-                    curses.color_pair(color)
-                )
-                # check if enemy needs to added to the panel
-                non_player = eid != self.engine.player.id
-                description_space = enemy_count < self.enemy_panel_height - 1
-                if non_player:
-                        enemy_count += int(self.render_enemy_panel_detail(
-                            enemy_count, 
-                            render, 
-                            info, 
-                            health
-                        ))
-                else:
-                    self.render_player_panel_details(render, info, health)
+            # current_map_id = position.map_id == map_id
+            visibility = tiles[(position.x, position.y)]
+            # inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
+            # if visibility and inbounds:
+            if visibility.level == 2:
+                color = colors.get(info.name, 0)
+            else:
+                color = 0
+            self.render_char(
+                self.map_x + position.x - cam_x,
+                self.map_y + position.y - cam_y,
+                render.char,
+                curses.color_pair(color)
+            )
+            # check if enemy needs to added to the panel
+            non_player = eid != self.engine.player.id
+            description_space = enemy_count < self.enemy_panel_height - 1
+            if non_player:
+                    enemy_count += int(self.render_enemy_panel_detail(
+                        enemy_count, 
+                        render, 
+                        info, 
+                        health
+                    ))
+            else:
+                self.render_player_panel_details(render, info, health)
 
     def render_items(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
         items = join(

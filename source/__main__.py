@@ -88,30 +88,20 @@ def add_map(engine, eid, mapstring):
             else:
                 engine.infos.add(tile, Information('floor'))
 
-def find_space(engine):
-    spaces = set()
-    for eid, (tile, position) in join(engine.tiles, engine.positions):
-        if not position.blocks_movement:
-            spaces.add((position.x, position.y))
-    return spaces
+def find_empty_spaces(engine):
+    return {
+        (position.x, position.y)
+            for _, (_, position) in join(engine.tiles, engine.positions)
+                if not position.blocks_movement
+    }    
 
-def find_empty_space(engine):
-    spaces = find_space(engine)
-    for entity_id, (hp, pos) in join(engine.healths, engine.positions):
-        spaces.remove((pos.x, pos.y))
-    for entity_id, (item, pos) in join(engine.items, engine.positions):
-        spaces.remove((pos.x, pos.y))
-    if not spaces:
-        return None
-    return spaces.pop()
-
-def add_player(engine):
+def add_player(engine, spaces):
     player = engine.entities.create()
     # engine.ai.add(player, AI())
     engine.inputs.add(player, Input())
-    space = find_empty_space(engine)
-    if not space:
+    if not spaces:
         raise Exception("No empty spaces to place player")
+    space = spaces.pop()
     # engine.ais.add(player, AI())
     engine.positions.add(player, Position(*space, map_id=engine.world.id))
     engine.renders.add(player, Render('@', depth=3))
@@ -121,12 +111,12 @@ def add_player(engine):
     engine.inputs.add(player, Input(needs_input=True))
     engine.add_player(player)
 
-def add_computers(engine, npcs):
+def add_computers(engine, npcs, spaces):
     for i in range(npcs):
         computer = engine.entities.create()
-        space = find_empty_space(engine)
-        if not space:
+        if not spaces:
             break
+        space = spaces.pop()
         engine.inputs.add(computer, Input())
         engine.positions.add(
             computer, 
@@ -147,12 +137,12 @@ def add_computers(engine, npcs):
         inventory = Inventory(items=[item.id])
         engine.inventories.add(computer, inventory)
 
-def add_items(engine, items):
+def add_items(engine, items, spaces):
     for i in range(items):
         item = engine.entities.create()
-        space = find_empty_space(engine)
-        if not space:
-            raise Exception("No empty spaces to place item")
+        if not spaces:
+            break
+        space = spaces.pop()
         engine.positions.add(
             item, 
             Position(
@@ -176,9 +166,10 @@ def ecs_setup(terminal, dungeon, npcs, items):
     )
     add_world(engine, dungeon)
     # add_map(engine, dungeon)
-    add_player(engine)
-    add_computers(engine, npcs)
-    add_items(engine, items)
+    spaces = find_empty_spaces(engine)
+    add_player(engine, spaces)
+    add_computers(engine, npcs, spaces)
+    add_items(engine, items, spaces)
 
     # engine.logger.add(f"count: {len(engine.entities.entities)}")
     return engine

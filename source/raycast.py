@@ -131,7 +131,6 @@ def cast_light(engine):
 
 def raycast(tiles, tilemap, player, ma=max, mi=min, ra=range, ro=round):
     blocked = set()
-    # for eid, (visible, position) in join(engine.visibilities, engine.positions):
     for visible, position in tiles:
         # reset visibility levels
         visible.level = ma(0, mi(visible.level, 1))
