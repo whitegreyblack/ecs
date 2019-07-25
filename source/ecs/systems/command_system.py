@@ -172,34 +172,44 @@ class CommandSystem(System):
         # attacker properties
         is_player = entity == self.engine.player
         attacker = self.engine.infos.find(entity)
+        equipment = self.engine.equipments.find(entity)
 
         # attackee properties
         attackee = self.engine.infos.find(other)
         health = self.engine.healths.find(other)
         armor = self.engine.armors.find(other)
         
-        # attack logic
+        # damage calculations
+        damage = 1
+        if equipment and equipment.hand:
+            weapon = self.engine.weapons.find(eid=equipment.hand)
+            if weapon:
+                damage = weapon.damage
+
+        # armor based reductions
         if armor:
-            damage = max(0, 1 - armor.defense)
-        else:
-            damage = 1
+            damage = max(0, damage - armor.defense)
+
+        # final health loss
         health.cur_hp -= damage
 
         # record fight
         strings = []
         if is_player:
-            strings.append(f"You attack the {attackee.name} for 1 damage")
+            strings.append(f"You attack the {attackee.name} for {damage} damage")
         else:
-            strings.append(f"The {attacker.name} attacks the {attackee.name} for 1 damage")
+            strings.append(f"The {attacker.name} attacks the {attackee.name} for {damage} damage")
         if damage < 1:
-            strings.append(f"but the attack did no damage!")
+            strings.append(f", but the attack did no damage!")
+        else:
+            strings.append(".")
         if health.cur_hp < 1:
-            strings.append(f"The {attackee.name} dies.")
+            strings.append(f" The {attackee.name} dies.")
             self.engine.grave_system.process(other)
         else:
             # add a hit effect
             self.engine.effects.add(entity, Effect(other.id, '*', 0))
-        self.engine.logger.add(' '.join(strings))
+        self.engine.logger.add(''.join(strings))
         return True
 
     def collide(self, entity, collision):

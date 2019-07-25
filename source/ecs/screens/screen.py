@@ -184,6 +184,18 @@ class EquipmentMenu(Screen):
         self.terminal.erase()
         border(self.terminal, 0, 0, self.engine.width-1, self.engine.height-1)
         self.terminal.addstr(0, 1, '[equipment]')
+        # get player equipment info
+        e = self.engine.equipments.find(self.engine.player)
+        head = None
+        self.terminal.addstr(1, 1, f"HEAD: {head}")
+        body = None
+        self.terminal.addstr(2, 1, f"BODY: {body}")
+        hand = None
+        if e.hand:
+            hand = self.engine.infos.find(eid=e.hand).name
+        self.terminal.addstr(3, 1, f"HAND: {hand}")
+        feet = None
+        self.terminal.addstr(4, 1, f"FEET: {feet}")
         self.terminal.refresh()
 
     def handle_input(self):

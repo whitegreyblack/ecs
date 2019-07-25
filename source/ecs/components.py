@@ -172,6 +172,19 @@ class Inventory(Component):
     manager: str = 'inventories'
 
 @dataclass
+class Equipment(Component):
+    head: int = None
+    body: int = None
+    hand: int = None
+    feet: int = None
+    manager: str = 'equipments'
+
+@dataclass
+class Weapon(Component):
+    damage: int = 0
+    manager: str = 'weapons'
+
+@dataclass
 class Item(Component):
     seen: bool = False
     manager: str = 'items'

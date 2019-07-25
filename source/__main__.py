@@ -13,9 +13,9 @@ import click
 from source.color import colors
 from source.common import border, join
 from source.ecs import (AI, Armor, Collision, Decay, Destroy, Effect,
-                        Experience, Health, Information, Input, Inventory,
-                        Item, Movement, Openable, Position, Render, Tile,
-                        TileMap, Visibility, components)
+                        Equipment, Experience, Health, Information, Input,
+                        Inventory, Item, Movement, Openable, Position, Render,
+                        Tile, TileMap, Visibility, Weapon, components)
 from source.ecs.systems import systems
 from source.engine import Engine
 from source.graph import DungeonNode, WorldGraph, WorldNode, graph
@@ -97,19 +97,26 @@ def find_empty_spaces(engine):
 
 def add_player(engine, spaces):
     player = engine.entities.create()
-    # engine.ai.add(player, AI())
+    engine.add_player(player)
     engine.inputs.add(player, Input())
     if not spaces:
         raise Exception("No empty spaces to place player")
     space = spaces.pop()
-    # engine.ais.add(player, AI())
     engine.positions.add(player, Position(*space, map_id=engine.world.id))
     engine.renders.add(player, Render('@', depth=3))
     engine.healths.add(player, Health(30, 20))
     engine.infos.add(player, Information("Hero"))
     engine.inventories.add(player, Inventory())
+
     engine.inputs.add(player, Input(needs_input=True))
-    engine.add_player(player)
+    # create a weapon for player
+    spear = engine.entities.create()
+    engine.items.add(spear, Item())
+    engine.renders.add(spear, Render('/'))
+    engine.infos.add(spear, Information('spear'))
+    engine.weapons.add(spear, Weapon(4))
+    e = Equipment(hand=spear.id)
+    engine.equipments.add(player, e)
 
 def add_computers(engine, npcs, spaces):
     for i in range(npcs):
