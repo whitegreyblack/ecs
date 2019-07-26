@@ -34,7 +34,7 @@ class ComponentManager(object):
         self.components[entity.id] = component
 
     def remove(self, entity=None, eid=None) -> bool:
-        if not entity and not eid:
+        if entity is None and eid is None or (eid and eid < 0):
             raise Exception("need entity or eid")
         if entity and entity.id in self.components:
             del self.components[entity.id]

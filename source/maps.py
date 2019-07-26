@@ -4,7 +4,7 @@
 
 import random
 from .common import squares
-
+import numpy as np
 
 def create_field_matrix(width: int, height: int, char: chr='"') -> list:
     matrix = [['.' for _ in range(width)] for _ in range(height)]
@@ -101,6 +101,64 @@ def extend(mapstring, mapgen=create_empty_matrix, char='"'):
     new = old
     return stringify_matrix(new)
 
+def generate_poisson_array(width: int, height: int):
+    return np.random.poisson(5, width * height)
+
+def replace_cell_with_stairs(
+        matrix: list, 
+        upstairs: tuple=None, 
+        downstairs: tuple=None
+    ):
+    if upstairs and downstairs and upstairs == downstairs:
+        raise ValueError("Upstairs value cannot be the same as downstairs.")
+    if not upstairs:
+        upstairs = (
+            random.randint(1, len(matrix) - 2),
+            random.randint(1, len(matrix) - 2)
+        )
+    matrix[upstairs[1]][upstairs[0]] = '<'
+    while not downstairs:
+        downstairs = (
+            random.randint(1, len(matrix) - 2),
+            random.randint(1, len(matrix) - 2)
+        )
+        if downstairs == upstairs:
+            downstairs = None
+    matrix[downstairs[1]][downstairs[0]] = '>'
+    return matrix
+
+def transform_random_array_to_matrix(array, width, height, filterpoint):
+    matrix = [[None for _ in range(width)] for _ in range(height)]
+    for i in range(width):
+        for j in range(height):
+            if array[j * width + i] == filterpoint:
+                matrix[j][i] = '#'
+            else:
+                matrix[j][i] = '.'
+    return matrix
+
+def cell_auto(matrix):
+    copy = deepcopy(matrix)
+    w, h = len(matrix[0]), len(matrix)
+    for i in range(w):
+        for j in range(h):
+            cell = matrix[j][i]
+            neighbors = 0
+            for ii in range(-1, 2):
+                for jj in range(-1, 2):
+                    try:
+                        c = matrix[j+jj][i+ii]
+                    except:
+                        pass
+                    else:
+                        if c == '#':
+                            neighbors += 1
+            if cell == '#' and neighbors < 1:
+                copy[j][i] = '.'
+            elif cell == '.' and neighbors > 2:
+                copy[j][i] = '#'
+    return copy
+
 HALL = create_empty_room(100, 50)
 
 DUNGEON = """
@@ -127,7 +185,7 @@ SHADOWBARROW = """
 ..........#####..#####..#####..###########.......####.....
 ..........#...#..#...#..#...#..#...#.#...#......##..##....
 ..........#...#..#...#..#...#..#...+.+...#....###....###..
-..........##+##..##+##..##+##..#####.#####....#........#..
+..........##+##..##+##..##+##..#####.#####....#....>...#..
 .#######.""....................#...#.....#....#.#....#.#..
 .#.....#..""...................#...+.....#....#........#..
 .#.....#.""."..................#####+#####....#........#..

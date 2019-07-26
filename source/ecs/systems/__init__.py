@@ -4,6 +4,7 @@ from .decay_system import DecaySystem
 from .energy_system import EnergySystem
 from .grave_system import GraveSystem
 from .input_system import InputSystem
+from .map_system import MapSystem
 from .render_system import RenderSystem
 from .system import System
 from .turn_system import TurnSystem

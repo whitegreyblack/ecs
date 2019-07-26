@@ -115,10 +115,15 @@ costable = array('f', [
 ])
 
 def cast_light(engine):
-    """Wrapper for raycast so that engine is not a parameter"""
+    """Wrapper for raycast so that engine is not a parameter to raycast"""
     player = engine.positions.find(engine.player)
     tilemap = engine.tilemaps.find(eid=engine.world.id)
-
+    if not tilemap:
+        print(f"""\n
+Exception:
+    Could not find tilemap for id: {engine.world.id}. 
+    Tilemaps: {engine.tilemaps.components}")"""[1:])
+        exit(0)
     tiles = [
         (v, p)
             for _, (v, p) in join(

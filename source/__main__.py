@@ -40,53 +40,18 @@ def curses_setup(screen):
         curses.init_pair(i + 1, i, -1)
     return screen
 
-def add_world(engine, dungeon):
+def add_world(engine, mappairs):
     world_graph = {}
     g = {
-        0: (DungeonNode(0, None), dungeon)
+        0: DungeonNode(0, None)
     }
     # create entity per node
-    for eid, (node, mapstring) in g.items():
+    for eid, node in g.items():
         world_graph[eid] = node
         engine.entities.create(eid)
     # create components per entity
-    for eid, (node, mapstring) in g.items():
-        add_map(engine, eid, mapstring)
-    engine.world = WorldGraph(world_graph, 0)
-
-def add_map(engine, eid, mapstring):
-    # add entity that holds tiles
-
-    world = engine.entities.find(eid=eid)
-    dungeon = [[c for c in row] for row in mapstring.split('\n')]
-    tilemap = TileMap(len(dungeon[0]), len(dungeon))
-    engine.tilemaps.add(world, tilemap)
-    # add tiles
-    for y, row in enumerate(dungeon):
-        for x, c in enumerate(row):
-            tile = engine.entities.create()
-            engine.tiles.add(tile, Tile())
-            position = Position(
-                x, 
-                y,
-                map_id=world.id,
-                moveable=False, 
-                blocks_movement=c in ('#', '+')
-            )
-            engine.visibilities.add(tile, Visibility())
-            engine.positions.add(tile, position)
-            engine.renders.add(tile, Render(char=c))
-            if c == '#':
-                engine.infos.add(tile, Information('wall'))
-            elif c in ('/', '+'):
-                engine.infos.add(tile, Information('door'))
-                engine.openables.add(tile, Openable(opened=c=='/'))
-            elif c == '"':
-                engine.infos.add(tile, Information('grass'))
-            elif c == '~':
-                engine.infos.add(tile, Information('water'))
-            else:
-                engine.infos.add(tile, Information('floor'))
+    for eid, mapstring in mappairs:
+        engine.map_system.generate_map(eid, mapstring)
 
 def find_empty_spaces(engine):
     return {
@@ -171,8 +136,7 @@ def ecs_setup(terminal, dungeon, npcs, items):
         terminal=terminal,
         keyboard=keyboard
     )
-    add_world(engine, dungeon)
-    # add_map(engine, dungeon)
+    add_world(engine, ((0, dungeon),))
     spaces = find_empty_spaces(engine)
     add_player(engine, spaces)
     add_computers(engine, npcs, spaces)
@@ -190,7 +154,7 @@ def main(terminal, dungeon, npcs, items):
     engine.run()
 
 @click.command()
-@click.option('-d', '--dungeon', default='dungeon')
+@click.option('-d', '--dungeon', default='shadowbarrow')
 @click.option('-n', '--npcs', default=1)
 @click.option('-i', '--items', default=2)
 def preload(dungeon, npcs, items):

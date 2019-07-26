@@ -39,7 +39,7 @@ class CommandSystem(System):
                 doors[(x, y)] = (openable, coordinate, render)
         door_to_close = None
         if not doors:
-            self.engine.logger.add(f"No opened door to close")
+            self.engine.logger.add(f"No opened door to close.")
         elif len(doors) == 1:
             door_to_close, = doors.items()
         else:
@@ -53,7 +53,7 @@ class CommandSystem(System):
             # valid direction keypress but not valid door direction
             door = doors.get((movement.x, movement.y), None)
             if not door:
-                self.engine.logger.add(f"You cancel closing a door")
+                self.engine.logger.add(f"You cancel closing a door.")
             else:
                 door_to_close = ((movement.x, movement.y), door)
         if door_to_close:
@@ -61,7 +61,7 @@ class CommandSystem(System):
             openable.opened = False
             position.blocks_movement = True
             render.char = '+'
-            self.engine.logger.add(f"You close the door")
+            self.engine.logger.add(f"You close the door.")
             turn_over = True
         return turn_over
 
@@ -90,7 +90,7 @@ class CommandSystem(System):
                 doors[(x, y)] = (openable, coordinate, render)
         door_to_open = None
         if not doors:
-            self.engine.logger.add(f"No closed doors to open")
+            self.engine.logger.add(f"No closed doors to open.")
         elif len(doors) == 1:
             door_to_open, = doors.values()
         else:
@@ -104,7 +104,7 @@ class CommandSystem(System):
             # valid direction keypress but not valid door direction
             door = doors.get((movement.x, movement.y), None)
             if not door:
-                self.engine.logger.add(f"You cancel opening a door direction invalid error")
+                self.engine.logger.add(f"You cancel opening a door direction invalid error.")
             else:
                 door_to_open = door
         if door_to_open:
@@ -112,7 +112,7 @@ class CommandSystem(System):
             openable.opened = True
             position.blocks_movement = False
             render.char = '/'
-            self.engine.logger.add(f"You open the door")
+            self.engine.logger.add(f"You open the door.")
             turn_over = True
         return turn_over
 
@@ -262,6 +262,65 @@ class CommandSystem(System):
             self.check_for_floor_items(position)
         return True
 
+    def go_down(self, entity):
+        """Check if entity position is on stairs. If true go down"""
+        went_down = False
+        position = self.engine.positions.find(entity)
+        tilemap = self.engine.tilemaps.find(eid=position.map_id)
+        
+        # should only return 1 tile/render pair
+        for _, (_, tile_position, render) in join(
+            self.engine.tiles,
+            self.engine.positions,
+            self.engine.renders
+        ):
+            # tile from current map / same map position as entity / is down stairs
+            if (tile_position.map_id == self.engine.world.id
+                and tile_position == position
+                and render.char == '>'):
+                break
+            else:
+                tile_position = None
+        
+
+        if not tile_position:
+            self.engine.logger.add('Could not go down since not on stairs')
+            return went_down
+        
+        old_id = self.engine.world.id
+        self.engine.world.go_down()
+        if old_id == self.engine.world.id:
+            # TODO: generate child map to go down. For now return False
+            # self.engine.logger.add('Could not go down since no child map')
+            # return went_down
+            self.engine.map_system.generate_map()
+            self.engine.world.go_down()
+            assert old_id != self.engine.world.id
+
+        for _, (_, tile_position, render) in join(
+            self.engine.tiles,
+            self.engine.positions,
+            self.engine.renders
+        ):
+            # tile from current map / is up stairs
+            if (tile_position.map_id == self.engine.world.id
+                and render.char == '<'):
+                self.engine.logger.add(str(tile_position))
+                break
+
+        if not tile_position:
+            self.engine.logger.add('Could not go down since child map has no up stairs')
+            return went_down
+        
+        # send entity to the position of stairs on child map
+        position = tile_position.copy(
+            moveable=position.moveable, 
+            blocks_movement=position.blocks_movement
+        )
+        self.engine.positions.remove(self.engine.player)
+        self.engine.positions.add(self.engine.player, position)
+        return True
+
     def process(self, entity, command):
         if command in movement_keypresses:
             return self.move(entity, Movement.keypress_to_direction(command))
@@ -280,3 +339,5 @@ class CommandSystem(System):
             return self.open_door(entity)
         elif command == 'c':
             return self.close_door(entity)
+        elif command == 'greater-than':
+            return self.go_down(entity)

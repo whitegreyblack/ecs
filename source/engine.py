@@ -28,6 +28,7 @@ class Engine(object):
         self.add_terminal(terminal)
         self.keyboard = keyboard
 
+        self.world = None
         self.entities = EntityManager()
         self.init_managers(components)
         self.init_systems(systems)

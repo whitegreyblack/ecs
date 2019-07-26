@@ -30,6 +30,9 @@ class WorldGraph(dict):
     def __init__(self, graph, start_id):
         self.update(graph)
         self.id = start_id
+    @property
+    def node(self):
+        return self[self.id]
     def go_down(self):
         node = self[self.id]
         if not node:

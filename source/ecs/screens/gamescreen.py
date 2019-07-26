@@ -205,7 +205,6 @@ class GameScreen(Screen):
                 )
                 if visibility.level > 1
         }
-
         self.render_items(tiles, position.map_id, cam_x, cam_y, x0, x1, y0, y1)
         while True:
             self.render_units(tiles, position.map_id, cam_x, cam_y, x0, x1, y0, y1)
