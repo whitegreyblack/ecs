@@ -10,6 +10,35 @@ import numpy as np
 from .common import squares
 
 
+class MapGenerator:
+    def __init__(self, data):
+        self.data = data
+    @property
+    def width(self):
+        return len(self.data[0])
+    @property
+    def height(self):
+        return len(self.data)
+    @classmethod
+    def poisson(cls, width, height, filterpoint=5):
+        array = np.random.poisson(5, width * height)
+        matrix = [['.' for _ in range(width)] for _ in range(height)]
+        for i in range(width):
+            for j in range(height):
+                if array[j * width + i] == filterpoint:
+                    matrix[j][i] = '#'
+        return cls(matrix)
+    def bounded(self):
+        for i in (0, 1, self.width-2, self.width-1):
+            for j in range(self.height):
+                self.data[j][i] = '#'
+        for j in (0, 1, self.height-2, self.height-1):
+            for i in range(self.width):
+                self.data[j][i] = '#'
+        return self
+    def stringify(self):
+        return  '\n'.join(''.join(row) for row in self.data)
+
 def dimensions(matrix):
     return len(matrix[0]), len(matrix)
 
@@ -98,7 +127,7 @@ def matrixfy_string(string):
     return [list(row) for row in string.split('\n')]
 
 def stringify_matrix(matrix):
-    return '\n'.join(''.join(row) for row in matrix)
+    return '\n'.join(''.join(str(s) for s in row) for row in matrix)
 
 def extend(mapstring, mapgen=create_empty_matrix, char='"'):
     old = matrixfy_string(mapstring)

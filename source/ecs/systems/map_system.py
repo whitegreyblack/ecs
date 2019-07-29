@@ -36,14 +36,10 @@ class MapSystem(System):
         else:
             random_array = generate_poisson_array(58, 17)
             no_stairs = transform_random_array_to_matrix(random_array, 58, 17, 3)
-            print(stringify_matrix(no_stairs))
             no_stairs = add_boundry_to_matrix(no_stairs)
-            print(stringify_matrix(no_stairs))
             for i in range(3):
                 no_stairs = cell_auto(no_stairs, deadlimit=5+(i-5))
-            print(stringify_matrix(no_stairs))
             no_stairs = flood_fill(no_stairs)
-            print(stringify_matrix(no_stairs))
             dungeon = replace_cell_with_stairs(no_stairs)
             tilemap = TileMap(58, 17)
         self.engine.tilemaps.add(world, tilemap)
