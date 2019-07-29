@@ -3,8 +3,15 @@
 """Holds default maps and map functions used for testing"""
 
 import random
-from .common import squares
+from copy import deepcopy
+
 import numpy as np
+
+from .common import squares
+
+
+def dimensions(matrix):
+    return len(matrix[0]), len(matrix)
 
 def create_field_matrix(width: int, height: int, char: chr='"') -> list:
     matrix = [['.' for _ in range(width)] for _ in range(height)]
@@ -109,21 +116,35 @@ def replace_cell_with_stairs(
         upstairs: tuple=None, 
         downstairs: tuple=None
     ):
+    w, h = dimensions(matrix)
     if upstairs and downstairs and upstairs == downstairs:
         raise ValueError("Upstairs value cannot be the same as downstairs.")
+    floors = {
+        (x, y)
+            for x in range(w) for y in range(h)
+                if matrix[y][x] == '.'
+    }
     if not upstairs:
-        upstairs = (
-            random.randint(1, len(matrix) - 2),
-            random.randint(1, len(matrix) - 2)
-        )
+        while True:
+            x, y = floors.pop()
+            for i, j in squares(exclude_center=True):
+                if (x+i, y+j) not in floors:
+                    x, y = None, None
+                    break
+            if x and y:
+                upstairs = (x, y)
+                break
     matrix[upstairs[1]][upstairs[0]] = '<'
     while not downstairs:
-        downstairs = (
-            random.randint(1, len(matrix) - 2),
-            random.randint(1, len(matrix) - 2)
-        )
-        if downstairs == upstairs:
-            downstairs = None
+        while True:
+            x, y = floors.pop()
+            for i, j in squares(exclude_center=True):
+                if (x+i, y+j) not in floors:
+                    x, y = None, None
+                    break
+            if x and y:
+                downstairs = (x, y)
+                break
     matrix[downstairs[1]][downstairs[0]] = '>'
     return matrix
 
@@ -137,15 +158,26 @@ def transform_random_array_to_matrix(array, width, height, filterpoint):
                 matrix[j][i] = '.'
     return matrix
 
-def cell_auto(matrix):
+def add_boundry_to_matrix(matrix):
+    width, height = dimensions(matrix)
+    for i in (0, 1, width-2, width-1):
+        for j in range(height):
+            matrix[j][i] = '#'
+    for j in (0, 1, height-2, height-1):
+        for i in range(width):
+            matrix[j][i] = '#'
+    return matrix
+
+def cell_auto(matrix, alivelimit=4, deadlimit=5):
     copy = deepcopy(matrix)
-    w, h = len(matrix[0]), len(matrix)
+    w, h = dimensions(matrix)
     for i in range(w):
         for j in range(h):
             cell = matrix[j][i]
             neighbors = 0
             for ii in range(-1, 2):
                 for jj in range(-1, 2):
+                    # check if neighbor is within bounds
                     try:
                         c = matrix[j+jj][i+ii]
                     except:
@@ -153,11 +185,39 @@ def cell_auto(matrix):
                     else:
                         if c == '#':
                             neighbors += 1
-            if cell == '#' and neighbors < 1:
-                copy[j][i] = '.'
-            elif cell == '.' and neighbors > 2:
-                copy[j][i] = '#'
+            if cell == '#':
+                if neighbors < deadlimit:
+                    copy[j][i] = '.'
+            elif cell == '.':
+                if neighbors > alivelimit:
+                    copy[j][i] = '#'
     return copy
+
+def flood_fill(matrix):
+    w, h = dimensions(matrix)
+    floors = {
+        (x, y) 
+            for x in range(w) for y in range(h)
+                if matrix[y][x] == '.'
+    }
+    # dfs search
+    groups = []
+    while floors:
+        group = []
+        queue = [floors.pop()]
+        while queue:
+            x, y = queue.pop()
+            group.append((x, y))
+            for i, j in squares(exclude_center=True):
+                if (x + i, y + j) in floors:
+                    floors.remove((x+i, y+j))
+                    queue.append((x+i, y+j))
+        groups.append(group)
+    groups.sort(key=lambda x: len(x), reverse=True)
+    for group in groups[1:]:
+        for (x, y) in group:
+            matrix[y][x] = '#'
+    return matrix
 
 HALL = create_empty_room(100, 50)
 

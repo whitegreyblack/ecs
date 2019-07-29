@@ -5,6 +5,7 @@
 from source.ecs.components import (AI, Health, Information, Input, Position,
                                    Render)
 
+
 def find_empty_space(engine):
     open_spaces = set()
     for entity_id, (tile, pos) in join(engine.tiles, engine.positions):

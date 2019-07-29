@@ -5,10 +5,9 @@ Uses raycast algorithm to determine visibility
 """
 
 import time
+from array import array
 
 from source.common import join
-
-from array import array
 
 sintable = array('f', [
     0.00000, 0.01745, 0.03490, 0.05234, 0.06976, 0.08716, 0.10453,
@@ -122,7 +121,8 @@ def cast_light(engine):
         print(f"""\n
 Exception:
     Could not find tilemap for id: {engine.world.id}. 
-    Tilemaps: {engine.tilemaps.components}")"""[1:])
+    Tilemaps: {engine.tilemaps.components}")"""[1:]
+        )
         exit(0)
     tiles = [
         (v, p)
