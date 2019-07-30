@@ -13,5 +13,6 @@ colors = {
     'door': 131,
     'door': 131,
     'water': 33,
-    'stairs': 0
+    'stairs': 0,
+    'flower': 191
 }

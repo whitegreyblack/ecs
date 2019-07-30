@@ -5,7 +5,7 @@
 import pickle
 
 from source.common import join
-from source.ecs.components import (Information, Openable, Position, Render,
+from source.ecs.components import (Information, Openable, Position, Render, Item,
                                    Tile, TileMap, Visibility)
 from source.graph import DungeonNode, WorldGraph
 from source.maps import (add_boundry_to_matrix, cell_auto, flood_fill,
@@ -90,6 +90,7 @@ class MapSystem(System):
             tilemap = TileMap(58, 17)
         self.engine.tilemaps.add(world, tilemap)
         # add tiles and tile specific attribute components
+        other_entities = []
         for y, row in enumerate(dungeon):
             for x, c in enumerate(row):
                 tile = self.engine.entities.create()
@@ -115,8 +116,22 @@ class MapSystem(System):
                     self.engine.infos.add(tile, Information('grass'))
                 elif c == '~':
                     self.engine.infos.add(tile, Information('water'))
+                elif c == ';':
+                    render = self.engine.renders.find(tile)
+                    render.char = '"'
+                    self.engine.infos.add(tile, Information('grass'))
+                    other_entities.append((x, y, c))
                 else:
                     self.engine.infos.add(tile, Information('floor'))
+        for x, y, c in other_entities:
+            if c == ';':
+                flower = self.engine.entities.create()
+                self.engine.items.add(flower, Item())
+                self.engine.positions.add(flower, Position(
+                    x, y, map_id=world.id, moveable=False, blocks_movement=False
+                ))
+                self.engine.renders.add(flower, Render(char=c))
+                self.engine.infos.add(flower, Information('flower'))
         # create world graph if ran the first time
         if not self.engine.world:
             self.engine.world = WorldGraph({
