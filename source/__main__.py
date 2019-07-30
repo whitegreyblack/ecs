@@ -69,7 +69,7 @@ def add_player(engine, spaces):
     space = spaces.pop()
     engine.positions.add(player, Position(*space, map_id=engine.world.id))
     engine.renders.add(player, Render('@', depth=3))
-    engine.healths.add(player, Health(30, 20))
+    engine.healths.add(player, Health(10, 20))
     engine.infos.add(player, Information("Hero"))
     engine.inventories.add(player, Inventory())
 

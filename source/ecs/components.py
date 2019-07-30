@@ -67,6 +67,9 @@ class Experience(Component):
 class Health(Component):
     cur_hp: int = 1
     max_hp: int = 1
+    heal_tick: int = 2
+    heal_curr: int = 0
+    heal_full: int = 100
     manager: str = 'healths'
     @property
     def alive(self):

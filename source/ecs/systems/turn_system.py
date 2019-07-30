@@ -36,4 +36,5 @@ class TurnSystem(System):
             self.engine.next_entity()
         # end of turn stuff here
         self.engine.decay_system.process()
+        self.engine.heal_system.process()
         return True
