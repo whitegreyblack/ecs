@@ -108,3 +108,6 @@ venv.bak/
 
 # .ionide
 .ionide/
+
+# ecs save files
+/source/saves

@@ -299,9 +299,10 @@ class GameScreen(Screen):
         )
         item_positions = set()
         for _, (_, position, render, info) in items:
+            current_map = position.map_id == self.engine.world.id
             visibility = tiles.get((position.x, position.y), None)
             inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
-            if visibility and inbounds:
+            if current_map and visibility and inbounds:
                 color = colors.get(info.name, 0)
                 self.render_char(
                     self.map_x + position.x - cam_x,

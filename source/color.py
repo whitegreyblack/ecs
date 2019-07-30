@@ -1,8 +1,8 @@
 # color.py
 
 colors = {
-    'wall': 102,
-    'floor': 95,
+    'wall': 95,
+    'floor': 102,
     'bloodied floor': 197,
     'goblin': 83,
     'goblin corpse': 83,

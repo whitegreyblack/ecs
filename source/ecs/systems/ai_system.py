@@ -50,6 +50,9 @@ class AISystem(System):
         """Computer commands currently only support mindless movement"""
         
         position = self.engine.positions.find(entity)
+        # process as done if not in the current map
+        if position.map_id != self.engine.world.id:
+            return True
         info = self.engine.infos.find(entity)
         ai = self.engine.ais.find(entity)
 
