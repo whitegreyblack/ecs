@@ -5,10 +5,9 @@ Uses raycast algorithm to determine visibility
 """
 
 import time
+from array import array
 
 from source.common import join
-
-from array import array
 
 sintable = array('f', [
     0.00000, 0.01745, 0.03490, 0.05234, 0.06976, 0.08716, 0.10453,
@@ -115,10 +114,16 @@ costable = array('f', [
 ])
 
 def cast_light(engine):
-    """Wrapper for raycast so that engine is not a parameter"""
+    """Wrapper for raycast so that engine is not a parameter to raycast"""
     player = engine.positions.find(engine.player)
     tilemap = engine.tilemaps.find(eid=engine.world.id)
-
+    if not tilemap:
+        print(f"""\n
+Exception:
+    Could not find tilemap for id: {engine.world.id}. 
+    Tilemaps: {engine.tilemaps.components}")"""[1:]
+        )
+        exit(0)
     tiles = [
         (v, p)
             for _, (v, p) in join(
@@ -131,7 +136,6 @@ def cast_light(engine):
 
 def raycast(tiles, tilemap, player, ma=max, mi=min, ra=range, ro=round):
     blocked = set()
-    # for eid, (visible, position) in join(engine.visibilities, engine.positions):
     for visible, position in tiles:
         # reset visibility levels
         visible.level = ma(0, mi(visible.level, 1))

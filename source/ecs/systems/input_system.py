@@ -206,5 +206,5 @@ class InputSystem(System):
             else:
                 keypress = None
             if not keypress:
-                time.sleep(.005)
+                time.sleep(.003)
         self.engine.keypress = keypress

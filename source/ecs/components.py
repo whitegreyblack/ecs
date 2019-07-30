@@ -51,9 +51,9 @@ class Destroy(Component):
 
 @dataclass
 class Effect(Component):
+    entity_id: int
     char: str
-    foreground: str = None
-    background: str = None
+    color: int
     ticks: int = 1
     manager: str = 'effects'
 
@@ -163,22 +163,40 @@ class TileMap(Component):
 @dataclass
 class Visibility(Component):
     level: int = 0
-    manager = 'visibilities'
+    manager: str = 'visibilities'
 
 @dataclass
 class Inventory(Component):
     size: int = 10
     items: list = field(default_factory=list)
-    manager = 'inventories'
+    manager: str = 'inventories'
+
+@dataclass
+class Equipment(Component):
+    head: int = None
+    body: int = None
+    hand: int = None
+    feet: int = None
+    manager: str = 'equipments'
+
+@dataclass
+class Weapon(Component):
+    damage: int = 0
+    manager: str = 'weapons'
 
 @dataclass
 class Item(Component):
     seen: bool = False
-    manager = 'items'
+    manager: str = 'items'
 
 @dataclass
 class Unit(Component):
-    manager = 'units'
+    manager: str = 'units'
+
+@dataclass
+class Armor(Component):
+    defense: int = 0
+    manager: str = 'armors'
 
 components = Component.__subclasses__()
 

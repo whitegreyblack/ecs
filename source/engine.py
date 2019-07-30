@@ -5,10 +5,11 @@
 import curses
 import random
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 
-from source.ecs.components import (Collision, Information, Movement, Openable,
-                                   Position)
+from source.ecs.components import (Collision, Effect, Information, Movement,
+                                   Openable, Position)
 from source.ecs.managers import ComponentManager, EntityManager
 from source.ecs.screens import (
     DeathMenu, EquipmentMenu, GameMenu, GameScreen, InventoryMenu, LogMenu,
@@ -27,6 +28,7 @@ class Engine(object):
         self.add_terminal(terminal)
         self.keyboard = keyboard
 
+        self.world = None
         self.entities = EntityManager()
         self.init_managers(components)
         self.init_systems(systems)
@@ -53,10 +55,17 @@ class Engine(object):
 
     def init_managers(self, components):
         for component in components:
-            self.__setattr__(
-                component.manager,
-                ComponentManager(component)
-            )
+            if isinstance(component, Effect):
+                self.__setattr__(
+                    component.manager,
+                    ComponentManager(component),
+                    OrderedDict
+                )
+            else:
+                self.__setattr__(
+                    component.manager,
+                    ComponentManager(component)
+                )
 
     def init_systems(self, systems):
         for system_type in systems:
@@ -135,18 +144,19 @@ class Engine(object):
         self.requires_input = True
         return self.keypress
 
+    def process(self, t):
+        self.screen.render()
+        processed = self.screen.process()
+        if not processed:
+            if self.requires_input:
+                self.input_system.process()
+            processed = self.screen.process()
+        # time.sleep((max(1./25 - (time.time() - t), 0)))
+
     def run(self):
         self.initialize_screens()
         self.entity = self.entities.entities[self.entity_index]
         t = time.time()
-        while True:
-            self.screen.render()
-            processed = self.screen.process()
-            if not processed:
-                if self.requires_input:
-                    self.input_system.process()
-                processed = self.screen.process()
-            if not self.running:
-                break
-            time.sleep((max(1./25 - (time.time() - t), 0)))
+        while self.running:
+            self.process(t)
             t = time.time()

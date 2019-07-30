@@ -12,15 +12,15 @@ import click
 
 from source.color import colors
 from source.common import border, join
-from source.ecs import (AI, Collision, Decay, Destroy, Effect, Experience,
-                        Health, Information, Input, Inventory, Item, Movement,
-                        Openable, Position, Render, Tile, TileMap, Visibility,
-                        components)
+from source.ecs import (AI, Armor, Collision, Decay, Destroy, Effect,
+                        Equipment, Experience, Health, Information, Input,
+                        Inventory, Item, Movement, Openable, Position, Render,
+                        Tile, TileMap, Visibility, Weapon, components)
 from source.ecs.systems import systems
 from source.engine import Engine
 from source.graph import DungeonNode, WorldGraph, WorldNode, graph
 from source.keyboard import keyboard
-from source.maps import dungeons, extend, create_field_matrix
+from source.maps import create_field_matrix, dungeons, extend
 
 
 def resize(screen):
@@ -40,91 +40,55 @@ def curses_setup(screen):
         curses.init_pair(i + 1, i, -1)
     return screen
 
-def add_world(engine, dungeon):
+def add_world(engine, mappairs):
     world_graph = {}
     g = {
-        0: (DungeonNode(0, None), dungeon)
+        0: DungeonNode(0, None)
     }
     # create entity per node
-    for eid, (node, mapstring) in g.items():
+    for eid, node in g.items():
         world_graph[eid] = node
         engine.entities.create(eid)
     # create components per entity
-    for eid, (node, mapstring) in g.items():
-        add_map(engine, eid, mapstring)
-    engine.world = WorldGraph(world_graph, 0)
+    for eid, mapstring in mappairs:
+        engine.map_system.generate_map(eid, mapstring)
 
-def add_map(engine, eid, oldmap):
-    # add entity that holds tiles
-    mapstring = extend(oldmap, create_field_matrix)
-    world = engine.entities.find(eid=eid)
-    dungeon = [[c for c in row] for row in mapstring.split('\n')]
-    tilemap = TileMap(len(dungeon[0]), len(dungeon))
-    engine.tilemaps.add(world, tilemap)
-    # add tiles
-    for y, row in enumerate(dungeon):
-        for x, c in enumerate(row):
-            tile = engine.entities.create()
-            engine.tiles.add(tile, Tile())
-            position = Position(
-                x, 
-                y,
-                map_id=world.id,
-                moveable=False, 
-                blocks_movement=c in ('#', '+')
-            )
-            engine.visibilities.add(tile, Visibility())
-            engine.positions.add(tile, position)
-            engine.renders.add(tile, Render(char=c))
-            if c == '#':
-                engine.infos.add(tile, Information('wall'))
-            elif c in ('/', '+'):
-                engine.infos.add(tile, Information('door'))
-                engine.openables.add(tile, Openable(opened=c=='/'))
-            elif c == '"':
-                engine.infos.add(tile, Information('grass'))
-            else:
-                engine.infos.add(tile, Information('floor'))
+def find_empty_spaces(engine):
+    return {
+        (position.x, position.y)
+            for _, (_, position) in join(engine.tiles, engine.positions)
+                if not position.blocks_movement
+    }    
 
-def find_space(engine):
-    spaces = set()
-    for eid, (tile, position) in join(engine.tiles, engine.positions):
-        if not position.blocks_movement:
-            spaces.add((position.x, position.y))
-    return spaces
-
-def find_empty_space(engine):
-    spaces = find_space(engine)
-    for entity_id, (hp, pos) in join(engine.healths, engine.positions):
-        spaces.remove((pos.x, pos.y))
-    for entity_id, (item, pos) in join(engine.items, engine.positions):
-        spaces.remove((pos.x, pos.y))
-    if not spaces:
-        return None
-    return spaces.pop()
-
-def add_player(engine):
+def add_player(engine, spaces):
     player = engine.entities.create()
-    # engine.ai.add(player, AI())
+    engine.add_player(player)
     engine.inputs.add(player, Input())
-    space = find_empty_space(engine)
-    if not space:
+    if not spaces:
         raise Exception("No empty spaces to place player")
-    # engine.ais.add(player, AI())
+    space = spaces.pop()
     engine.positions.add(player, Position(*space, map_id=engine.world.id))
     engine.renders.add(player, Render('@', depth=3))
     engine.healths.add(player, Health(30, 20))
-    engine.infos.add(player, Information("you"))
+    engine.infos.add(player, Information("Hero"))
     engine.inventories.add(player, Inventory())
-    engine.inputs.add(player, Input(needs_input=True))
-    engine.add_player(player)
 
-def add_computers(engine, npcs):
+    engine.inputs.add(player, Input(needs_input=True))
+    # create a weapon for player
+    spear = engine.entities.create()
+    engine.items.add(spear, Item())
+    engine.renders.add(spear, Render('/'))
+    engine.infos.add(spear, Information('spear'))
+    engine.weapons.add(spear, Weapon(4))
+    e = Equipment(hand=spear.id)
+    engine.equipments.add(player, e)
+
+def add_computers(engine, npcs, spaces):
     for i in range(npcs):
         computer = engine.entities.create()
-        space = find_empty_space(engine)
-        if not space:
+        if not spaces:
             break
+        space = spaces.pop()
         engine.inputs.add(computer, Input())
         engine.positions.add(
             computer, 
@@ -134,6 +98,8 @@ def add_computers(engine, npcs):
         engine.ais.add(computer, AI())
         engine.infos.add(computer, Information("goblin"))
         engine.healths.add(computer, Health(2, 2))
+        # if i == 0:
+        #     engine.armors.add(computer, Armor(2))
 
         # add items to inventory
         item = engine.entities.create()
@@ -143,12 +109,12 @@ def add_computers(engine, npcs):
         inventory = Inventory(items=[item.id])
         engine.inventories.add(computer, inventory)
 
-def add_items(engine, items):
+def add_items(engine, items, spaces):
     for i in range(items):
         item = engine.entities.create()
-        space = find_empty_space(engine)
-        if not space:
-            raise Exception("No empty spaces to place item")
+        if not spaces:
+            break
+        space = spaces.pop()
         engine.positions.add(
             item, 
             Position(
@@ -170,11 +136,11 @@ def ecs_setup(terminal, dungeon, npcs, items):
         terminal=terminal,
         keyboard=keyboard
     )
-    add_world(engine, dungeon)
-    # add_map(engine, dungeon)
-    add_player(engine)
-    add_computers(engine, npcs)
-    add_items(engine, items)
+    add_world(engine, ((0, dungeon),))
+    spaces = find_empty_spaces(engine)
+    add_player(engine, spaces)
+    add_computers(engine, npcs, spaces)
+    add_items(engine, items, spaces)
 
     # engine.logger.add(f"count: {len(engine.entities.entities)}")
     return engine
@@ -188,8 +154,8 @@ def main(terminal, dungeon, npcs, items):
     engine.run()
 
 @click.command()
-@click.option('-d', '--dungeon', default='dungeon')
-@click.option('-n', '--npcs', default=2)
+@click.option('-d', '--dungeon', default='shadowbarrow')
+@click.option('-n', '--npcs', default=1)
 @click.option('-i', '--items', default=2)
 def preload(dungeon, npcs, items):
     curses.wrapper(main, dungeon, npcs, items)

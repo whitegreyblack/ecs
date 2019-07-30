@@ -7,13 +7,11 @@ class TurnSystem(System):
     def process(self):
         while True:
             entity = self.engine.entity
+            # end of entity list
             if not entity:
                 self.engine.reset_entity_index()
                 break
             takes_turn = self.engine.inputs.find(entity)
-            # if self.engine.player.id == entity.id:
-            #     print(self.engine.inputs.components)
-            #     print(self.engine.player, entity, takes_turn, self.engine.requires_input)
             # skip entities that do not take a turn
             if not takes_turn:
                 self.engine.next_entity()
