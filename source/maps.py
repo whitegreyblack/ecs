@@ -42,69 +42,56 @@ class MapGenerator:
 def dimensions(matrix):
     return len(matrix[0]), len(matrix)
 
-def create_field_matrix(width: int, height: int, char: chr='"') -> list:
-    matrix = [['.' for _ in range(width)] for _ in range(height)]
-    limit = int(.30 * (width * height))
-    stack = []
-    pool = [ (x, y) for x in range(width) for y in range(height) ]
-    random.shuffle(pool)
-    grown = set()
-    while True:
-        probability = 3
-        x, y = pool.pop(0)
-        stack.append((x, y, probability))
-        while stack:
-            x, y, p = stack.pop(0)
-            grown.add((x, y))
-            if p == 0:
-                continue
-            for xx, yy in squares(exclude_center=True):
-                nx, ny = x + xx, y + yy
-                if not (0 <= nx < width and 0 <= ny < height):
-                    continue
-                if (nx, ny) in grown or (nx, ny) not in pool:
-                    continue
-                chance = random.randint(0, p)
-                if chance > 0:
-                    pool.remove((nx, ny))
-                    stack.append((nx, ny, p-1))
-        if len(grown) >= limit or not pool:
-            break
-    for (x, y) in grown:
-        matrix[y][x] = char
-    return matrix
+def matrix(string: str) -> list:
+    return [list(row) for row in string.split('\n')]
 
-def create_empty_matrix(width: int, height: int, char: chr='.') -> list:
-    matrix = []
-    for h in range(height):
-        matrix.append(list(char * width))
-    return matrix
+def string(matrix: list) -> str:
+    return '\n'.join(''.join(str(s) for s in row) for row in matrix)
 
-def create_empty_string(width: int, height: int, char: chr='.') -> str:
-    matrix = []
-    for h in range(height):
-        matrix.append('.' * width)
-    return '\n'.join(matrix)
+def empty_matrix(width: int, height: int, char: chr='.') -> list:
+    return [list(char * width) for h in range(height)]
 
-# example rooms
-def create_empty_room(width: int, height: int) -> str:
-    room = []
-    for h in range(height):
-        if h in (0, height - 1):
-            row = '#' * width
-        else:
-            row = '#' + '.' * (width - 2) + '#'
-        room.append(row)
-    return '\n'.join(room)
+def empty_mapstring(width: int, height: int, char: chr='.') -> str:
+    return string(empty_matrix(width, height, char))
 
-def rotate(mapstring):
-    arr = [list(row) for row in mapstring.split('\n')]
-    width = len(arr[0])
-    height = len(arr)
-    rows = []
-    for y in range(width):
-        rows.append(''.join(arr[height-x-1][y] for x in range(height)))
-    return '\n'.join(rows)
+def empty_room(width: int, height: int) -> list:
+    return [
+        ('#' * width)
+            if h in (0, height - 1) else ('#' + '.' * (width - 2) + '#')
+                for h in range(height)
+    ]
+
+def rotate_string(mapstring):
+    '''string -> matrix -> rotate() -> matrix -> string'''
+    return string(rotate(matrix(mapstring)))
+
+def rotate(matrix):
+    width, height = dimensions(matrix)
+    arr = empty_matrix(height, width)
+    # print('matrix')
+    # print(string(matrix))
+    # print('arr')
+    # print(string(arr))
+    for y in range(height):
+        for x in range(width):
+            try:
+                c = matrix[y][x]
+            except:
+                print(width, height, dimensions(arr))
+                raise Exception("outer", x, y)
+            else:
+                try:
+                    arr[x][y] = c
+                except:
+                    raise Exception("inner", x, y)
+    # print('matrix')
+    # print(string(matrix))
+    # print('arr')
+    # print(string(arr))
+    return arr # [
+    #     ''.join(arr[height-x-1][y] for x in range(height)) 
+    #         for y in range(width)
+    # ]
 
 def center_mapstring(old: list, new: list):
     new_width, new_height = len(new[0]), len(new)
@@ -123,19 +110,13 @@ def center_mapstring(old: list, new: list):
             new[y+yoffset][x+xoffset] = old[y][x]
     return new
 
-def matrixfy_string(string):
-    return [list(row) for row in string.split('\n')]
-
-def stringify_matrix(matrix):
-    return '\n'.join(''.join(str(s) for s in row) for row in matrix)
-
-def extend(mapstring, mapgen=create_empty_matrix, char='"'):
-    old = matrixfy_string(mapstring)
+def extend(mapstring, mapgen=empty_matrix, char='"'):
+    old = matrix(mapstring)
     # w, h = max(len(old[0]), 58), max(len(old), 19)
     new = mapgen(60, 17, char)
     new = center_mapstring(old, new)
     new = old
-    return stringify_matrix(new)
+    return string(new)
 
 def generate_poisson_array(width: int, height: int):
     return np.random.poisson(5, width * height)
@@ -148,11 +129,12 @@ def replace_cell_with_stairs(
     w, h = dimensions(matrix)
     if upstairs and downstairs and upstairs == downstairs:
         raise ValueError("Upstairs value cannot be the same as downstairs.")
-    floors = {
+    floors = [
         (x, y)
             for x in range(w) for y in range(h)
                 if matrix[y][x] == '.'
-    }
+    ]
+    random.shuffle(floors)
     if not upstairs:
         while True:
             x, y = floors.pop()
@@ -248,7 +230,26 @@ def flood_fill(matrix):
             matrix[y][x] = '#'
     return matrix
 
-HALL = create_empty_room(100, 50)
+def burrow_passage(height:int, width:int, matrix:list=None) -> list:
+    if not matrix:
+        matrix = [['#' for _ in range(width)] for _ in range(height)]
+    else:
+        width, height = dimensions(matrix)
+    x = (width // 2) + random.randint(-width // 4, width // 4)
+    length = width // 4 + random.randint(0, width // 8)
+    for h in range(height):
+        if x > width // 2:
+            x = width - x
+        for i in range(x, x + length):
+            matrix[h][i] = '.'
+        x = max(1, min(width - 1, x + random.randint(-1, 1)))
+        length += random.randint(0, 1)
+        length = max(3, min(width // 2, length))
+    return matrix
+
+CHOKE = string(rotate(burrow_passage(60, 17)))
+
+HALL = empty_room(100, 50)
 
 DUNGEON = """
 ###########################################################
@@ -273,8 +274,8 @@ SHADOWBARROW = """
 ..........................................................
 ..........#####..#####..#####..###########.......####.....
 ..........#...#..#...#..#...#..#...#.#...#......##..##....
-.......>..#...#..#...#..#...#..#...+.+...#....###....###..
-..........##+##..##+##..##+##..#####.#####....#........#..
+..........#...#..#...#..#...#..#...+.+...#....###....###..
+..........##+##..##+##..##+##..#####.#####....#....>...#..
 .#######.""..".................#...#.....#....#.#....#.#..
 .#.....#.."";".................#...+.....#....#........#..
 .#.....#.""."..................#####+#####....#........#..
@@ -286,6 +287,25 @@ SHADOWBARROW = """
 ..........#...#..#...#..#...#..#........#....###......###.
 ..........#...#..#...#..#...#..#........#......##....##...
 ..........#####..#####..#####..##########.......######....
+.........................................................."""[1:]
+
+RUINED = """
+..........................................................
+..........#####..####...#..##..###..###.##.......####.....
+..........#....................#.....#..........##..##....
+..............#......#..#...#..#.........#....###....###..
+.............##..#..##..##......###...#..#....#....>...#..
+.##..###."".."...........................#....#.#....#.#..
+.#........"";".................##.............#........#..
+.#.....#.""."..................#..##...#......#........#..
+.......#.....................................##.#....#.##.
+.............................................+..........#.
+.......#.....................................##........##.
+.#.............................###+######....#..#....#..#.
+.#.###.......#...#......##+##..#........#....#..........#.
+..............#......#..#...#..#........#....###......###.
+..........#..........#..#...#..#........#......##....##...
+..........##.##..##..#..#####..##########.......######....
 .........................................................."""[1:]
 
 ROGUE = """
@@ -335,8 +355,6 @@ dungeons = {
         if not k.startswith('__') and isinstance(v, str)
 }
 
-def to_array(mapstring):
-    return [[int(c not in ('.', '/')) for c in row] for row in mapstring.split('\n')]
-
 if __name__ == "__main__":
-    print(dungeon.keys())
+    print('DUNGEONS:')
+    print(' -', '\n - '.join(dungeons.keys()))

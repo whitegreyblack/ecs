@@ -10,7 +10,7 @@ from source.ecs.components import (Information, Openable, Position, Render, Item
 from source.graph import DungeonNode, WorldGraph
 from source.maps import (add_boundry_to_matrix, cell_auto, flood_fill,
                          generate_poisson_array, replace_cell_with_stairs,
-                         stringify_matrix, transform_random_array_to_matrix)
+                         string, transform_random_array_to_matrix)
 
 from .system import System
 

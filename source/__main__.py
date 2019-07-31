@@ -2,6 +2,7 @@
 
 """Initializes engine and world objects created using ecs"""
 
+import sys
 import copy
 import curses
 import os
@@ -20,7 +21,7 @@ from source.ecs.systems import systems
 from source.engine import Engine
 from source.graph import DungeonNode, WorldGraph, WorldNode, graph
 from source.keyboard import keyboard
-from source.maps import create_field_matrix, dungeons, extend
+from source.maps import dungeons, extend
 
 
 def resize(screen):
@@ -145,6 +146,10 @@ def ecs_setup(terminal, dungeon, npcs, items):
     # engine.logger.add(f"count: {len(engine.entities.entities)}")
     return engine
 
+def create_save_folder_if_not_exists():
+    if not os.path.exists("source/saves"):
+        os.mkdir("source/saves")
+
 def main(terminal, dungeon, npcs, items):
     seed = random.randint(0, 10000)
     random.seed(seed)
@@ -158,6 +163,7 @@ def main(terminal, dungeon, npcs, items):
 @click.option('-n', '--npcs', default=1)
 @click.option('-i', '--items', default=2)
 def preload(dungeon, npcs, items):
+    create_save_folder_if_not_exists()
     curses.wrapper(main, dungeon, npcs, items)
 
 if __name__ == "__main__":
