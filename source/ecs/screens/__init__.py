@@ -1,3 +1,4 @@
 from .gamescreen import GameScreen
-from .screen import (DeathMenu, EquipmentMenu, GameMenu, InventoryMenu,
-                     LogMenu, LookingMenu, MainMenu, Screen)
+from .inventoryscreen import InventoryMenu
+from .screen import (DeathMenu, EquipmentMenu, GameMenu, LogMenu, LookingMenu,
+                     MainMenu, Screen)

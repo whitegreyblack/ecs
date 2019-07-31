@@ -136,7 +136,7 @@ class CommandSystem(System):
             # remove from map
             entity = self.engine.entities.find(eid)
             self.engine.visibilities.remove(entity)
-            self.engine.renders.remove(entity)
+            # self.engine.renders.remove(entity)
             self.engine.positions.remove(entity)
             # add to inventory
             inventory.items.append(entity.id)

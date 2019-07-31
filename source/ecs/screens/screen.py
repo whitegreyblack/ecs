@@ -202,32 +202,6 @@ class EquipmentMenu(Screen):
         self.engine.change_screen('gamescreen')
         return False
 
-class InventoryMenu(Screen):
-    def __init__(self, engine, terminal):
-        super().__init__(engine, terminal)
-        self.valid_keypresses.update({'escape', 'down', 'up', 'i'})
-
-    def render_items(self):
-        inventory = self.engine.inventories.find(self.engine.player)
-        self.terminal.addstr(1, 1, f"{inventory}")
-        items = []
-        for eid, (_, info) in join(self.engine.items, self.engine.infos):
-            if eid in inventory.items:
-                items.append(info)
-        for i, info in enumerate(items):
-            self.terminal.addstr(2+i, 1, f"{i+1}. {info.name}")
-
-    def render(self):
-        self.terminal.erase()
-        border(self.terminal, 0, 0, self.engine.width-1, self.engine.height-1)
-        self.terminal.addstr(0, 1, '[inventory]')
-        self.render_items()
-        self.terminal.refresh()
-    
-    def handle_input(self):
-        self.engine.change_screen('gamescreen')
-        return False
-
 class LogMenu(Screen):
     def render(self):
         self.terminal.erase()
