@@ -39,7 +39,7 @@ class MapGenerator:
     def stringify(self):
         return  '\n'.join(''.join(row) for row in self.data)
 
-def dimensions(matrix):
+def dimensions(matrix: list) -> tuple:
     return len(matrix[0]), len(matrix)
 
 def matrix(string: str) -> list:
@@ -61,44 +61,29 @@ def empty_room(width: int, height: int) -> list:
                 for h in range(height)
     ]
 
-def rotate_string(mapstring):
+def rotate_string(mapstring: str) -> str:
     '''string -> matrix -> rotate() -> matrix -> string'''
     return string(rotate(matrix(mapstring)))
 
-def rotate(matrix):
+def rotate(matrix: list) -> list:
     width, height = dimensions(matrix)
     arr = empty_matrix(height, width)
-    # print('matrix')
-    # print(string(matrix))
-    # print('arr')
-    # print(string(arr))
     for y in range(height):
         for x in range(width):
             try:
                 c = matrix[y][x]
             except:
-                print(width, height, dimensions(arr))
                 raise Exception("outer", x, y)
             else:
                 try:
                     arr[x][y] = c
                 except:
                     raise Exception("inner", x, y)
-    # print('matrix')
-    # print(string(matrix))
-    # print('arr')
-    # print(string(arr))
-    return arr # [
-    #     ''.join(arr[height-x-1][y] for x in range(height)) 
-    #         for y in range(width)
-    # ]
+    return arr
 
-def center_mapstring(old: list, new: list):
+def center_mapstring(old: list, new: list) -> list:
     new_width, new_height = len(new[0]), len(new)
     old_width, old_height = len(old[0]), len(old)
-
-    # if new_width == old_width and new_height == old_height:
-    #     return old
 
     xoffset = (new_width - old_width) // 2
     yoffset = (new_height - old_height) // 2
@@ -110,22 +95,21 @@ def center_mapstring(old: list, new: list):
             new[y+yoffset][x+xoffset] = old[y][x]
     return new
 
-def extend(mapstring, mapgen=empty_matrix, char='"'):
+def extend(mapstring: str, mapgen: object=empty_matrix, char: str='"') -> str:
     old = matrix(mapstring)
-    # w, h = max(len(old[0]), 58), max(len(old), 19)
     new = mapgen(60, 17, char)
     new = center_mapstring(old, new)
     new = old
     return string(new)
 
-def generate_poisson_array(width: int, height: int):
+def generate_poisson_array(width: int, height: int) -> list:
     return np.random.poisson(5, width * height)
 
 def replace_cell_with_stairs(
         matrix: list, 
         upstairs: tuple=None, 
         downstairs: tuple=None
-    ):
+    ) -> list:
     w, h = dimensions(matrix)
     if upstairs and downstairs and upstairs == downstairs:
         raise ValueError("Upstairs value cannot be the same as downstairs.")
@@ -159,7 +143,12 @@ def replace_cell_with_stairs(
     matrix[downstairs[1]][downstairs[0]] = '>'
     return matrix
 
-def transform_random_array_to_matrix(array, width, height, filterpoint):
+def transform_random_array_to_matrix(
+        array: list, 
+        width: int, 
+        height: int, 
+        filterpoint: int
+    ) -> list:
     matrix = [[None for _ in range(width)] for _ in range(height)]
     for i in range(width):
         for j in range(height):
@@ -169,7 +158,7 @@ def transform_random_array_to_matrix(array, width, height, filterpoint):
                 matrix[j][i] = '.'
     return matrix
 
-def add_boundry_to_matrix(matrix):
+def add_boundry_to_matrix(matrix: list) -> list:
     width, height = dimensions(matrix)
     for i in (0, 1, width-2, width-1):
         for j in range(height):
@@ -179,7 +168,7 @@ def add_boundry_to_matrix(matrix):
             matrix[j][i] = '#'
     return matrix
 
-def cell_auto(matrix, alivelimit=4, deadlimit=5):
+def cell_auto(matrix: list, alivelimit: int=4, deadlimit: int=5) -> list:
     copy = deepcopy(matrix)
     w, h = dimensions(matrix)
     for i in range(w):
@@ -204,7 +193,7 @@ def cell_auto(matrix, alivelimit=4, deadlimit=5):
                     copy[j][i] = '#'
     return copy
 
-def flood_fill(matrix):
+def flood_fill(matrix:list) -> list:
     w, h = dimensions(matrix)
     floors = {
         (x, y) 
@@ -230,7 +219,7 @@ def flood_fill(matrix):
             matrix[y][x] = '#'
     return matrix
 
-def burrow_passage(height:int, width:int, matrix:list=None) -> list:
+def burrow_passage(height: int, width: int, matrix: list=None) -> list:
     if not matrix:
         matrix = [['#' for _ in range(width)] for _ in range(height)]
     else:
@@ -249,7 +238,7 @@ def burrow_passage(height:int, width:int, matrix:list=None) -> list:
 
 CHOKE = string(rotate(burrow_passage(60, 17)))
 
-HALL = empty_room(100, 50)
+HALL = string(empty_room(200, 80))
 
 DUNGEON = """
 ###########################################################
@@ -273,9 +262,9 @@ DUNGEON = """
 SHADOWBARROW = """
 ..........................................................
 ..........#####..#####..#####..###########.......####.....
-..........#...#..#...#..#...#..#...#.#...#......##..##....
+........>.#...#..#...#..#...#..#...#.#...#......##..##....
 ..........#...#..#...#..#...#..#...+.+...#....###....###..
-..........##+##..##+##..##+##..#####.#####....#....>...#..
+..........##+##..##+##..##+##..#####.#####....#........#..
 .#######.""..".................#...#.....#....#.#....#.#..
 .#.....#.."";".................#...+.....#....#........#..
 .#.....#.""."..................#####+#####....#........#..

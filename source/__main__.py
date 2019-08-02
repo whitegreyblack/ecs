@@ -12,7 +12,7 @@ import time
 import click
 
 from source.color import colors
-from source.common import border, join
+from source.common import border, join, join_without_key
 from source.ecs import (AI, Armor, Collision, Decay, Destroy, Effect,
                         Equipment, Experience, Health, Information, Input,
                         Inventory, Item, Movement, Openable, Position, Render,
@@ -21,7 +21,7 @@ from source.ecs.systems import systems
 from source.engine import Engine
 from source.graph import DungeonNode, WorldGraph, WorldNode, graph
 from source.keyboard import keyboard
-from source.maps import dungeons, extend
+from source.maps import dungeons
 
 
 def resize(screen):
@@ -57,9 +57,9 @@ def add_world(engine, mappairs):
 def find_empty_spaces(engine):
     return {
         (position.x, position.y)
-            for _, (_, position) in join(engine.tiles, engine.positions)
+            for _, position in join_without_key(engine.tiles, engine.positions)
                 if not position.blocks_movement
-    }    
+    }
 
 def add_player(engine, spaces):
     player = engine.entities.create()

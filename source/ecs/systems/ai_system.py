@@ -3,10 +3,11 @@
 """Refactor from input_system.py"""
 
 import random
+import time
 
 from source.astar import pathfind
 from source.common import (direction_to_keypress, eight_square, join,
-                           nine_square, squares)
+                           join_conditional, nine_square, squares)
 from source.ecs.components import (Collision, Information, Item, Movement,
                                    Render)
 from source.ecs.systems.system import System
@@ -21,6 +22,7 @@ class AISystem(System):
             self.engine.infos,
             self.engine.ais
         )
+        # start = time.time()
         tiles = {
             (p.x, p.y)
                 for _, (p, v) in join(
@@ -29,6 +31,17 @@ class AISystem(System):
                 )
                 if v.level > 1
         }
+        # print('join:', time.time() - start)
+        # start = time.time()
+        # tiles = {
+        #     (p.x, p.y)
+        #         for _, (p, v) in join_conditional(
+        #             self.engine.positions, 
+        #             self.engine.visibilities,
+        #             conditions=((1, lambda x: x.level > 1),)
+        #         )
+        # }
+        # print('cond:', time.time() - start)
         # iterate all computers
         for eid, (h, p, i, ai) in units:
             player_visible = (p.x, p.y) in tiles

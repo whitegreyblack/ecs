@@ -8,7 +8,8 @@ import time
 
 from source.astar import pathfind
 from source.color import colors
-from source.common import border, direction_to_keypress, eight_square, join, scroll
+from source.common import (border, direction_to_keypress, eight_square, join,
+                           join_on, join_without_key, scroll)
 from source.ecs.components import Movement
 from source.keyboard import valid_keypresses
 from source.raycast import cast_light
@@ -180,6 +181,7 @@ class GameScreen(Screen):
             '[enemies]'
         )
 
+    #  0.000    0.000    1.858    0.093
     def render_map_panel(self):
         # calculate offsets on scrolling map
         position = self.engine.positions.find(self.engine.player)
@@ -195,11 +197,12 @@ class GameScreen(Screen):
             cam_y = scroll(position.y, self.map_height, tilemap.height)
         y0, y1 = cam_y, self.map_height + cam_y
 
+        # bounds_check = lambda x, y: x0 <= x < x1 and y0 <= y < y1
         self.render_map(position.map_id, cam_x, cam_y, x0, x1, y0, y1)
 
         tiles = {
             (position.x, position.y): visibility
-                for _, (position, visibility) in join(
+                for position, visibility in join_without_key(
                     self.engine.positions, 
                     self.engine.visibilities
                 )
@@ -214,6 +217,19 @@ class GameScreen(Screen):
             self.render_effects(tiles, position.map_id, cam_x, cam_y, x0, x1, y0, y1)
             self.engine.effects.components.clear()
 
+    # 0.242    0.015    0.924    0.058 <- join without key (tuple)
+    # 0.485    0.016    1.837    0.061 <- join (tuple)
+    # 0.502    0.025    1.058    0.053 <- join (no tuple)
+    # 0.589    0.025    1.240    0.052 <- join without key (tuple)
+    # 0.276    0.011    1.363    0.052 <- ...
+    # 0.247    0.008    1.522    0.051 <- ...
+    # 0.287    0.008    1.762    0.050 <- join w/ key and w/ tuple
+    # 0.165    0.009    0.989    0.052 <- join w/o key and w/ tuple
+    # 0.434    0.012    1.090    0.031 <- join w/o tuple
+    # 0.423    0.018    1.088    0.047 <- ...
+    # 0.395    0.019    1.024    0.049 <- join w/ key and w/o tuple
+    # 0.651    0.018    1.697    0.046 <- ...
+    # 0.432    0.017    1.121    0.045 <- ...
     def render_map(self, map_id, cam_x, cam_y, x0, x1, y0, y1):
         border(
             self.terminal,
@@ -222,26 +238,25 @@ class GameScreen(Screen):
             self.map_panel_width,
             self.map_panel_height
         )
-        tiles = join(
+        x_offset = self.map_x - cam_x
+        y_offset = self.map_y - cam_y
+
+        for visibility, position, render, info in join_without_key(
             self.engine.visibilities,
             self.engine.positions,
             self.engine.renders,
             self.engine.infos
-        )
-        for _, (visibility, position, render, info) in tiles:
-            current_map_id = position.map_id == map_id
-            visible = visibility.level > 0
-            xbounds = x0 <= position.x < x1
-            ybounds = y0 <= position.y < y1
-            inbounds = xbounds and ybounds
-            if current_map_id and visible and inbounds:
+        ):
+            if not (x0 <= position.x < x1 and y0 <= position.y < y1):
+                continue
+            if visibility.level > 0:
                 if visibility.level == 2:
                     color = colors.get(info.name, 240)
                 else:
                     color = 240
                 self.render_char(
-                    position.x + self.map_x - cam_x,
-                    position.y + self.map_y - cam_y,
+                    position.x + x_offset,
+                    position.y + y_offset,
                     render.char,
                     curses.color_pair(color)
                 )

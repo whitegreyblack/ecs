@@ -7,6 +7,7 @@ from .health_system import HealSystem
 from .input_system import InputSystem
 from .map_system import MapSystem
 from .render_system import RenderSystem
+from .spawn_system import SpawnSystem
 from .system import System
 from .turn_system import TurnSystem
 
