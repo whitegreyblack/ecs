@@ -2,17 +2,18 @@
 
 """Initializes engine and world objects created using ecs"""
 
-import sys
 import copy
 import curses
 import os
 import random
+import sys
 import time
 
 import click
 
 from source.color import colors
 from source.common import border, join, join_without_key
+from source.description import items, units
 from source.ecs import (AI, Armor, Collision, Decay, Destroy, Effect,
                         Equipment, Experience, Health, Information, Input,
                         Inventory, Item, Movement, Openable, Position, Render,
@@ -73,13 +74,12 @@ def add_player(engine, spaces):
     engine.healths.add(player, Health(10, 20))
     engine.infos.add(player, Information("Hero"))
     engine.inventories.add(player, Inventory())
-
     engine.inputs.add(player, Input(needs_input=True))
     # create a weapon for player
     spear = engine.entities.create()
-    engine.items.add(spear, Item())
+    engine.items.add(spear, Item('weapon'))
     engine.renders.add(spear, Render('/'))
-    engine.infos.add(spear, Information('spear'))
+    engine.infos.add(spear, Information('spear', items['spear']))
     engine.weapons.add(spear, Weapon(4))
     e = Equipment(hand=spear.id)
     engine.equipments.add(player, e)
@@ -97,16 +97,16 @@ def add_computers(engine, npcs, spaces):
         )
         engine.renders.add(computer, Render('g', depth=3))
         engine.ais.add(computer, AI())
-        engine.infos.add(computer, Information("goblin"))
+        engine.infos.add(computer, Information('goblin', units['goblin']))
         engine.healths.add(computer, Health(2, 2))
         # if i == 0:
         #     engine.armors.add(computer, Armor(2))
 
         # add items to inventory
         item = engine.entities.create()
-        engine.items.add(item, Item())
+        engine.items.add(item, Item('weapon'))
         engine.renders.add(item, Render('/'))
-        engine.infos.add(item, Information('spear'))
+        engine.infos.add(item, Information('spear', items['spear']))
         inventory = Inventory(items=[item.id])
         engine.inventories.add(computer, inventory)
 
@@ -126,8 +126,8 @@ def add_items(engine, items, spaces):
             )
         )
         engine.renders.add(item, Render('%'))
-        engine.infos.add(item, Information("food item"))
-        engine.items.add(item, Item())
+        engine.infos.add(item, Information("food"))
+        engine.items.add(item, Item('food'))
         engine.decays.add(item, Decay())
 
 def ecs_setup(terminal, dungeon, npcs, items):
@@ -142,8 +142,6 @@ def ecs_setup(terminal, dungeon, npcs, items):
     add_player(engine, spaces)
     add_computers(engine, npcs, spaces)
     add_items(engine, items, spaces)
-
-    # engine.logger.add(f"count: {len(engine.entities.entities)}")
     return engine
 
 def create_save_folder_if_not_exists():
@@ -157,6 +155,7 @@ def main(terminal, dungeon, npcs, items):
     dungeon = dungeons.get(dungeon.lower(), 'small')
     engine = ecs_setup(terminal, dungeon=dungeon, npcs=npcs, items=items)
     engine.run()
+    engine.count_objects()
 
 @click.command()
 @click.option('-d', '--dungeon', default='shadowbarrow')

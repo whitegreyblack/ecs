@@ -63,7 +63,7 @@ class SpawnSystem(System):
         
         # add items to inventory
         item = self.engine.entities.create()
-        self.engine.items.add(item, Item())
+        self.engine.items.add(item, Item('weapon'))
         self.engine.renders.add(item, Render('/'))
         self.engine.infos.add(item, Information('spear'))
         self.engine.inventories.add(computer, Inventory(items=[item.id]))
@@ -83,7 +83,6 @@ class SpawnSystem(System):
                 if position.map_id == self.engine.world.id
                     and eid != self.engine.player.id
         ]
-        print(len(units), self.current_tick)
         if len(units) < 3:
             if self.current_tick < 0:
                 self.current_tick = self.respawn_rate

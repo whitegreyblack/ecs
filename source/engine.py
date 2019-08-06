@@ -8,8 +8,9 @@ import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 
+from source.common import join
 from source.ecs.components import (Collision, Effect, Information, Movement,
-                                   Openable, Position)
+                                   Openable, Position, components)
 from source.ecs.managers import ComponentManager, EntityManager
 from source.ecs.screens import (
     DeathMenu, EquipmentMenu, GameMenu, GameScreen, InventoryMenu, LogMenu,
@@ -160,3 +161,36 @@ class Engine(object):
         while self.running:
             self.process(t)
             t = time.time()
+
+    def count_objects(self):
+        """Debugging information and object counting"""
+        m = 0
+        for c in components:
+            l =  len(getattr(self, c.manager).components)
+            print(c.manager, l)
+            m += l
+        print('total objects: ', m)
+
+        print(len(list(join(
+            self.tiles, 
+            self.positions, 
+            self.visibilities, 
+            self.renders, 
+            self.infos
+        ))))
+
+        print(len(list(join(
+            self.healths,
+            self.positions,
+            self.infos,
+            self.renders
+        ))))
+
+        print(len(list(join(
+            self.healths,
+            self.positions,
+            self.infos,
+            self.renders,
+            self.inventories
+        ))))
+    

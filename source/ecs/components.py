@@ -12,16 +12,14 @@ class Component(object):
     """
     Base component class that defines subclass agnostic methods
     """
-    __slots__ = []
-
-    def __repr__(self):
-        attributes = [ 
-            f"{s}={getattr(self, s)}"
-                for s in self.__slots__
-                    if bool(hasattr(self, s) and getattr(self, s) is not None)
-        ]
-        attr_string = ", ".join(attributes)
-        return f"{self.__class__.__name__}({attr_string})"
+    # def __repr__(self):
+    #     attributes = [ 
+    #         f"{s}={getattr(self, s)}"
+    #             for s in self.__slots__
+    #                 if bool(hasattr(self, s) and getattr(self, s) is not None)
+    #     ]
+    #     attr_string = ", ".join(attributes)
+    #     return f"{self.__class__.__name__}({attr_string})"
 
     @classmethod
     def classname(cls):
@@ -91,6 +89,7 @@ class Energy(Component):
 @dataclass
 class Information(Component):
     name: str
+    description: str = None
     manager: str = 'infos'
 
 @dataclass
@@ -172,6 +171,13 @@ class Visibility(Component):
 class Inventory(Component):
     size: int = 10
     items: list = field(default_factory=list)
+    categories: list = field(default_factory=lambda: [
+        'weapon', 
+        'general', 
+        'food', 
+        'crafting', 
+        'other'
+    ])
     manager: str = 'inventories'
 
 @dataclass
@@ -189,11 +195,13 @@ class Weapon(Component):
 
 @dataclass
 class Item(Component):
+    category: str = 'general'
     seen: bool = False
     manager: str = 'items'
 
 @dataclass
 class Unit(Component):
+    race: str
     manager: str = 'units'
 
 @dataclass

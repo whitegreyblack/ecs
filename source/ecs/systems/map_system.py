@@ -93,6 +93,14 @@ class MapSystem(System):
         other_entities = []
         for y, row in enumerate(dungeon):
             for x, c in enumerate(row):
+                """ per tile:
+                obj_id        -> instance (int)
+                Tile()        -> instance (maybe enum(int) {Tile/Unit/Item})
+                Position()    -> instance
+                Visibility()  -> instance
+                Render()      -> shared
+                Information() -> shared
+                """
                 tile = self.engine.entities.create()
                 self.engine.tiles.add(tile, Tile())
                 position = Position(
@@ -126,7 +134,7 @@ class MapSystem(System):
         for x, y, c in other_entities:
             if c == ';':
                 flower = self.engine.entities.create()
-                self.engine.items.add(flower, Item())
+                self.engine.items.add(flower, Item('crafting'))
                 self.engine.positions.add(flower, Position(
                     x, y, map_id=world.id, moveable=False, blocks_movement=False
                 ))

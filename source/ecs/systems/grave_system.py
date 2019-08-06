@@ -35,7 +35,7 @@ class GraveSystem(System):
         position = self.engine.positions.find(entity)
         info = self.engine.infos.find(entity)
         body = self.engine.entities.create()
-        self.engine.items.add(body, Item())
+        self.engine.items.add(body, Item('food'))
         self.engine.renders.add(body, Render('%'))
         self.engine.infos.add(body, Information(f"{info.name} corpse"))
         self.engine.positions.add(body, position.copy(
