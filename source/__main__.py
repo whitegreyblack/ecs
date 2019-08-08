@@ -14,8 +14,8 @@ import click
 from source.color import colors
 from source.common import border, join, join_without_key
 from source.description import items, units
-from source.ecs import (AI, Armor, Collision, Decay, Destroy, Effect,
-                        Equipment, Experience, Health, Information, Input,
+from source.ecs import (AI, Armor, Collision, Decay, Effect,
+                        Equipment, Health, Information, Input,
                         Inventory, Item, Movement, Openable, Position, Render,
                         Tile, TileMap, Visibility, Weapon, components)
 from source.ecs.systems import systems
@@ -42,10 +42,14 @@ def curses_setup(screen):
         curses.init_pair(i + 1, i, -1)
     return screen
 
+def add_shared_components(engine):
+    ...
+
 def add_world(engine, mappairs):
     world_graph = {}
     g = {
-        0: DungeonNode(0, None)
+        0: DungeonNode(0, parent_id=None, child_id=1),
+        1: DungeonNode(1, parent_id=0),
     }
     # create entity per node
     for eid, node in g.items():
@@ -70,7 +74,7 @@ def add_player(engine, spaces):
         raise Exception("No empty spaces to place player")
     space = spaces.pop()
     engine.positions.add(player, Position(*space, map_id=engine.world.id))
-    engine.renders.add(player, Render('@', depth=3))
+    engine.renders.add(player, Render('@'))
     engine.healths.add(player, Health(10, 20))
     engine.infos.add(player, Information("Hero"))
     engine.inventories.add(player, Inventory())
@@ -95,7 +99,7 @@ def add_computers(engine, npcs, spaces):
             computer, 
             Position(*space, map_id=engine.world.id)
         )
-        engine.renders.add(computer, Render('g', depth=3))
+        engine.renders.add(computer, Render('g'))
         engine.ais.add(computer, AI())
         engine.infos.add(computer, Information('goblin', units['goblin']))
         engine.healths.add(computer, Health(2, 2))
@@ -137,6 +141,7 @@ def ecs_setup(terminal, dungeon, npcs, items):
         terminal=terminal,
         keyboard=keyboard
     )
+    add_shared_components(engine)
     add_world(engine, ((0, dungeon),))
     spaces = find_empty_spaces(engine)
     add_player(engine, spaces)

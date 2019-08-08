@@ -7,96 +7,108 @@ from dataclasses import dataclass, field
 from source.keyboard import keypress_to_direction
 from source.common import squares
 
-@dataclass
 class Component(object):
     """
     Base component class that defines subclass agnostic methods
     """
-    # def __repr__(self):
-    #     attributes = [ 
-    #         f"{s}={getattr(self, s)}"
-    #             for s in self.__slots__
-    #                 if bool(hasattr(self, s) and getattr(self, s) is not None)
-    #     ]
-    #     attr_string = ", ".join(attributes)
-    #     return f"{self.__class__.__name__}({attr_string})"
+    def __repr__(self) -> str:
+        attributes = [
+            f"{s}={getattr(self, s)}"
+                for s in self.__slots__
+        ]
+        attr_string = ", ".join(attributes)
+        return f"{self.__class__.__name__}({attr_string})"
 
     @classmethod
-    def classname(cls):
+    def classname(cls) -> str:
         return cls.__name__.lower()
 
-@dataclass
 class AI(Component):
-    behavior: str = 'wander'
-    path: list = None
+    __slots__ = ['behavior', 'path']
     manager: str = 'ais'
-
-@dataclass
+    def __init__(self, behavior: str = 'wander'):
+        self.behavior = behavior
+        self.path = None
+    
 class Collision(Component):
-    entity_id: int = -1
-    x: int = 0
-    y: int = 0
+    __slots__ = ['entity_id', 'x', 'x']
     manager: str = 'collisions'
+    def __init__(self, entity_id: int = -1, x: int = 0, y: int = 0):
+        self.entity_id = entity_id
+        self.x = x
+        self.y = y
 
-@dataclass
 class Decay(Component):
-    lifetime: int = 1000
+    __slots__ = ['lifetime']
     manager: str = 'decays'
+    def __init__(self, lifetime:int=1000):
+        self.lifetime = lifetime
 
-@dataclass
-class Destroy(Component):
-    manager: str = 'destroyed'
+# class Destroy(Component):
+#     __slots__ = []
+#     manager: str = 'destroyed'
 
-@dataclass
 class Effect(Component):
-    entity_id: int
-    char: str
-    color: int
-    ticks: int = 1
+    __slots__ = ['entity_id', 'char', 'color', 'ticks']
     manager: str = 'effects'
+    def __init__(self, entity_id:int, char:str, color:int, ticks:int=1):
+        self.entity_id = entity_id
+        self.char = char
+        self.color = color
+        self.ticks = ticks
 
-@dataclass
-class Experience(Component):
-    level: int = 1
-    exp: int = 0
-    manager: str = 'experiences'
+# class Energy(Component):
+#     amount: int
+#     full: int
+#     gain: int
+#     ready: bool
+#     manager: str = 'energies'
 
-@dataclass
+# @dataclass
+# class Experience(Component):
+#     level: int = 1
+#     exp: int = 0
+#     manager: str = 'experiences'
+
 class Health(Component):
-    cur_hp: int = 1
-    max_hp: int = 1
-    heal_tick: int = 2
-    heal_curr: int = 0
-    heal_full: int = 100
+    __slots__ = ['cur_hp', 'max_hp', 'heal_tick', 'heal_curr', 'heal_full']
     manager: str = 'healths'
+    def __init__(
+        self, 
+        cur_hp: int=1, 
+        max_hp: int=1, 
+        heal_tick: int=200, 
+        heal_full: int=10000
+    ):
+        self.cur_hp = cur_hp
+        self.max_hp = max_hp
+        self.heal_tick = heal_tick
+        self.heal_full = heal_full
+        self.heal_curr = 0
+
     @property
-    def alive(self):
+    def alive(self) -> bool:
         return self.cur_hp > 0
 
-@dataclass
-class Input(Component):
-    needs_input: bool = False
-    manager: str = 'inputs'
-
-@dataclass
-class Energy(Component):
-    amount: int
-    full: int
-    gain: int
-    ready: bool
-    manager: str = 'energies'
-
-@dataclass
 class Information(Component):
-    name: str
-    description: str = None
+    __slots__ = ['name', 'description']
     manager: str = 'infos'
+    def __init__(self, name: str, description: str = None):
+        self.name = name
+        self.description = description
 
-@dataclass
+class Input(Component):
+    __slots__ = ['needs_input']
+    manager: str = 'inputs'
+    def __init__(self, needs_input: bool = False):
+        self.needs_input = needs_input
+
 class Movement(Component):
-    x: int
-    y: int
+    __slots__ = ['x', 'y']
     manager: str = 'movements'
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
     @classmethod
     def keypress_to_direction(cls, keypress):
         return cls(*keypress_to_direction[keypress])
@@ -108,30 +120,38 @@ class Movement(Component):
         x, y = possible_spaces[index]
         return cls(x, y)
 
-@dataclass
 class Openable(Component):
-    opened: bool = False
+    __slots__ = ['opened']
     manager: str = 'openables'
+    def __init__(self, opened: bool = False):
+        self.opened = opened
 
-@dataclass
 class Position(Component):
-    x: int = 0
-    y: int = 0
-    map_id: int = -1
-    moveable: bool = True
-    blocks_movement: bool = True
+    __slots__ = ['x', 'y', 'map_id', 'moveable', 'blocks_movement']
     manager: str = 'positions'
+    def __init__(self, 
+        x: int = 0,
+        y: int = 0,
+        map_id: int = -1,
+        moveable: bool = True,
+        blocks_movement: bool = True
+    ):
+        self.x = x
+        self.y = y
+        self.map_id = map_id
+        self.moveable = moveable
+        self.blocks_movement = blocks_movement
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
     def __add__(self, other):
         return Position(self.x + other.x, self.y + other.y)
     def copy(
-        self, 
-        x=None, 
-        y=None, 
-        map_id=None, 
-        moveable=None, 
-        blocks_movement=None
+        self,
+        x: int = None, 
+        y: int = None, 
+        map_id: int = None, 
+        moveable: bool = None, 
+        blocks_movement: bool = None
     ):
         if x is None:
             x = self.x
@@ -145,69 +165,80 @@ class Position(Component):
             blocks_movement = self.blocks_movement
         return Position(x, y, map_id, moveable, blocks_movement)
 
-@dataclass
 class Render(Component):
-    char: str = '@'
-    depth: int = 0
+    __slots__ = ['char']
     manager: str = 'renders'
+    def __init__(self, char: str = '@'):
+        self.char = char
 
-@dataclass
 class Tile(Component):
-    # entity_id: int
+    __slots__ = []
     manager: str = 'tiles'
 
-@dataclass
 class TileMap(Component):
-    width: int
-    height: int
+    __slots__ = ['width', 'height']
     manager: str = 'tilemaps'
+    def __init__(self, width: int, height: int):
+        self.width = width
+        self.height = height
 
-@dataclass
 class Visibility(Component):
-    level: int = 0
+    __slots__ = ['level']
     manager: str = 'visibilities'
+    def __init__(self, level: int = 0):
+        self.level = level
 
-@dataclass
 class Inventory(Component):
-    size: int = 10
-    items: list = field(default_factory=list)
-    categories: list = field(default_factory=lambda: [
-        'weapon', 
-        'general', 
-        'food', 
-        'crafting', 
-        'other'
-    ])
+    __slots__ = ['size', 'items', 'categories']
     manager: str = 'inventories'
+    def __init__(self, size: int = 10, items: list = None):
+        self.size = size
+        self.items = items if items else list()
+        self.categories = [
+            'weapon', 
+            'general', 
+            'food', 
+            'crafting', 
+            'other'
+        ]
 
-@dataclass
 class Equipment(Component):
-    head: int = None
-    body: int = None
-    hand: int = None
-    feet: int = None
+    __slots__ = ['head', 'body', 'hand', 'feet']
     manager: str = 'equipments'
+    def __init__(
+        self, 
+        head: int = None,
+        body: int = None,
+        hand: int = None,
+        feet: int = None
+    ):
+        self.head = head
+        self.body = body
+        self.hand = hand
+        self.feet = feet
 
-@dataclass
 class Weapon(Component):
-    damage: int = 0
+    __slots__ = ['damage']
     manager: str = 'weapons'
+    def __init__(self, damage: int = 0):
+        self.damage = damage
 
-@dataclass
 class Item(Component):
-    category: str = 'general'
-    seen: bool = False
+    __slots__ = ['category', 'seen']
     manager: str = 'items'
+    def __init__(self, category: str = 'general'):
+        self.category = category
+        self.seen = False
 
-@dataclass
-class Unit(Component):
-    race: str
-    manager: str = 'units'
+# class Unit(Component):
+#     race: str
+#     manager: str = 'units'
 
-@dataclass
 class Armor(Component):
-    defense: int = 0
+    __slots__ = ['defense']
     manager: str = 'armors'
+    def __init__(self, defense: int = 0):
+        self.defense = defense
 
 components = Component.__subclasses__()
 

@@ -193,4 +193,3 @@ class Engine(object):
             self.renders,
             self.inventories
         ))))
-    

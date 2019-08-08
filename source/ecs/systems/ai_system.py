@@ -68,7 +68,6 @@ class AISystem(System):
             return True
         info = self.engine.infos.find(entity)
         ai = self.engine.ais.find(entity)
-
         # simple ai logic (move, attack if enemy exists, run away)
         # behavior is updated during attack or update()
         movement = None

@@ -55,7 +55,7 @@ class SpawnSystem(System):
             computer, 
             Position(*space, map_id=self.engine.world.id)
         )
-        self.engine.renders.add(computer, Render('g', depth=3))
+        self.engine.renders.add(computer, Render('g'))
         self.engine.ais.add(computer, AI())
         info = Information("goblin")
         self.engine.infos.add(computer, info)
