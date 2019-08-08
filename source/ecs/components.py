@@ -174,6 +174,18 @@ class Render(Component):
 class Tile(Component):
     __slots__ = []
     manager: str = 'tiles'
+    instance: object = None
+    instantiated = 0
+    def __init__(self):
+        Tile.instantiated += 1
+        print(Tile.instantiated)
+    def __new__(cls, *args, **kwargs):
+        print('instance:', Tile.instance, cls.instance)
+        if not cls.instance:
+            print('instantiating')
+            cls.instance = super(Component, cls).__new__(cls, *args, **kwargs)
+        print(cls.instance == Tile.instance)
+        return cls.instance
 
 class TileMap(Component):
     __slots__ = ['width', 'height']

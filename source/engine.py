@@ -165,11 +165,17 @@ class Engine(object):
     def count_objects(self):
         """Debugging information and object counting"""
         m = 0
-        for c in components:
-            l =  len(getattr(self, c.manager).components)
-            print(c.manager, l)
+        s = 0
+        for c in sorted(components, key=lambda x: x.classname()):
+            l = len(getattr(self, c.manager).components)
+            g = len(getattr(self, c.manager).shared)
+            if c.manager == 'tiles': # ('renders', 'infos'):
+                print(c.manager, l, g, c.instantiated)
+            else:
+                print(c.manager, l, g)
             m += l
-        print('total objects: ', m)
+            s += g
+        print('total objects:', m, s)
 
         print(len(list(join(
             self.tiles, 

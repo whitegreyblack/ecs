@@ -42,8 +42,9 @@ def curses_setup(screen):
         curses.init_pair(i + 1, i, -1)
     return screen
 
-def add_shared_components(engine):
-    ...
+def build_shared_components(engine):
+    for name, desc in list(units.items()) + list(items.items()):
+        engine.infos.shared[name] = Information(name, desc)
 
 def add_world(engine, mappairs):
     world_graph = {}
@@ -91,25 +92,29 @@ def add_player(engine, spaces):
 def add_computers(engine, npcs, spaces):
     for i in range(npcs):
         computer = engine.entities.create()
+        # instance components
+        engine.ais.add(computer, AI())
+        engine.inputs.add(computer, Input())
+        engine.healths.add(computer, Health(2, 2))
         if not spaces:
             break
-        space = spaces.pop()
-        engine.inputs.add(computer, Input())
         engine.positions.add(
             computer, 
-            Position(*space, map_id=engine.world.id)
+            Position(*spaces.pop(), map_id=engine.world.id)
         )
-        engine.renders.add(computer, Render('g'))
-        engine.ais.add(computer, AI())
-        engine.infos.add(computer, Information('goblin', units['goblin']))
-        engine.healths.add(computer, Health(2, 2))
-        # if i == 0:
-        #     engine.armors.add(computer, Armor(2))
+        # shared components
+        if 'g' not in engine.renders.shared:
+            engine.renders.shared['g'] = Render('g')
+        engine.renders.add(computer, engine.renders.shared['g'])
+        if 'goblin' not in engine.infos.shared:
+            desc = units['goblin']
+            engine.infos.shared['goblin'] = Information('goblin', desc)
+        engine.infos.add(computer, engine.infos.shared['goblin'])
 
         # add items to inventory
         item = engine.entities.create()
         engine.items.add(item, Item('weapon'))
-        engine.renders.add(item, Render('/'))
+        engine.renders.add(item, engine.renders.shared['g'])
         engine.infos.add(item, Information('spear', items['spear']))
         inventory = Inventory(items=[item.id])
         engine.inventories.add(computer, inventory)
@@ -141,7 +146,7 @@ def ecs_setup(terminal, dungeon, npcs, items):
         terminal=terminal,
         keyboard=keyboard
     )
-    add_shared_components(engine)
+    build_shared_components(engine)
     add_world(engine, ((0, dungeon),))
     spaces = find_empty_spaces(engine)
     add_player(engine, spaces)

@@ -27,9 +27,21 @@ class GraveSystem(System):
         )
         for eid, (_, tile, render, info) in tiles:
             if position.x == tile.x and position.y == tile.y:
+                entity = self.engine.entities.find(eid=eid)
                 if render.char == '.':
-                    render.char = '*'
-                info.name = 'bloodied floor'
+                    if '*' not in self.engine.renders.shared:
+                        self.engine.renders.shared['*'] = Render('*')
+                    self.engine.renders.add(
+                        entity,
+                        self.engine.renders.shared['*']
+                    )
+                if 'bloodied floor' not in self.engine.infos.shared:
+                    i = Information('bloodied floor')
+                    self.engine.infos.shared['bloodied floor'] = i
+                self.engine.infos.add(
+                    entity,
+                    self.engine.infos.shared['bloodied floor']
+                )
 
     def drop_body(self, entity):
         position = self.engine.positions.find(entity)

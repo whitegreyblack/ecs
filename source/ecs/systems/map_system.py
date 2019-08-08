@@ -102,17 +102,11 @@ class MapSystem(System):
                 Information() -> shared
                 """
                 tile = self.engine.entities.create()
+                # shared components
                 self.engine.tiles.add(tile, Tile())
-                position = Position(
-                    x, 
-                    y,
-                    map_id=world.id,
-                    moveable=False, 
-                    blocks_movement=c in ('#', '+')
-                )
-                self.engine.visibilities.add(tile, Visibility())
-                self.engine.positions.add(tile, position)
-                self.engine.renders.add(tile, Render(char=c))
+                if c not in self.engine.renders.shared:
+                    self.engine.renders.shared[c] = Render(c)
+                self.engine.renders.add(tile, self.engine.renders.shared[c])
                 if c == '#':
                     self.engine.infos.add(tile, Information('wall'))
                 elif c in ('/', '+'):
@@ -131,6 +125,16 @@ class MapSystem(System):
                     other_entities.append((x, y, c))
                 else:
                     self.engine.infos.add(tile, Information('floor'))
+
+                # per instance components
+                self.engine.positions.add(tile, Position(
+                    x, 
+                    y,
+                    map_id=world.id,
+                    moveable=False, 
+                    blocks_movement=c in ('#', '+')
+                ))
+                self.engine.visibilities.add(tile, Visibility())
         for x, y, c in other_entities:
             if c == ';':
                 flower = self.engine.entities.create()

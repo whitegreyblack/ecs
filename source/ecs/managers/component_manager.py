@@ -7,11 +7,12 @@ from dataclasses import dataclass, field
 
 class ComponentManager(object):
 
-    __slots__ = ['ctype', 'components']
+    __slots__ = ['ctype', 'components', 'shared']
 
     def __init__(self, ctype, dicttype=dict):
         self.ctype = ctype.__name__
         self.components = dicttype()
+        self.shared = dict()
 
     def __str__(self):
         l = len(self.components.keys())
