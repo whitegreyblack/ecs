@@ -171,21 +171,18 @@ class Render(Component):
     def __init__(self, char: str = '@'):
         self.char = char
 
-class Tile(Component):
-    __slots__ = []
-    manager: str = 'tiles'
-    instance: object = None
-    instantiated = 0
-    def __init__(self):
-        Tile.instantiated += 1
-        print(Tile.instantiated)
-    def __new__(cls, *args, **kwargs):
-        print('instance:', Tile.instance, cls.instance)
-        if not cls.instance:
-            print('instantiating')
-            cls.instance = super(Component, cls).__new__(cls, *args, **kwargs)
-        print(cls.instance == Tile.instance)
-        return cls.instance
+# singleton pattern -- should only have one instance of this component
+# total mem size is ~450.8 KiB with singleton
+# without is ~481.2 KiB. 30 KiB for a single map of tiles
+class Tile:
+    class __Tile(Component):
+        __slots__ = []
+        manager: str = 'tiles'
+    instance = None
+    def __new__(self):
+        if not Tile.instance:
+            Tile.instance = Tile.__Tile()
+        return Tile.instance
 
 class TileMap(Component):
     __slots__ = ['width', 'height']
@@ -201,18 +198,18 @@ class Visibility(Component):
         self.level = level
 
 class Inventory(Component):
-    __slots__ = ['size', 'items', 'categories']
+    __slots__ = ['size', 'items']
     manager: str = 'inventories'
+    categories = [
+        'weapon', 
+        'general', 
+        'food', 
+        'crafting', 
+        'other'
+    ]
     def __init__(self, size: int = 10, items: list = None):
         self.size = size
         self.items = items if items else list()
-        self.categories = [
-            'weapon', 
-            'general', 
-            'food', 
-            'crafting', 
-            'other'
-        ]
 
 class Equipment(Component):
     __slots__ = ['head', 'body', 'hand', 'feet']

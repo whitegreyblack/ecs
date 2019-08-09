@@ -172,8 +172,17 @@ def main(terminal, dungeon, npcs, items):
 @click.option('-n', '--npcs', default=1)
 @click.option('-i', '--items', default=2)
 def preload(dungeon, npcs, items):
+    import tracemalloc
+    tracemalloc.start()
+
     create_save_folder_if_not_exists()
     curses.wrapper(main, dungeon, npcs, items)
+    snapshot = tracemalloc.take_snapshot()
+    top_stats = snapshot.statistics('lineno')
+    for stat in top_stats:
+        print(stat)
+    total = sum(stat.size for stat in top_stats)
+    print("Total allocated size: %.1f KiB" % (total / 1024))
 
 if __name__ == "__main__":
     preload()

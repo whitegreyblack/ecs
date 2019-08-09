@@ -7,6 +7,7 @@ from .system import System
 
 class DecaySystem(System):
     def process(self):
+        print(self.engine.decays.components);
         items = join(
             self.engine.items,
             self.engine.decays
@@ -19,5 +20,6 @@ class DecaySystem(System):
             
         for eid in remove:
             entity = self.engine.entities.find(eid)
+            info = self.engine.infos.find(entity)
+            self.engine.logger.add(f"{info.name} decays")
             self.engine.grave_system.process(entity)
-            self.engine.logger.add(f"{entity} decays")

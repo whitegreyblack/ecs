@@ -169,10 +169,7 @@ class Engine(object):
         for c in sorted(components, key=lambda x: x.classname()):
             l = len(getattr(self, c.manager).components)
             g = len(getattr(self, c.manager).shared)
-            if c.manager == 'tiles': # ('renders', 'infos'):
-                print(c.manager, l, g, c.instantiated)
-            else:
-                print(c.manager, l, g)
+            print(c.manager, l, g)
             m += l
             s += g
         print('total objects:', m, s)

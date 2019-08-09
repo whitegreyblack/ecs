@@ -54,7 +54,7 @@ class GraveSystem(System):
             moveable=False,
             blocks_movement=False
         ))
-        self.engine.decays.add(body, Decay())
+        self.engine.decays.add(body, Decay(10))
 
     def drop_inventory(self, entity):
         position = self.engine.positions.find(entity)
@@ -67,6 +67,13 @@ class GraveSystem(System):
             item_position = position.copy(moveable=False, blocks_movement=False)
             self.engine.positions.add(item, item_position)
 
+    def remove_from_inventory(self, entity):
+        inventory = None
+        for eid, inventory in self.engine.inventories:
+            if entity.id in inventory.items:
+                break
+        inventory.items.remove(entity.id)
+
     def process(self, entity):
         # remove old messages
         # messages = self.engine.logger.messages
@@ -74,8 +81,13 @@ class GraveSystem(System):
         if entity == self.engine.player:
             self.engine.player = None
             return
+        # if the entity is a unit
         if not self.engine.items.find(entity):
             self.drop_inventory(entity)
             self.drop_body(entity)
             self.color_environment(entity)
+        # if the entity exists inside a container
+        elif not self.engine.positions.find(entity):
+            print('entity exists in container')
+            self.remove_from_inventory(entity)
         self.delete(entity)
