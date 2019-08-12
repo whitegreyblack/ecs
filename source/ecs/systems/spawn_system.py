@@ -14,8 +14,9 @@ from .system import System
 class SpawnSystem(System):
     def __init__(self, engine, logger=None):
         super().__init__(engine, logger)
+        # TODO: move to a new spawn Component attached to the tilemap
         self.respawn_rate = 50
-        self.current_tick = -1
+        self.current_tick = self.respawn_rate
 
     def find_valid_spaces(self):
         return {
@@ -89,12 +90,15 @@ class SpawnSystem(System):
         ]
         if len(units) < 3:
             if self.current_tick < 0:
+                # self.engine.logger.add('resetting current tick')
                 self.current_tick = self.respawn_rate
+            # self.engine.logger.add(self.current_tick)
             self.current_tick -= 1
-            if self.current_tick == -1:
+            if self.current_tick == 0:
                 spaces = self.find_valid_spaces()
                 # probably wouldn't happen but if it does then exit early
                 if not spaces:
                     return
                 space = spaces.pop()
                 self.spawn_unit(space)
+                # self.engine.logger.add('spawned unit')

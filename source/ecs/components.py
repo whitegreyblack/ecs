@@ -176,13 +176,13 @@ class Render(Component):
 # total mem size is ~450.8 KiB with singleton
 # without is ~481.2 KiB. 30 KiB for a single map of tiles
 class Tile:
-    class __Tile(Component):
+    class _Tile(Component):
         __slots__ = []
         manager: str = 'tiles'
     instance = None
     def __new__(self):
         if not Tile.instance:
-            Tile.instance = Tile.__Tile()
+            Tile.instance = Tile._Tile()
         return Tile.instance
 
 class TileMap(Component):

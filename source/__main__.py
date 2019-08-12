@@ -45,13 +45,10 @@ def build_shared_components(engine):
     # build shared caches. Adds a double kv pair for each entry
     for info, (char, desc, color, _) in shared_cache.items():
         if isinstance(color, tuple):
-            r = [Render(char, c) for c in color]
+            engine.renders.shared[info] = [Render(char, c) for c in color]
         else:
-            r = [Render(char, color),]
-        engine.renders.shared[info] = r
-        i = Information(info, desc)
-        engine.infos.shared[info] = i
-    print(engine.infos.shared)
+            engine.renders.shared[info] = [Render(char, color),]
+        engine.infos.shared[info] = Information(info, desc)
     
 def add_world(engine, mappairs):
     world_graph = {}
@@ -149,16 +146,16 @@ def main(terminal, dungeon, npcs, items):
     engine.count_objects()
 
 @click.command()
-@click.option('-d', '--dungeon', default='shadowbarrow')
+@click.option('-w', '--world', default='shadowbarrow')
 @click.option('-n', '--npcs', default=1)
 @click.option('-i', '--items', default=2)
 @click.option('-d', '--debug', is_flag=True, default=False)
-def preload(dungeon, npcs, items, debug):
+def preload(world, npcs, items, debug):
     create_save_folder_if_not_exists()
     if debug:
         import tracemalloc
         tracemalloc.start()
-    curses.wrapper(main, dungeon, npcs, items)
+    curses.wrapper(main, world, npcs, items)
     if debug:
         snapshot = tracemalloc.take_snapshot()
         top_stats = snapshot.statistics('lineno')

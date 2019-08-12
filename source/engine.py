@@ -167,8 +167,10 @@ class Engine(object):
         m = 0
         s = 0
         for c in sorted(components, key=lambda x: x.classname()):
+            # 428.3 KiB when using flyweight vs 549.8 KiB
             l = len(getattr(self, c.manager).components)
             g = len(getattr(self, c.manager).shared)
+
             print(c.manager, l, g)
             m += l
             s += g

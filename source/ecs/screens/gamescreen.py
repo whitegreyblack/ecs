@@ -183,22 +183,25 @@ class GameScreen(Screen):
     #  0.000    0.000    1.858    0.093
     def render_map_panel(self):
         # calculate offsets on scrolling map
-        position = self.engine.positions.find(self.engine.player)
-        tilemap = self.engine.tilemaps.find(eid=position.map_id)
+        player_position = self.engine.positions.find(self.engine.player)
+        tilemap = self.engine.tilemaps.find(eid=player_position.map_id)
         if tilemap.width < self.map_width:
             cam_x = 0
         else:
-            cam_x = scroll(position.x, self.map_width, tilemap.width)
+            cam_x = scroll(player_position.x, self.map_width, tilemap.width)
         x0, x1 = cam_x, self.map_width + cam_x
         if tilemap.height < self.map_height:
             cam_y = 0
         else:
-            cam_y = scroll(position.y, self.map_height, tilemap.height)
+            cam_y = scroll(player_position.y, self.map_height, tilemap.height)
         y0, y1 = cam_y, self.map_height + cam_y
 
-        # bounds_check = lambda x, y: x0 <= x < x1 and y0 <= y < y1
-        self.render_map(position.map_id, cam_x, cam_y, x0, x1, y0, y1)
+        # draw map panel border
+        self.render_map_border()
 
+        # draw environment
+        self.render_map(player_position.map_id, cam_x, cam_y, x0, x1, y0, y1)
+        
         tiles = {
             (position.x, position.y): visibility
                 for position, visibility in join_without_key(
@@ -207,15 +210,28 @@ class GameScreen(Screen):
                 )
                 if visibility.level > 1
         }
-        self.render_items(tiles, position.map_id, cam_x, cam_y, x0, x1, y0, y1)
+
+        # draw items
+        self.render_items(tiles, player_position.map_id, cam_x, cam_y, x0, x1, y0, y1)
         while True:
-            self.render_units(tiles, position.map_id, cam_x, cam_y, x0, x1, y0, y1)
+            # draw units
+            self.render_units(tiles, player_position.map_id, cam_x, cam_y, x0, x1, y0, y1)
             if not self.engine.effects.components:
                 break
-            # render effects
-            self.render_effects(tiles, position.map_id, cam_x, cam_y, x0, x1, y0, y1)
+            # draw effects
+            self.render_effects(tiles, player_position.map_id, cam_x, cam_y, x0, x1, y0, y1)
             self.engine.effects.components.clear()
 
+    def render_map_border(self):
+        border(
+            self.terminal,
+            self.map_panel_x,
+            self.map_panel_y,
+            self.map_panel_width,
+            self.map_panel_height
+        )
+
+    # timings on different join statements
     # 0.242    0.015    0.924    0.058 <- join without key (tuple)
     # 0.485    0.016    1.837    0.061 <- join (tuple)
     # 0.502    0.025    1.058    0.053 <- join (no tuple)
@@ -230,89 +246,74 @@ class GameScreen(Screen):
     # 0.651    0.018    1.697    0.046 <- ...
     # 0.432    0.017    1.121    0.045 <- ...
     def render_map(self, map_id, cam_x, cam_y, x0, x1, y0, y1):
-        border(
-            self.terminal,
-            self.map_panel_x,
-            self.map_panel_y,
-            self.map_panel_width,
-            self.map_panel_height
-        )
         x_offset = self.map_x - cam_x
         y_offset = self.map_y - cam_y
-
-        for visibility, position, render, info in join_without_key(
+        
+        for visibility, position, render in join_without_key(
             self.engine.visibilities,
             self.engine.positions,
+            self.engine.renders
+        ):
+            if (visibility.level > 0
+                and map_id == position.map_id
+                and x0 <= position.x < x1 
+                and y0 <= position.y < y1
+            ):
+                c = render.color if visibility.level > 1 else 240
+                self.render_char(
+                    position.x + x_offset,
+                    position.y + y_offset,
+                    render.char,
+                    curses.color_pair(c)
+                )
+
+    def render_units(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
+        # look for all positions not in tile positions and visibilities.
+        # if their positions match and map is visible then show the unit
+        enemy_count = 0
+        x_offset = self.map_x - cam_x
+        y_offset = self.map_y - cam_y
+        for eid, (health, position, render, info) in join(
+            self.engine.healths,
+            self.engine.positions, 
             self.engine.renders,
             self.engine.infos
         ):
-            if not (x0 <= position.x < x1 and y0 <= position.y < y1):
-                continue
-            if visibility.level > 0:
-                if visibility.level == 2:
-                    color = render.color
-                else:
-                    color = 240
+            if (
+                position.map_id == self.engine.world.id
+                and (position.x, position.y) in tiles
+                and x0 <= position.x < x1 and y0 <= position.y < y1
+            ):
+                # current_map_id = position.map_id == map_id
+                visibility = tiles[(position.x, position.y)]
+                color = render.color if visibility.level == 2 else 0
                 self.render_char(
                     position.x + x_offset,
                     position.y + y_offset,
                     render.char,
                     curses.color_pair(color)
                 )
-
-    def render_units(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
-        units = [
-            (eid, health, position, render, info)
-                for eid, (health, position, render, info) in join(
-                    self.engine.healths,
-                    self.engine.positions, 
-                    self.engine.renders,
-                    self.engine.infos
-                )
-                if position.map_id == self.engine.world.id
-                    and (position.x, position.y) in tiles
-                    and x0 <= position.x < x1 and y0 <= position.y < y1
-        ]
-        # look for all positions not in tile positions and visibilities.
-        # if their positions match and map is visible then show the unit
-        enemy_count = 0
-        for eid, health, position, render, info in units:
-            # current_map_id = position.map_id == map_id
-            visibility = tiles[(position.x, position.y)]
-            # inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
-            # if visibility and inbounds:
-            if visibility.level == 2:
-                color = render.color
-            else:
-                color = 0
-            self.render_char(
-                self.map_x + position.x - cam_x,
-                self.map_y + position.y - cam_y,
-                render.char,
-                curses.color_pair(color)
-            )
-            # check if enemy needs to added to the panel
-            non_player = eid != self.engine.player.id
-            description_space = enemy_count < self.enemy_panel_height - 1
-            if non_player:
-                    enemy_count += int(self.render_enemy_panel_detail(
-                        enemy_count, 
-                        render, 
-                        info, 
-                        health
-                    ))
-            else:
-                self.render_player_panel_details(render, info, health)
+                # check if enemy needs to added to the panel
+                non_player = eid != self.engine.player.id
+                description_space = enemy_count < self.enemy_panel_height - 1
+                if non_player:
+                        enemy_count += int(self.render_enemy_panel_detail(
+                            enemy_count, 
+                            render, 
+                            info, 
+                            health
+                        ))
+                else:
+                    self.render_player_panel_details(render, info, health)
 
     def render_items(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
-        items = join(
+        item_positions = set()
+        for _, (_, position, render, info) in join(
             self.engine.items,
             self.engine.positions,
             self.engine.renders,
             self.engine.infos
-        )
-        item_positions = set()
-        for _, (_, position, render, info) in items:
+        ):
             current_map = position.map_id == self.engine.world.id
             visibility = tiles.get((position.x, position.y), None)
             inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
