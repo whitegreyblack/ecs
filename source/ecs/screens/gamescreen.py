@@ -7,7 +7,6 @@ import random
 import time
 
 from source.astar import pathfind
-from source.color import colors
 from source.common import (border, direction_to_keypress, eight_square, join,
                            join_on, join_without_key, scroll)
 from source.ecs.components import Movement
@@ -147,7 +146,7 @@ class GameScreen(Screen):
                 self.enemy_item_x + 1,
                 self.enemy_item_y + enemy_count,
                 render.char,
-                curses.color_pair(colors.get(info.name, 240))
+                curses.color_pair(render.color)
             )
             # enemy character current health
             self.render_string(
@@ -251,7 +250,7 @@ class GameScreen(Screen):
                 continue
             if visibility.level > 0:
                 if visibility.level == 2:
-                    color = colors.get(info.name, 240)
+                    color = render.color
                 else:
                     color = 240
                 self.render_char(
@@ -283,7 +282,7 @@ class GameScreen(Screen):
             # inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
             # if visibility and inbounds:
             if visibility.level == 2:
-                color = colors.get(info.name, 0)
+                color = render.color
             else:
                 color = 0
             self.render_char(
@@ -318,12 +317,11 @@ class GameScreen(Screen):
             visibility = tiles.get((position.x, position.y), None)
             inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
             if current_map and visibility and inbounds:
-                color = colors.get(info.name, 0)
                 self.render_char(
                     self.map_x + position.x - cam_x,
                     self.map_y + position.y - cam_y,
                     render.char,
-                    curses.color_pair(color)
+                    curses.color_pair(render.color)
                 )
 
     def render_effects(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
@@ -349,7 +347,7 @@ class GameScreen(Screen):
                     self.map_x + position.x - cam_x,
                     self.map_y + position.y - cam_y,
                     render.char,
-                    curses.color_pair(colors.get(info.name, 0))
+                    curses.color_pair(render.color)
                 )
                 self.terminal.noutrefresh()
                 curses.doupdate()

@@ -7,17 +7,12 @@ from .system import System
 
 class DecaySystem(System):
     def process(self):
-        print(self.engine.decays.components);
-        items = join(
-            self.engine.items,
-            self.engine.decays
-        )
         remove = set()
-        for eid, (_, decay) in items:
+        for eid, (_, decay) in join(self.engine.items, self.engine.decays):
             decay.lifetime -= 1
             if decay.lifetime < 1:
                 remove.add(eid)
-            
+        
         for eid in remove:
             entity = self.engine.entities.find(eid)
             info = self.engine.infos.find(entity)

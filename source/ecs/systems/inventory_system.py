@@ -4,7 +4,6 @@
 
 from collections import namedtuple
 
-from source.color import colors
 from source.common import join
 from source.ecs.components import Inventory
 
@@ -27,13 +26,13 @@ class InventorySystem(System):
             render = self.engine.renders.find(eid=item_id)
             info = self.engine.infos.find(eid=item_id)
             buckets[item.category].append((
-                render.char, 
-                info.name, 
+                render.char,
+                render.color, 
+                info.name,
                 info.description
             ))
         
         # print items in each bucket by category order
         for category in inventory.categories:
-            for char, name, description in buckets[category]:
-                color = colors.get(name, 240)
+            for char, color, name, description in buckets[category]:
                 yield inventory_item(category, char, name, color, description)

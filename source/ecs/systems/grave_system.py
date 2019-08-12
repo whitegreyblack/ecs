@@ -2,13 +2,13 @@
 
 """Graveyard system class"""
 
+import random
 import time
 
 from source.common import join
-from source.ecs.components import Information, Item, Render, Decay
+from source.ecs.components import Decay, Information, Item, Render
 from source.ecs.systems.system import System
 
-alive = lambda message: message.lifetime > 0
 
 class GraveSystem(System):
 
@@ -44,12 +44,21 @@ class GraveSystem(System):
                 )
 
     def drop_body(self, entity):
+        # get entity info
         position = self.engine.positions.find(entity)
         info = self.engine.infos.find(entity)
+        render = self.engine.renders.find(entity)
+
+        # build entity corpse
+        name = f"{info.name} corpse"
         body = self.engine.entities.create()
         self.engine.items.add(body, Item('food'))
-        self.engine.renders.add(body, Render('%'))
-        self.engine.infos.add(body, Information(f"{info.name} corpse"))
+        for r in self.engine.renders.shared[name]:
+            if r.color == render.color:
+                break
+        self.engine.renders.add(body, r)
+        i = self.engine.infos.shared[name]
+        self.engine.infos.add(body, i)
         self.engine.positions.add(body, position.copy(
             moveable=False,
             blocks_movement=False
@@ -75,9 +84,6 @@ class GraveSystem(System):
         inventory.items.remove(entity.id)
 
     def process(self, entity):
-        # remove old messages
-        # messages = self.engine.logger.messages
-        # self.engine.logger.messages = list(filter(alive, messages))
         if entity == self.engine.player:
             self.engine.player = None
             return

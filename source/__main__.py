@@ -11,9 +11,8 @@ import time
 
 import click
 
-from source.color import colors
 from source.common import border, join, join_without_key
-from source.description import items, units
+from source.description import shared_cache
 from source.ecs import (AI, Armor, Collision, Decay, Effect,
                         Equipment, Health, Information, Input,
                         Inventory, Item, Movement, Openable, Position, Render,
@@ -43,9 +42,17 @@ def curses_setup(screen):
     return screen
 
 def build_shared_components(engine):
-    for name, desc in list(units.items()) + list(items.items()):
-        engine.infos.shared[name] = Information(name, desc)
-
+    # build shared caches. Adds a double kv pair for each entry
+    for info, (char, desc, color, _) in shared_cache.items():
+        if isinstance(color, tuple):
+            r = [Render(char, c) for c in color]
+        else:
+            r = [Render(char, color),]
+        engine.renders.shared[info] = r
+        i = Information(info, desc)
+        engine.infos.shared[info] = i
+    print(engine.infos.shared)
+    
 def add_world(engine, mappairs):
     world_graph = {}
     g = {
@@ -83,41 +90,17 @@ def add_player(engine, spaces):
     # create a weapon for player
     spear = engine.entities.create()
     engine.items.add(spear, Item('weapon'))
-    engine.renders.add(spear, Render('/'))
-    engine.infos.add(spear, Information('spear', items['spear']))
+    engine.renders.add(spear, random.choice(engine.renders.shared['spear']))
+    engine.infos.add(spear, engine.infos.shared['spear'])
     engine.weapons.add(spear, Weapon(4))
     e = Equipment(hand=spear.id)
     engine.equipments.add(player, e)
 
 def add_computers(engine, npcs, spaces):
     for i in range(npcs):
-        computer = engine.entities.create()
-        # instance components
-        engine.ais.add(computer, AI())
-        engine.inputs.add(computer, Input())
-        engine.healths.add(computer, Health(2, 2))
         if not spaces:
             break
-        engine.positions.add(
-            computer, 
-            Position(*spaces.pop(), map_id=engine.world.id)
-        )
-        # shared components
-        if 'g' not in engine.renders.shared:
-            engine.renders.shared['g'] = Render('g')
-        engine.renders.add(computer, engine.renders.shared['g'])
-        if 'goblin' not in engine.infos.shared:
-            desc = units['goblin']
-            engine.infos.shared['goblin'] = Information('goblin', desc)
-        engine.infos.add(computer, engine.infos.shared['goblin'])
-
-        # add items to inventory
-        item = engine.entities.create()
-        engine.items.add(item, Item('weapon'))
-        engine.renders.add(item, engine.renders.shared['g'])
-        engine.infos.add(item, Information('spear', items['spear']))
-        inventory = Inventory(items=[item.id])
-        engine.inventories.add(computer, inventory)
+        engine.spawn_system.spawn_unit(spaces.pop())
 
 def add_items(engine, items, spaces):
     for i in range(items):
@@ -125,17 +108,15 @@ def add_items(engine, items, spaces):
         if not spaces:
             break
         space = spaces.pop()
-        engine.positions.add(
-            item, 
-            Position(
-                *space, 
-                map_id=engine.world.id, 
-                moveable=False, 
-                blocks_movement=False
-            )
-        )
-        engine.renders.add(item, Render('%'))
-        engine.infos.add(item, Information("food"))
+        engine.positions.add(item, Position(
+            *space, 
+            map_id=engine.world.id, 
+            moveable=False, 
+            blocks_movement=False
+        ))
+        r = random.choice(engine.renders.shared['food'])
+        engine.renders.add(item, r)
+        engine.infos.add(item, engine.infos.shared['food'])
         engine.items.add(item, Item('food'))
         engine.decays.add(item, Decay())
 
@@ -171,18 +152,20 @@ def main(terminal, dungeon, npcs, items):
 @click.option('-d', '--dungeon', default='shadowbarrow')
 @click.option('-n', '--npcs', default=1)
 @click.option('-i', '--items', default=2)
-def preload(dungeon, npcs, items):
-    import tracemalloc
-    tracemalloc.start()
-
+@click.option('-d', '--debug', is_flag=True, default=False)
+def preload(dungeon, npcs, items, debug):
     create_save_folder_if_not_exists()
+    if debug:
+        import tracemalloc
+        tracemalloc.start()
     curses.wrapper(main, dungeon, npcs, items)
-    snapshot = tracemalloc.take_snapshot()
-    top_stats = snapshot.statistics('lineno')
-    for stat in top_stats:
-        print(stat)
-    total = sum(stat.size for stat in top_stats)
-    print("Total allocated size: %.1f KiB" % (total / 1024))
+    if debug:
+        snapshot = tracemalloc.take_snapshot()
+        top_stats = snapshot.statistics('lineno')
+        for stat in top_stats:
+            print(stat)
+        total = sum(stat.size for stat in top_stats)
+        print("Total allocated size: %.1f KiB" % (total / 1024))
 
 if __name__ == "__main__":
     preload()

@@ -166,10 +166,11 @@ class Position(Component):
         return Position(x, y, map_id, moveable, blocks_movement)
 
 class Render(Component):
-    __slots__ = ['char']
+    __slots__ = ['char', 'color']
     manager: str = 'renders'
-    def __init__(self, char: str = '@'):
+    def __init__(self, char: str = '@', color: int = 0):
         self.char = char
+        self.color = color
 
 # singleton pattern -- should only have one instance of this component
 # total mem size is ~450.8 KiB with singleton

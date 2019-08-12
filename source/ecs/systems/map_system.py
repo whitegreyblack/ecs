@@ -3,17 +3,18 @@
 """Map system: not called every turn but on map change events"""
 
 import pickle
+import random
 
 from source.common import join
-from source.ecs.components import (Information, Openable, Position, Render, Item,
-                                   Tile, TileMap, Visibility)
+from source.ecs.components import (Information, Item, Openable, Position,
+                                   Render, Tile, TileMap, Visibility)
 from source.graph import DungeonNode, WorldGraph
 from source.maps import (add_boundry_to_matrix, cell_auto, flood_fill,
                          generate_poisson_array, replace_cell_with_stairs,
                          string, transform_random_array_to_matrix)
 
 from .system import System
-
+from source.description import env_char_to_name
 
 class MapSystem(System):
     def save_map(self, map_id):
@@ -93,7 +94,7 @@ class MapSystem(System):
         other_entities = []
         for y, row in enumerate(dungeon):
             for x, c in enumerate(row):
-                """ per tile:
+                """ `per tile`:
                 obj_id        -> instance (int)
                 Tile()        -> instance (maybe enum(int) {Tile/Unit/Item})
                 Position()    -> instance
@@ -104,29 +105,27 @@ class MapSystem(System):
                 tile = self.engine.entities.create()
                 # shared components
                 self.engine.tiles.add(tile, Tile())
-                if c not in self.engine.renders.shared:
-                    self.engine.renders.shared[c] = Render(c)
-                self.engine.renders.add(tile, self.engine.renders.shared[c])
-                if c == '#':
-                    self.engine.infos.add(tile, Information('wall'))
-                elif c in ('/', '+'):
-                    self.engine.infos.add(tile, Information('door'))
+                i = self.engine.infos.shared[env_char_to_name[c]]
+                self.engine.infos.add(tile, i)
+                r = random.choice(self.engine.renders.shared[i.name])
+                self.engine.renders.add(tile, r)
+                if c in ('/', '+'):
+                    # This is a unique case (possibly more in the future) in
+                    # that this tile creates a map entity with Openable.
                     self.engine.openables.add(tile, Openable(opened=c=='/'))
-                elif c == '<' or c == '>':
-                    self.engine.infos.add(tile, Information('stairs'))
-                elif c == '"':
-                    self.engine.infos.add(tile, Information('grass'))
-                elif c == '~':
-                    self.engine.infos.add(tile, Information('water'))
-                elif c == ';':
-                    render = self.engine.renders.find(tile)
-                    render.char = '"'
-                    self.engine.infos.add(tile, Information('grass'))
-                    other_entities.append((x, y, c))
-                else:
-                    self.engine.infos.add(tile, Information('floor'))
-
+                elif c == '"' and random.randint(0, 3) == 0:
+                    # This is a unique case (possibly more in the future) in
+                    # that this tile creates both a map and item entity:
+                    flower = self.engine.entities.create()
+                    self.engine.items.add(flower, Item('crafting'))
+                    self.engine.positions.add(flower, Position(
+                        x, y, map_id=world.id, moveable=False, blocks_movement=False
+                    ))
+                    r = random.choice(self.engine.renders.shared['flower'])
+                    self.engine.renders.add(flower, r)
+                    self.engine.infos.add(flower, self.engine.infos.shared['flower'])
                 # per instance components
+                self.engine.visibilities.add(tile, Visibility())
                 self.engine.positions.add(tile, Position(
                     x, 
                     y,
@@ -134,15 +133,16 @@ class MapSystem(System):
                     moveable=False, 
                     blocks_movement=c in ('#', '+')
                 ))
-                self.engine.visibilities.add(tile, Visibility())
+        # any objects found in the map that should have other properties will
+        # be created as a different entity with non-map properties.
         for x, y, c in other_entities:
-            if c == ';':
+            if c == 'flower':
                 flower = self.engine.entities.create()
                 self.engine.items.add(flower, Item('crafting'))
                 self.engine.positions.add(flower, Position(
                     x, y, map_id=world.id, moveable=False, blocks_movement=False
                 ))
-                self.engine.renders.add(flower, Render(char=c))
+                self.engine.renders.add(flower, self.engine.shared['flower'])
                 self.engine.infos.add(flower, Information('flower'))
         # create world graph if ran the first time
         if not self.engine.world:
@@ -158,6 +158,10 @@ class MapSystem(System):
             })
 
     def regenerate_map(self, map_id):
+        """
+        Wrapper for load_map. Saves current map if it exists before 
+        reading saved map data
+        """
         if self.engine.world:
             self.save_map(map_id)
             self.delete_map(map_id)

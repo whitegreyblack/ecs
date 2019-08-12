@@ -32,16 +32,17 @@ class CommandSystem(System):
         doors = {}
         # compare coordinates against entities that can be closed that have a
         # a position x, y value in the coordinates list.
-        for entity_id, (openable, coordinate, render) in g:
-            if (coordinate.x, coordinate.y) in coordinates and openable.opened:
+        for closeable_id, (closeable, coordinate, render) in g:
+            if (coordinate.x, coordinate.y) in coordinates and closeable.opened:
                 x = coordinate.x - position.x
                 y = coordinate.y - position.y
-                doors[(x, y)] = (openable, coordinate, render)
+                doors[(x, y)] = (closeable_id, closeable, coordinate, render)
+        print(doors)
         door_to_close = None
         if not doors:
             self.engine.logger.add(f"No opened door to close.")
         elif len(doors) == 1:
-            door_to_close, = doors.items()
+            door_to_close, = doors.values()
         else:
             self.engine.logger.add(f"Which door to close?")
             self.engine.screen.render()
@@ -55,12 +56,17 @@ class CommandSystem(System):
             if not door:
                 self.engine.logger.add(f"You cancel closing a door.")
             else:
-                door_to_close = ((movement.x, movement.y), door)
+                door_to_close = door
         if door_to_close:
-            ((x, y), (openable, position, render)) = door_to_close
-            openable.opened = False
+            print(door_to_close)
+            door_id, closeable, position, render = door_to_close
+            door_entity = self.engine.entities.find(door_id)
+            closeable.opened = False
             position.blocks_movement = True
-            render.char = '+'
+            self.engine.renders.add(
+                door_entity, 
+                random.choice(self.engine.renders.shared['closed wooden door'])
+            )
             self.engine.logger.add(f"You close the door.")
             turn_over = True
         return turn_over
@@ -82,12 +88,12 @@ class CommandSystem(System):
         doors = {}
         # compare coordinates against entities that can be opened that have a
         # a position x, y value in the coordinates list.
-        for entity_id, (openable, coordinate, render) in g:
+        for openable_id, (openable, coordinate, render) in g:
             valid_coordinate = (coordinate.x, coordinate.y) in coordinates
             if valid_coordinate and not openable.opened:
                 x = coordinate.x - position.x
                 y = coordinate.y - position.y
-                doors[(x, y)] = (openable, coordinate, render)
+                doors[(x, y)] = (openable_id, openable, coordinate, render)
         door_to_open = None
         if not doors:
             self.engine.logger.add(f"No closed doors to open.")
@@ -108,10 +114,14 @@ class CommandSystem(System):
             else:
                 door_to_open = door
         if door_to_open:
-            openable, position, render = door_to_open
+            openable_id, openable, position, render = door_to_open
+            openable_entity = self.engine.entities.find(openable_id)
             openable.opened = True
             position.blocks_movement = False
-            render.char = '/'
+            self.engine.renders.add(
+                openable_entity, 
+                random.choice(self.engine.renders.shared['opened wooden door'])
+            )
             self.engine.logger.add(f"You open the door.")
             turn_over = True
         return turn_over

@@ -2,6 +2,8 @@
 
 """Spawn system controls unit and item generation"""
 
+import random
+
 from source.common import join, join_without_key
 from source.ecs import (
     AI, Armor, Health, Information, Input, Inventory, Item, Position, Render)
@@ -55,17 +57,19 @@ class SpawnSystem(System):
             computer, 
             Position(*space, map_id=self.engine.world.id)
         )
-        self.engine.renders.add(computer, Render('g'))
         self.engine.ais.add(computer, AI())
-        info = Information("goblin")
+        render = random.choice(self.engine.renders.shared['goblin'])
+        self.engine.renders.add(computer, render)
+        info = self.engine.infos.shared['goblin']
         self.engine.infos.add(computer, info)
         self.engine.healths.add(computer, Health(2, 2))
         
         # add items to inventory
         item = self.engine.entities.create()
         self.engine.items.add(item, Item('weapon'))
-        self.engine.renders.add(item, Render('/'))
-        self.engine.infos.add(item, Information('spear'))
+        r = random.choice(self.engine.renders.shared['spear'])
+        self.engine.renders.add(item, r)
+        self.engine.infos.add(item, self.engine.infos.shared['spear'])
         self.engine.inventories.add(computer, Inventory(items=[item.id]))
 
         # self.engine.logger.add(f"Created a {info.name} from spawn_system!")

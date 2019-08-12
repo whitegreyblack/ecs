@@ -9,7 +9,6 @@ from collections import defaultdict
 from textwrap import wrap
 
 from source.astar import pathfind
-from source.color import colors
 from source.common import (border, direction_to_keypress, eight_square, join,
                            scroll)
 from source.ecs.components import Movement
