@@ -103,7 +103,18 @@ def extend(mapstring: str, mapgen: object=empty_matrix, char: str='"') -> str:
     return string(new)
 
 def generate_poisson_array(width: int, height: int) -> list:
-    return np.random.poisson(5, width * height)
+    arr = np.random.poisson(5, width * height)
+    # print(arr, distribution(arr))
+    return arr
+
+def distribution(array: list) -> list:
+    d = {}
+    for x in array:
+        if x not in d:
+            d[x] = 1
+        else:
+            d[x] += 1
+    return d
 
 def replace_cell_with_stairs(
         matrix: list, 
@@ -118,54 +129,54 @@ def replace_cell_with_stairs(
             for x in range(w) for y in range(h)
                 if matrix[y][x] == '.'
     ]
+    if len(floors) < 3:
+        raise Exception("No room for both down and up stairs")
     random.shuffle(floors)
     if not upstairs:
-        while True:
-            x, y = floors.pop()
-            for i, j in squares(exclude_center=True):
-                if (x+i, y+j) not in floors:
-                    x, y = None, None
-                    break
-            if x and y:
-                upstairs = (x, y)
-                break
+        upstairs = floors.pop()
     matrix[upstairs[1]][upstairs[0]] = '<'
-    while not downstairs:
-        while True:
-            x, y = floors.pop()
-            for i, j in squares(exclude_center=True):
-                if (x+i, y+j) not in floors:
-                    x, y = None, None
-                    break
-            if x and y:
-                downstairs = (x, y)
-                break
+    if not downstairs:
+        downstairs = floors.pop()
     matrix[downstairs[1]][downstairs[0]] = '>'
     return matrix
 
-def transform_random_array_to_matrix(
+def array_to_matrix(
         array: list, 
         width: int, 
         height: int, 
-        filterpoint: int
+        filterer: object,
+        chars: tuple = ('#', '.')
     ) -> list:
     matrix = [[None for _ in range(width)] for _ in range(height)]
     for i in range(width):
         for j in range(height):
-            if array[j * width + i] == filterpoint:
-                matrix[j][i] = '#'
+            if filterer(array[j * width + i]):
+                matrix[j][i] = chars[0]
             else:
-                matrix[j][i] = '.'
+                matrix[j][i] = chars[1]
     return matrix
 
-def add_boundry_to_matrix(matrix: list) -> list:
+def add_boundry_to_matrix(matrix: list, bounds=2) -> list:
     width, height = dimensions(matrix)
-    for i in (0, 1, width-2, width-1):
+    # vertical sides (left, right)
+    x_points = []
+    for x in range(bounds, 0, -1):
+        x_points.append(bounds - x)
+        x_points.append(width - x)
+    for i in x_points:
         for j in range(height):
             matrix[j][i] = '#'
-    for j in (0, 1, height-2, height-1):
+    # horizontal sides (top, bottom)
+    y_points = []
+    for y in range(bounds, 0, -1):
+        y_points.append(bounds - y)
+        y_points.append(height - y)
+    for j in y_points:
         for i in range(width):
             matrix[j][i] = '#'
+    return matrix
+
+def add_blob(matrix: list) -> list:
     return matrix
 
 def cell_auto(matrix: list, alivelimit: int=4, deadlimit: int=5) -> list:
@@ -208,7 +219,8 @@ def flood_fill(matrix:list) -> list:
         while queue:
             x, y = queue.pop()
             group.append((x, y))
-            for i, j in squares(exclude_center=True):
+            # for i, j in squares(exclude_center=True):
+            for i, j in ((-1, 0), (1, 0), (0, 1), (0, -1)):
                 if (x + i, y + j) in floors:
                     floors.remove((x+i, y+j))
                     queue.append((x+i, y+j))
@@ -260,6 +272,25 @@ DUNGEON = """
 ###########################################################"""[1:]
 
 SHADOWBARROW = '''
+..........................................................
+..........#####..#####..#####..###########.......####.....
+..........#...#..#...#..#...#..#...#.#...#......##..##....
+..........#...#..#...#..#...#..#...+.+...#....###....###..
+..........##+##..##+##..##+##..#####.#####....#....>...#..
+.#######.......................#...#.....#....#.#....#.#..
+.#.....#.......................#...+.....#....#........#..
+.#.....#.......................#####+#####....#........#..
+.#.....#.....................................##.#....#.##.
+.#.....+.....................................+..........#.
+.#.....#.....................................##........##.
+.#.....#.......................###+######....#..#....#..#.
+.#######..##+##..##+##..##+##..#........#....#..........#.
+..........#...#..#...#..#...#..#........#....###......###.
+..........#...#..#...#..#...#..#........#......##....##...
+..........#####..#####..#####..##########.......######....
+..........................................................'''[1:]
+
+COPY = '''
 ..........................................................
 ..........#####..#####..#####..###########.......####.....
 ..........#...#..#...#..#...#..#...#.#...#......##..##....

@@ -63,7 +63,7 @@ class GraveSystem(System):
             moveable=False,
             blocks_movement=False
         ))
-        self.engine.decays.add(body, Decay(10))
+        self.engine.decays.add(body, Decay(1000))
 
     def drop_inventory(self, entity):
         position = self.engine.positions.find(entity)

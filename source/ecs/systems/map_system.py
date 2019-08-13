@@ -6,15 +6,16 @@ import pickle
 import random
 
 from source.common import join
+from source.description import env_char_to_name
 from source.ecs.components import (Information, Item, Openable, Position,
                                    Render, Tile, TileMap, Visibility)
 from source.graph import DungeonNode, WorldGraph
-from source.maps import (add_boundry_to_matrix, cell_auto, flood_fill,
-                         generate_poisson_array, replace_cell_with_stairs,
-                         string, transform_random_array_to_matrix)
+from source.maps import (add_boundry_to_matrix, array_to_matrix, cell_auto,
+                         flood_fill, generate_poisson_array, matrix,
+                         replace_cell_with_stairs, string)
 
 from .system import System
-from source.description import env_char_to_name
+
 
 class MapSystem(System):
     def save_map(self, map_id):
@@ -81,14 +82,16 @@ class MapSystem(System):
             dungeon = [[c for c in row] for row in mapstring.split('\n')]
             tilemap = TileMap(len(dungeon[0]), len(dungeon))
         else:
-            random_array = generate_poisson_array(58, 17)
-            no_stairs = transform_random_array_to_matrix(random_array, 58, 17, 3)
-            no_stairs = add_boundry_to_matrix(no_stairs)
-            for i in range(3):
+            w, h = 58, 17
+            random_array = generate_poisson_array(w, h)
+            no_stairs = array_to_matrix(random_array, w, h, filterer=lambda x: x < 3 or x >= 8)
+            no_stairs = add_boundry_to_matrix(no_stairs, bounds=1)
+            for i in range(4):
                 no_stairs = cell_auto(no_stairs, deadlimit=5+(i-5))
             no_stairs = flood_fill(no_stairs)
             dungeon = replace_cell_with_stairs(no_stairs)
-            tilemap = TileMap(58, 17)
+            print(string(dungeon))
+            tilemap = TileMap(w, h)
         self.engine.tilemaps.add(world, tilemap)
         # add tiles and tile specific attribute components
         other_entities = []
