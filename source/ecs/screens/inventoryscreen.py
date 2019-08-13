@@ -13,6 +13,7 @@ from source.common import (border, direction_to_keypress, eight_square, join,
                            scroll)
 from source.ecs.components import Movement
 from source.keyboard import valid_keypresses
+from source.messenger import Logger
 from source.raycast import cast_light
 
 from .screen import Screen
@@ -21,11 +22,14 @@ from .screen import Screen
 class InventoryMenu(Screen):
     def __init__(self, engine, terminal):
         super().__init__(engine, terminal)
+        self.logger = Logger()
         self.index = -1
         self.page = 0
         self.max_items = 14
         self.current_item_id = None
         self.valid_keypresses.update({
+            'e',
+            'd',
             'escape', 
             'enter', 
             'down', 
@@ -119,6 +123,16 @@ class InventoryMenu(Screen):
             for y, line in enumerate(lines):
                 self.terminal.addstr(h // 4 + 4 + y, w // 4 + 3, line)
 
+    def render_logs(self):
+        logs = self.logger.messages
+        if len(logs) >= 2:
+            l = max(0, len(logs)) - 3
+            logs = logs[l:]
+        
+        for y, log in enumerate(logs):
+            log_y = self.engine.height - 4 + y
+            self.terminal.addstr(log_y, 1, str(log))
+
     def render(self):
         if not self.current_item_id:
             self.terminal.erase()
@@ -132,6 +146,8 @@ class InventoryMenu(Screen):
             self.render_items()
         else:
             self.render_item()
+
+        self.render_logs()
         self.terminal.refresh()
     
     def handle_input(self):
@@ -164,3 +180,11 @@ class InventoryMenu(Screen):
             pass
         elif key == 'greater-than':
             pass
+        elif key == 'e':
+            self.logger.add('Pressed e')
+            if self.index < 0:
+                self.logger.add('Pressed e but no item selected')
+        elif key == 'd':
+            self.logger.add('Pressed d')
+            if self.index < 0:
+                self.logger.add('Pressed d but no item selected')

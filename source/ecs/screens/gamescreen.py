@@ -368,9 +368,7 @@ class GameScreen(Screen):
         )
         self.terminal.addstr(self.logs_panel_y, self.logs_panel_x + 1, '[log]')
 
-        # logs = filter(lambda x: x.lifetime > 0, self.engine.logger.messages)
         logs = self.engine.logger.messages
-        tilemap = self.engine.tilemaps.find(eid=self.engine.world.id)
         # only iterate slice of logs if it is larger than screen
         if len(logs) >= self.logs_items_height:
             l = max(0, len(logs) - self.logs_items_height - 1)
