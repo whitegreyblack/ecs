@@ -2,12 +2,16 @@
 
 """Base system class"""
 
+from messenger import Logger
+
+
 class System(object):
     def __init__(self, engine, logger=None):
         # reference to the engine object
         self.engine = engine
-        # need a logger listener here that appends to self.engine.logger
-        self.logger = logger
+        # if a logger is passed in it will overwrite the logger instance
+        # if not then a new logger will be created
+        self.logger = logger if logger else Logger()
 
     @classmethod
     def classname(cls):
