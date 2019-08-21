@@ -26,10 +26,13 @@ Notes:
     It is a possible route to consider.
 """
 
+import enum
 import random
 from dataclasses import dataclass, field
-from source.keyboard import keypress_to_direction
+
 from source.common import squares
+from source.keyboard import keypress_to_direction
+
 
 class Component(object):
     """
@@ -55,10 +58,10 @@ class AI(Component):
         self.path = None
     
 class Collision(Component):
-    __slots__ = ['entity_id', 'x', 'x']
+    __slots__ = ['entity', 'x', 'x']
     manager: str = 'collisions'
-    def __init__(self, entity_id: int = -1, x: int = 0, y: int = 0):
-        self.entity_id = entity_id
+    def __init__(self, entity: int = -1, x: int = 0, y: int = 0):
+        self.entity = entity
         self.x = x
         self.y = y
 
@@ -73,13 +76,25 @@ class Decay(Component):
 #     manager: str = 'destroyed'
 
 class Effect(Component):
-    __slots__ = ['entity_id', 'char', 'color', 'ticks']
     manager: str = 'effects'
-    def __init__(self, entity_id:int, char:str, color:int, ticks:int=1):
-        self.entity_id = entity_id
+    ...
+
+class MeleeHitEffect(Effect):
+    __slots__ = ['entity', 'char', 'color']
+    manager: str = 'effects'
+    def __init__(self, entity: int, char: str, color:int):
+        self.entity = entity
         self.char = char
         self.color = color
-        self.ticks = ticks
+
+class RangeHitEffect(Effect):
+    __slots__ = ['entity', 'char', 'color', 'path']
+    manager: str = 'effects'
+    def __init__(self, entity: int, char: str, color: int, path: list):
+        self.entity = entity
+        self.char = char
+        self.color = color
+        self.path = path
 
 # class Energy(Component):
 #     amount: int
@@ -151,19 +166,31 @@ class Openable(Component):
         self.opened = opened
 
 class Position(Component):
-    __slots__ = ['x', 'y', 'map_id', 'moveable', 'blocks_movement']
+    __slots__ = 'x', 'y', 'map_id', 'movement_type', 'blocks_movement'
     manager: str = 'positions'
+    class MovementType(enum.Enum):
+        # no movement
+        NONE = enum.auto()
+        # only land tiles
+        GROUND = enum.auto()
+        # any tiles
+        FLYING = enum.auto()
+        # only water tiles
+        SWIMMING = enum.auto()
+        # cursor - only visible tiles
+        VISIBLE = enum.auto()
+
     def __init__(self, 
         x: int = 0,
         y: int = 0,
         map_id: int = -1,
-        moveable: bool = True,
+        movement_type: int = MovementType.NONE,
         blocks_movement: bool = True
     ):
         self.x = x
         self.y = y
         self.map_id = map_id
-        self.moveable = moveable
+        self.movement_type = movement_type
         self.blocks_movement = blocks_movement
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
@@ -174,20 +201,16 @@ class Position(Component):
         x: int = None, 
         y: int = None, 
         map_id: int = None, 
-        moveable: bool = None, 
+        movement_type: int = None, 
         blocks_movement: bool = None
     ):
-        if x is None:
-            x = self.x
-        if y is None:
-            y = self.y
-        if map_id is None:
-            map_id = self.map_id
-        if moveable is None:
-            moveable = self.moveable
-        if blocks_movement is None:
-            blocks_movement = self.blocks_movement
-        return Position(x, y, map_id, moveable, blocks_movement)
+        return Position(
+            x if x else self.x, 
+            y if y else self.y, 
+            map_id if map_id else self.map_id, 
+            movement_type if movement_type else self.movement_type, 
+            blocks_movement if blocks_movement is not None else self.blocks_movement
+        )
 
 class Render(Component):
     __slots__ = ['char', 'color']
@@ -235,7 +258,7 @@ class Inventory(Component):
         self.items = items if items else list()
 
 class Equipment(Component):
-    equipment = __slots__ = ['head', 'body', 'hand', 'feet', 'missile']
+    equipment = __slots__ = ['head', 'body', 'hand', 'feet', 'missile', 'ammo']
     manager: str = 'equipments'
     def __init__(
         self, 
@@ -243,13 +266,15 @@ class Equipment(Component):
         body: int = None,
         hand: int = None,
         feet: int = None,
-        missile: int = None
+        missile: int = None,
+        ammo: int = None
     ):
         self.head = head
         self.body = body
         self.hand = hand
         self.feet = feet
         self.missile = missile
+        self.ammo = ammo
 
 class Weapon(Component):
     __slots__ = ['damage']
@@ -264,15 +289,18 @@ class Item(Component):
         self.category = category
         self.seen = False
 
-# class Unit(Component):
-#     race: str
-#     manager: str = 'units'
-
 class Armor(Component):
     __slots__ = ['defense']
     manager: str = 'armors'
     def __init__(self, defense: int = 0):
         self.defense = defense
+
+class Cursor(Component):
+    __slots__ = ['entity']
+    manager: str = 'cursors'
+    def __init__(self, entity: int):
+        self.entity = entity
+
 
 components = Component.__subclasses__()
 

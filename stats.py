@@ -37,4 +37,8 @@
 
 * Removed ids from entity_manager:
     ~403.1 KiB | ~402.2 KiB
+
+* Join memory footprint reduce:
+    Total allocated size: 348.3 KiB @ startup
+    Total allocated size: 372.7 KiB @ 10 turns
 """

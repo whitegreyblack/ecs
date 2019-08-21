@@ -7,7 +7,7 @@ class ComponentManager(object):
     __slots__ = ['ctype', 'components', 'shared']
 
     def __init__(self, ctype, dicttype=dict):
-        self.ctype = ctype.__name__
+        self.ctype = ctype
         self.components = dicttype()
         self.shared = dict()
 
@@ -31,8 +31,11 @@ class ComponentManager(object):
         Adds a key-value pair between an entity and the component to the 
         component dictionary.
         """
-        if type(component).__name__ is not self.ctype:
-            raise ValueError("Invalid component type added.")
+        is_instance = isinstance(component, self.ctype)
+        is_inherited = self.ctype in type(component).__bases__
+        if not is_instance and not is_inherited:
+            # raise ValueError("Invalid component type added.")
+            raise ValueError(f"Ctype: {self.ctype} Instance: {is_instance}, Inherited: {is_inherited}")
         self.components[entity_id] = component
 
     def remove(self, eid: int) -> bool:

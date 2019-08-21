@@ -6,11 +6,10 @@ import curses
 import random
 import time
 
-from source.astar import pathfind
-from source.common import (border, direction_to_keypress, eight_square, join,
-                           join_on, join_drop_key, scroll)
-from source.ecs.components import Movement
-from source.keyboard import valid_keypresses
+from source.common import (GameMode, border, direction_to_keypress,
+                           eight_square, join, join_drop_key, join_on, scroll)
+from source.ecs.components import Movement, Position, Effect, MeleeHitEffect, RangeHitEffect
+from source.pathfind import pathfind, bresenhams
 from source.raycast import cast_light
 
 from .screen import Screen
@@ -22,7 +21,24 @@ class GameScreen(Screen):
         self.initialize_coordinates()
         self.entities = None
         self.entity_index = 0
-        self.valid_keypresses.update(valid_keypresses)
+        self.valid_keypresses.update({
+            'escape',
+            # arrowkeys/keypad arrows
+            'up-left', 'up', 'up-right',
+            'left', 'center', 'right',
+            'down-left', 'down', 'down-right',
+            'c', # close door
+            'e', # equipment
+            'i', # inventory
+            'o', # close door
+            'l', # look
+            'comma', # pickup
+            'less-than', # move up stairs
+            'greater-than', # move down stairs
+            't', # throw missile,
+            'tilde',
+            'enter',
+        })
 
     def initialize_coordinates(self):
         self.height, self.width = self.terminal.getmaxyx()
@@ -68,6 +84,10 @@ class GameScreen(Screen):
         self.logs_item_y = self.logs_panel_y + self.logs_panel_offset_y
         self.logs_item_width = self.logs_panel_width - self.logs_panel_offset_x * 2
         self.logs_items_height = self.logs_panel_height - self.logs_panel_offset_y * 2
+
+        # initialize a cursor
+        self.cursor = self.engine.entities.create()
+        self.engine.positions.add(self.cursor, Position())
 
     def render_string(self, x, y, string, attr=0):
         self.terminal.addstr(y, x, string, attr)
@@ -183,49 +203,55 @@ class GameScreen(Screen):
     #  0.000    0.000    1.858    0.093
     def render_map_panel(self):
         # calculate offsets on scrolling map
-        player_position = self.engine.positions.find(self.engine.player)
-        tilemap = self.engine.tilemaps.find(eid=player_position.map_id)
+        player = self.engine.positions.find(self.engine.player)
+        tilemap = self.engine.tilemaps.find(eid=player.map_id)
         if tilemap.width < self.map_width:
             cam_x = 0
         else:
-            cam_x = scroll(player_position.x, self.map_width, tilemap.width)
+            cam_x = scroll(player.x, self.map_width, tilemap.width)
         x0, x1 = cam_x, self.map_width + cam_x
         if tilemap.height < self.map_height:
             cam_y = 0
         else:
-            cam_y = scroll(player_position.y, self.map_height, tilemap.height)
+            cam_y = scroll(player.y, self.map_height, tilemap.height)
         y0, y1 = cam_y, self.map_height + cam_y
         # do line of sight calculations
         cast_light(self.engine, x0, x1, y0, y1)
 
+        start = time.time()
         # draw map panel border
         self.render_map_border()
 
         # draw environment
-        self.render_map(player_position.map_id, cam_x, cam_y, x0, x1, y0, y1)
+        self.render_map(player.map_id, cam_x, cam_y, x0, x1, y0, y1)
         
-        # 0.463    0.011    1.192    0.028 game_screen.py:207(<dictcomp>)py
-        # 0.180    0.013    0.462    0.033 game_screen.py:208(<setcomp>)
-        # 0.216    0.012    0.549    0.030 game_screen.py:209(<setcomp>)
         tiles = {
-            (position.x, position.y)
-                for position, visibility in join_drop_key(
+            (position.x, position.y): render
+                for position, visibility, render in join_drop_key(
                     self.engine.positions,
-                    self.engine.visibilities
+                    self.engine.visibilities,
+                    self.engine.renders
                 )
                 if visibility.level > 1
         }
+        visible_tiles = set(tiles.keys())
 
         # draw items
-        self.render_items(tiles, player_position.map_id, cam_x, cam_y, x0, x1, y0, y1)
+        self.render_items(visible_tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
         while True:
             # draw units
-            self.render_units(tiles, player_position.map_id, cam_x, cam_y, x0, x1, y0, y1)
+            self.render_units(visible_tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
             if not self.engine.effects.components:
                 break
+            if time.time() - start > (1 / 23):
+                self.engine.effects.components.clear()
+                break
             # draw effects
-            self.render_effects(tiles, player_position.map_id, cam_x, cam_y, x0, x1, y0, y1)
-            self.engine.effects.components.clear()
+            self.render_effects(tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
+            self.update_effects()
+        
+        if self.engine.mode in (GameMode.LOOKING, GameMode.MISSILE, GameMode.DEBUG):
+            self.render_cursor(visible_tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
 
     def render_map_border(self):
         border(
@@ -236,22 +262,6 @@ class GameScreen(Screen):
             self.map_panel_height
         )
 
-    # timings on different join statements
-    # 0.242    0.015    0.924    0.058 <- join without key (tuple)
-    # 0.485    0.016    1.837    0.061 <- join (tuple)
-    # 0.502    0.025    1.058    0.053 <- join (no tuple)
-    # 0.589    0.025    1.240    0.052 <- join without key (tuple)
-    # 0.276    0.011    1.363    0.052 <- ...
-    # 0.247    0.008    1.522    0.051 <- ...
-    # 0.287    0.008    1.762    0.050 <- join w/ key and w/ tuple
-    # 0.165    0.009    0.989    0.052 <- join w/o key and w/ tuple
-    # 0.434    0.012    1.090    0.031 <- join w/o tuple
-    # 0.423    0.018    1.088    0.047 <- ...
-    # 0.395    0.019    1.024    0.049 <- join w/ key and w/o tuple
-    # 0.651    0.018    1.697    0.046 <- ...
-    # 0.432    0.017    1.121    0.045 <- ...
-    # 1.712    0.002    3.688    0.005 game_screen.py:250(render_map) with 57x17 map
-    # 0.576    0.014    1.530    0.036 game_screen.py:251(render_map) with 200x50 map (x7 slower)
     def render_map(self, map_id, cam_x, cam_y, x0, x1, y0, y1):
         x_offset = self.map_x - cam_x
         y_offset = self.map_y - cam_y
@@ -274,6 +284,21 @@ class GameScreen(Screen):
                     curses.color_pair(c)
                 )
 
+    def render_cursor(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
+        cursor = self.engine.positions.find(self.engine.cursor)
+        x_offset = self.map_x - cam_x
+        y_offset = self.map_y - cam_y
+        if self.engine.mode in (GameMode.LOOKING, GameMode.DEBUG):
+            self.render_char(cursor.x + x_offset, cursor.y + y_offset, 'X')
+        else:
+            player = self.engine.positions.find(self.engine.player)
+            path = pathfind(self.engine, player, cursor, pathfinder=bresenhams)
+            x_offset = self.map_x - cam_x
+            y_offset = self.map_y - cam_y
+            for x, y in path[1:]:
+                self.render_char(x + x_offset, y + y_offset, 'X')
+        self.engine.logger.add("Rendered cursor")
+
     def render_units(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
         # look for all positions not in tile positions and visibilities.
         # if their positions match and map is visible then show the unit
@@ -289,7 +314,8 @@ class GameScreen(Screen):
             if (
                 position.map_id == self.engine.world.id
                 and (position.x, position.y) in tiles
-                and x0 <= position.x < x1 and y0 <= position.y < y1
+                and x0 <= position.x < x1 
+                and y0 <= position.y < y1
             ):
                 # current_map_id = position.map_id == map_id
                 color = render.color if (position.x, position.y) in tiles else 0
@@ -331,34 +357,71 @@ class GameScreen(Screen):
                     curses.color_pair(render.color)
                 )
 
-    def render_effects(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
-        # eid, effect = self.engine.effects.
+    def update_effects(self):
+        self.engine.effects.components.clear()
 
+    def render_effects(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
+        """
+        Currently have the following effects:
+            - attack animation
+        Working on:
+            - missile animation
+        Want:
+            - spell animation
+        """
+
+        x_offset = self.map_x - cam_x
+        y_offset = self.map_y - cam_y
         for eid, effect in self.engine.effects.components.items():
-            position = self.engine.positions.find(eid=effect.entity_id)
-            render = self.engine.renders.find(eid=effect.entity_id)
-            info = self.engine.infos.find(eid=effect.entity_id)
+            if isinstance(effect, RangeHitEffect):
+                self.engine.logger.add(f"Range hit effect {effect}")
+            position = self.engine.positions.find(effect.entity)
+            render = self.engine.renders.find(effect.entity)
+            info = self.engine.infos.find(effect.entity)
             # only shows if inside the view area and space is lighted
             if ((position.x, position.y) in tiles 
                 and x0 <= position.x < x1 
                 and y0 <= position.y < y1
             ):
-                self.render_char(
-                    self.map_x + position.x - cam_x,
-                    self.map_y + position.y - cam_y,
-                    effect.char
-                )
-                self.terminal.noutrefresh()
-                curses.doupdate()
-                time.sleep(.1)
-                self.render_char(
-                    self.map_x + position.x - cam_x,
-                    self.map_y + position.y - cam_y,
-                    render.char,
-                    curses.color_pair(render.color)
-                )
-                self.terminal.noutrefresh()
-                curses.doupdate()
+                if isinstance(effect, MeleeHitEffect):
+                    self.render_char(
+                        position.x + x_offset,
+                        position.y + y_offset,
+                        effect.char,
+                        0
+                    )
+                    self.terminal.noutrefresh()
+                    curses.doupdate()
+                    time.sleep(.045)
+                    self.render_char(
+                        position.x + x_offset,
+                        position.y + y_offset,
+                        render.char,
+                        curses.color_pair(render.color)
+                    )
+                    self.terminal.noutrefresh()
+                    curses.doupdate()
+                else:
+                    for x, y in effect.path[1:]:
+                        print(x, y)
+                        self.render_char(
+                            x + x_offset,
+                            y + y_offset,
+                            '*',
+                            0
+                        )
+                        self.terminal.noutrefresh()
+                        curses.doupdate()
+                        time.sleep(.023)
+                        self.render_char(
+                            x + x_offset,
+                            y + y_offset,
+                            tiles[(x, y)].char,
+                            curses.color_pair(tiles[(x, y)].color)
+                        )
+                        self.terminal.noutrefresh()
+                        curses.doupdate()
+                        time.sleep(.023)
 
     def render_log(self, log, ly, lx):
         self.terminal.addstr(ly, lx, '> ' + str(log))
@@ -396,4 +459,7 @@ class GameScreen(Screen):
         curses.doupdate()
    
     def process(self):
-        return self.engine.turn_system.process()
+        if self.engine.mode == GameMode.NORMAL:
+            return self.engine.turn_system.process()
+        else:
+            return self.engine.look_system.process()

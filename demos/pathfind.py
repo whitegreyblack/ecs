@@ -9,10 +9,10 @@ from dataclasses import dataclass
 
 import click
 
-from source.astar import astar, cardinal
 from source.ecs.components import Position
 from source.keyboard import keyboard
 from source.maps import dimensions, dungeons, matrix
+from source.pathfind import astar, bresenhams, cardinal
 
 d = {
     (-1, -1): '7',
@@ -30,7 +30,7 @@ def direction(a, b):
     y = a[1] - b[1]
     return d.get((x, y))
 
-def main(screen, mapstring):
+def main(screen, mapstring, finder):
     # setup colors
     curses.init_pair(1, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
@@ -71,9 +71,11 @@ def main(screen, mapstring):
             screen.addstr(height+2, 0, f"b: {b.x:02}, {b.y:02}")
         if a and b and changed:
             start = time.time()
-            path = astar(tiles, a, b, paths=cardinal)
+            if finder == "astar":
+                path = astar(tiles, a, b, paths=cardinal)
+            else:
+                path = bresenhams(tiles, a, b)
             screen.addstr(height+6, 0, f"{time.time()-start}")
-            print(time.time() - start)
             changed = False
         if path:
             nheight = 0
@@ -114,9 +116,10 @@ def main(screen, mapstring):
 
 @click.command()
 @click.option('-d', "--dungeon", default="shadowbarrow")
-def preload(dungeon):
+@click.option('-f', "--finder", default="astar")
+def preload(dungeon, finder):
     m = dungeons[dungeon]
-    curses.wrapper(main, m)
+    curses.wrapper(main, m, finder)
 
 if __name__ == "__main__":
     preload()

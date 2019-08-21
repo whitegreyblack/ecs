@@ -119,7 +119,10 @@ class MapSystem(System):
                     flower = self.engine.entities.create()
                     self.engine.items.add(flower, Item('crafting'))
                     self.engine.positions.add(flower, Position(
-                        x, y, map_id=world.id, moveable=False, blocks_movement=False
+                        x, y, 
+                        map_id=world.id, 
+                        movement_type=Position.MovementType.NONE, 
+                        blocks_movement=False
                     ))
                     r = random.choice(self.engine.renders.shared['flower'])
                     self.engine.renders.add(flower, r)
@@ -130,7 +133,7 @@ class MapSystem(System):
                     x, 
                     y,
                     map_id=map_id,
-                    moveable=False, 
+                    movement_type=Position.MovementType.NONE,
                     blocks_movement=c in blocked
                 ))
         # any objects found in the map that should have other properties will
@@ -140,7 +143,10 @@ class MapSystem(System):
                 flower = self.engine.entities.create()
                 self.engine.items.add(flower, Item('crafting'))
                 self.engine.positions.add(flower, Position(
-                    x, y, map_id=world.id, moveable=False, blocks_movement=False
+                    x, y, 
+                    map_id=world.id, 
+                    movement_type=position.movement_type,
+                    blocks_movement=False
                 ))
                 self.engine.renders.add(flower, self.engine.shared['flower'])
                 self.engine.infos.add(flower, Information('flower'))

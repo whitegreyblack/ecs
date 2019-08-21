@@ -7,12 +7,11 @@ import random
 import time
 from dataclasses import dataclass, field
 
-from source.astar import pathfind
 from source.common import eight_square, join, nine_square
 from source.ecs.components import (Collision, Information, Item, Movement,
                                    Position, Render)
 from source.ecs.systems.system import System
-from source.keyboard import movement_keypresses, valid_keypresses
+from source.pathfind import pathfind
 
 
 class InputSystem(System):
@@ -193,14 +192,14 @@ class InputSystem(System):
     #         self.engine.render_system.process()
     #     return moved
 
-    def process(self, keypresses=None) -> str:
-        if not keypresses:
-            keypresses = self.engine.screen.valid_keypresses
+    def process(self, valid_keypresses=None) -> str:
+        if not valid_keypresses:
+            valid_keypresses = self.engine.screen.valid_keypresses
         keypress = None
         while keypress is None:
             char = self.engine.get_input()
             keypress = self.engine.keypress_from_input(char)
-            if keypress in keypresses:
+            if keypress in valid_keypresses:
                 self.engine.requires_input = False
             else:
                 keypress = None

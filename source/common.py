@@ -6,9 +6,16 @@ import curses
 import math
 import random
 import time
+from enum import Enum, auto
 
 from source.keyboard import keypress_to_direction
 
+
+class GameMode(Enum):
+    DEBUG = auto()
+    NORMAL = auto()
+    LOOKING = auto()
+    MISSILE = auto()
 
 def squares(exclude_center:bool=False) -> tuple:
     """
@@ -61,15 +68,18 @@ def entity_component(eid, *managers):
     for m in managers:
         yield m.components[eid]
 
-def j(*managers) -> set:
-    return set.intersection(*map(set, (m.components for m in managers)))
+def j(first, *rest) -> set:
+    keys = set(first.components)
+    for d in rest:
+        keys.intersection_update(d.components)
+    for k in keys:
+        yield k
 
 def join(*managers) -> tuple:
     # at least two needed else returns dict items
     if len(managers) == 1:
         return managers.components.items()
-    keys = set.intersection(*map(set, (m.components for m in managers)))
-    for eid in keys:
+    for eid in j(*managers):
         yield eid, (m.components[eid] for m in managers)
 
 def join_on(keys, *managers):
@@ -81,9 +91,8 @@ def join_on(keys, *managers):
 def join_drop_key(*managers) -> tuple:
     # at least two needed else returns dict items
     if len(managers) == 1:
-        return managers.components.items()
-    keys = set.intersection(*map(set, (m.components for m in managers)))
-    for eid in keys:
+        return managers.components.values()
+    for eid in j(*managers):
         yield (m.components[eid] for m in managers)
 
 def join_conditional(*managers, key=True, conditions=None) -> tuple:

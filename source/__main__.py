@@ -13,10 +13,10 @@ import click
 
 from source.common import border, join, join_drop_key
 from source.description import shared_cache
-from source.ecs import (AI, Armor, Collision, Decay, Effect,
-                        Equipment, Health, Information, Input,
-                        Inventory, Item, Movement, Openable, Position, Render,
-                        Tile, TileMap, Visibility, Weapon, components)
+from source.ecs import (
+    AI, Armor, Collision, Cursor, Decay, Effect, Equipment, Health,
+    Information, Input, Inventory, Item, Movement, Openable, Position, Render,
+    Tile, TileMap, Visibility, Weapon, components)
 from source.ecs.systems import systems
 from source.engine import Engine
 from source.graph import DungeonNode, WorldGraph, WorldNode, graph
@@ -35,9 +35,8 @@ def curses_setup(screen):
     curses.start_color()
     curses.use_default_colors()
     screen.nodelay(1)
-
     # initialize colors and save init_pair index values
-    for i in range(0, curses.COLORS-1):
+    for i in range(0, curses.COLORS - 1):
         curses.init_pair(i + 1, i, -1)
     return screen
 
@@ -79,7 +78,14 @@ def add_player(engine, spaces):
         raise Exception("No empty spaces to place player")
     space = spaces.pop()
     
-    engine.positions.add(player, Position(*space, map_id=engine.world.id))
+    engine.positions.add(
+        player, 
+        Position(
+            *space, 
+            map_id=engine.world.id, 
+            movement_type=Position.MovementType.GROUND
+        )
+    )
     engine.renders.add(player, Render('@'))
     engine.healths.add(player, Health(10, 20))
     engine.infos.add(player, Information("Hero"))
@@ -94,7 +100,7 @@ def add_player(engine, spaces):
     
     # create some missiles for player
     stone = engine.entities.create()
-    engine.items.add(stone, Item('stone'))
+    engine.items.add(stone, Item('weapon'))
     engine.renders.add(stone, Render('*'))
     engine.infos.add(stone, Information(
         'stone', 
@@ -103,12 +109,20 @@ def add_player(engine, spaces):
     engine.weapons.add(stone, Weapon(1))
 
     # add items to an equipment component
-    e = Equipment(hand=spear, missile=stone)
+    e = Equipment(hand=spear, ammo=stone)
     engine.equipments.add(player, e)
     
     # add an inventory
     i = Inventory()
     engine.inventories.add(player, Inventory())
+
+def add_cursor(engine):
+    engine.cursor = engine.entities.create()
+    engine.cursors.add(engine.cursor, Cursor(engine.player))
+    engine.positions.add(
+        engine.cursor, 
+        Position(0, 0, blocks_movement=False)
+    )
 
 def add_computers(engine, npcs, spaces):
     for i in range(npcs):
@@ -125,7 +139,7 @@ def add_items(engine, items, spaces):
         engine.positions.add(item, Position(
             *space, 
             map_id=engine.world.id, 
-            moveable=False, 
+            movement_type=Position.MovementType.NONE, 
             blocks_movement=False
         ))
         r = random.choice(engine.renders.shared['food'])
@@ -134,7 +148,7 @@ def add_items(engine, items, spaces):
         engine.items.add(item, Item('food'))
         engine.decays.add(item, Decay())
 
-def ecs_setup(terminal, dungeon, npcs, items):
+def ecs_setup(terminal, dungeon):
     engine = Engine(
         components=components, 
         systems=systems,
@@ -144,35 +158,35 @@ def ecs_setup(terminal, dungeon, npcs, items):
     build_shared_components(engine)
     add_world(engine, ((0, dungeon),))
     spaces = find_empty_spaces(engine)
+    print(engine)
     add_player(engine, spaces)
-    add_computers(engine, npcs, spaces)
-    add_items(engine, items, spaces)
+    add_cursor(engine)
+    add_computers(engine, 2, spaces)
+    add_items(engine, 1, spaces)
     return engine
 
 def create_save_folder_if_not_exists():
     if not os.path.exists("source/saves"):
         os.mkdir("source/saves")
 
-def main(terminal, dungeon, npcs, items):
+def main(terminal, dungeon):
     seed = random.randint(0, 10000)
     random.seed(seed)
     terminal = curses_setup(terminal)
     dungeon = dungeons.get(dungeon.lower(), 'small')
-    engine = ecs_setup(terminal, dungeon=dungeon, npcs=npcs, items=items)
+    engine = ecs_setup(terminal, dungeon=dungeon)
     engine.run()
     engine.count_objects()
 
 @click.command()
 @click.option('-w', '--world', default='shadowbarrow')
-@click.option('-n', '--npcs', default=1)
-@click.option('-i', '--items', default=2)
 @click.option('-d', '--debug', is_flag=True, default=False)
-def preload(world, npcs, items, debug):
+def preload(world, debug):
     create_save_folder_if_not_exists()
     if debug:
         import tracemalloc
         tracemalloc.start()
-        curses.wrapper(main, world, npcs, items)
+        curses.wrapper(main, world)
         snapshot = tracemalloc.take_snapshot()
         top_stats = snapshot.statistics('traceback')
         for stat in top_stats:
@@ -180,7 +194,7 @@ def preload(world, npcs, items, debug):
         total = sum(stat.size for stat in top_stats)
         print("Total allocated size: %.1f KiB" % (total / 1024))
     else:
-        curses.wrapper(main, world, npcs, items)
+        curses.wrapper(main, world)
 
 
 if __name__ == "__main__":

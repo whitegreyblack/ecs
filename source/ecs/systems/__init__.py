@@ -6,6 +6,7 @@ from .grave_system import GraveSystem
 from .health_system import HealSystem
 from .input_system import InputSystem
 from .inventory_system import InventorySystem
+from .look_system import LookSystem
 from .map_system import MapSystem
 from .render_system import RenderSystem
 from .spawn_system import SpawnSystem

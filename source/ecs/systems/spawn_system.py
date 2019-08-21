@@ -58,7 +58,11 @@ class SpawnSystem(System):
         self.engine.inputs.add(computer, Input())
         self.engine.positions.add(
             computer,
-            Position(*space, map_id=self.engine.world.id)
+            Position(
+                *space, 
+                map_id=self.engine.world.id,
+                movement_type=Position.MovementType.GROUND
+            )
         )
         self.engine.ais.add(computer, AI())
         render = random.choice(self.engine.renders.shared['goblin'])

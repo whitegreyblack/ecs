@@ -10,7 +10,7 @@ from textwrap import wrap
 
 from source.common import (border, direction_to_keypress, eight_square, join,
                            scroll)
-from source.keyboard import valid_keypresses
+# from source.keyboard import valid_keypresses
 from source.messenger import Logger
 
 from .screen import Screen

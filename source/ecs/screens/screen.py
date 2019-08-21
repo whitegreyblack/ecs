@@ -79,8 +79,9 @@ class MainMenu(Screen):
             self.index = (self.index - 1) % len(self.options)
 
 class LookingMenu(Screen):
-    def __init__(self, engine, terminal, map_x, map_y):
+    def __init__(self, engine, terminal, map_x=0, map_y=0):
         super().__init__(engine, terminal)
+        self.valid_keypresses.update({'escape'})
         self.map_x = map_x
         self.map_y = map_y
         self.cursor_x = 0
@@ -101,6 +102,7 @@ class LookingMenu(Screen):
         self.trigger_cursor(False)
 
     def render(self):
+        self.engine.logger.add("Looking rendered")
         units = join(
             self.engine.healths,
             self.engine.infos,
@@ -135,25 +137,28 @@ class LookingMenu(Screen):
         )        
         self.terminal.refresh()
 
-    def get_input(self):
-        char = self.terminal.getch()
-        keypress = self.engine.keyboard.get(char, None)
-        if not keypress:
-            return True
-        q_keypress = keypress == 'q'
-        esc_keypress = keypress == 'escape'
-        if q_keypress or esc_keypress:
-            return False
-        elif keypress == 'up':
-            self.cursor_y -= 1
-            return True
-        elif keypress == 'down':
-            self.cursor_y += 1
-        elif keypress == 'left':
-            self.cursor_x -= 1
-        elif keypress == 'right':
-            self.cursor_x += 1
-        return True
+    # def get_input(self):
+    #     char = self.terminal.getch()
+    #     keypress = self.engine.keyboard.get(char, None)
+    #     if not keypress:
+    #         return True
+    #     q_keypress = keypress == 'q'
+    #     esc_keypress = keypress == 'escape'
+    #     if q_keypress or esc_keypress:
+    #         return False
+    #     elif keypress == 'up':
+    #         self.cursor_y -= 1
+    #         return True
+    #     elif keypress == 'down':
+    #         self.cursor_y += 1
+    #     elif keypress == 'left':
+    #         self.cursor_x -= 1
+    #     elif keypress == 'right':
+    #         self.cursor_x += 1
+    #     return True
+    def handle_input(self):
+        if self.engine.keypress == 'escape':
+            self.engine.change_screen('gamescreen')
 
 class DeathMenu(Screen):
     def __init__(self, engine, terminal):

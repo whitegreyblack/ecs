@@ -20,27 +20,6 @@ def octile(a, b, abs=abs):
     else:
         return .4 * dy + dx
 
-# currrent  : 4    0.073    0.018    0.170    0.042 astar.py:25(<dictcomp>)
-#           :10    0.194    0.019    0.449    0.045 astar.py:26(<dictcomp>)
-# dbg flag 1: 4    0.107    0.027    0.422    0.106 astar.py:26(<dictcomp>)
-# w/o key   :15    0.281    0.019    0.634    0.042 astar.py:28(<dictcomp>)
-# floor cond:20    0.369    0.018    0.846    0.042 astar.py:29(<dictcomp>)
-# expand #/+:13    0.239    0.018    0.543    0.042 astar.py:30(<dictcomp>)
-# no renders:35    0.513    0.015    1.189    0.034 astar.py:33(<setcomp>)
-# &{:} to {}:19    0.295    0.016    0.676    0.036 astar.py:31(<setcomp>)
-def pathfind(engine, start, end):
-    """Wrapper for ecs engine to use astar"""
-    tiles = {
-        (position.x, position.y)
-            for _, position in join_drop_key(
-                engine.tiles,
-                engine.positions
-            )
-            if not position.blocks_movement
-    }
-    path = astar(tiles, start, end)
-    return path
-
 def astar(tiles, start, end, paths=squares, include_start=False):
     heap = []
     path = {}
@@ -134,3 +113,59 @@ def astar_gui(tiles, start, end, paths=squares):
                 heappush(heap, (fs[neighbor], neighbor))
     for p in path:
         yield p, 2
+
+def bresenhams(tiles, start, end):
+     # Setup initial conditions
+    x1, y1 = start.x, start.y
+    x2, y2 = end.x, end.y
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Determine how steep the line is
+    is_steep = abs(dy) > abs(dx)
+
+    # Rotate line
+    if is_steep:
+        x1, y1 = y1, x1
+        x2, y2 = y2, x2
+
+    # Swap start and end points if necessary and store swap state
+    swapped = False
+    if x1 > x2:
+        x1, x2 = x2, x1
+        y1, y2 = y2, y1
+        swapped = True
+
+    # Recalculate differentials
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Calculate error
+    error = int(dx / 2.0)
+    ystep = 1 if y1 < y2 else -1
+
+    # Iterate over bounding box generating points between start and end
+    y = y1
+    points = []
+    for x in range(x1, x2 + 1):
+        coord = (y, x) if is_steep else (x, y)
+        points.append(coord)
+        error -= abs(dy)
+        if error < 0:
+            y += ystep
+            error += dx
+
+    # Reverse the list if the coordinates were swapped
+    if swapped:
+        points.reverse()
+    return points
+
+def pathfind(engine, start, end, pathfinder=astar):
+    """Wrapper for ecs engine to use astar"""
+    tiles = {
+        (position.x, position.y)
+            for _, position in join_drop_key(engine.tiles,engine.positions)
+                if not position.blocks_movement
+    }
+    path = pathfinder(tiles, start, end)
+    return path

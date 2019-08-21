@@ -6,11 +6,14 @@ import curses
 import random
 import time
 
-from source.common import eight_square, join, nine_square, squares
+from source.common import GameMode, join, join_drop_key, squares
 from source.ecs.components import (Collision, Effect, Information, Item,
-                                   Movement, Render)
+                                   MeleeHitEffect, Movement, Position,
+                                   RangeHitEffect, Render)
 from source.ecs.systems.system import System
 from source.keyboard import keypress_to_direction, movement_keypresses
+from source.messenger import Logger
+from source.pathfind import pathfind, bresenhams
 
 
 class CommandSystem(System):
@@ -81,17 +84,24 @@ class CommandSystem(System):
         g = join(
             self.engine.openables,
             self.engine.positions, 
-            self.engine.renders
+            self.engine.renders,
+            self.engine.infos
         )
         doors = {}
         # compare coordinates against entities that can be opened that have a
         # a position x, y value in the coordinates list.
-        for openable_id, (openable, coordinate, render) in g:
+        for openable_id, (openable, coordinate, render, info) in g:
             valid_coordinate = (coordinate.x, coordinate.y) in coordinates
             if valid_coordinate and not openable.opened:
                 x = coordinate.x - position.x
                 y = coordinate.y - position.y
-                doors[(x, y)] = (openable_id, openable, coordinate, render)
+                doors[(x, y)] = (
+                    openable_id, 
+                    openable, 
+                    coordinate, 
+                    render, 
+                    info
+                )
         door_to_open = None
         if not doors:
             self.engine.logger.add(f"No closed doors to open.")
@@ -101,20 +111,28 @@ class CommandSystem(System):
             self.engine.logger.add(f"Which door to open?")
             self.engine.screen.render()
             self.engine.input_system.process(
-                keypresses=set(keypress_to_direction.keys()).union(('escape',))
+                valid_keypresses=set(keypress_to_direction).union(('escape',))
             )
             keypress = self.engine.get_keypress()
             movement = Movement.keypress_to_direction(keypress)
             # valid direction keypress but not valid door direction
             door = doors.get((movement.x, movement.y), None)
             if not door:
-                self.engine.logger.add(f"You cancel opening a door direction invalid error.")
+                self.engine.logger.add(
+                    f"You cancel opening a door direction invalid error."
+                )
             else:
                 door_to_open = door
         if door_to_open:
-            door, openable, position, render = door_to_open
+            door, openable, position, render, info = door_to_open
             openable.opened = True
             position.blocks_movement = False
+            # replace info
+            self.engine.infos.add(
+                door,
+                self.engine.infos.shared['opened wooden door']
+            )
+            # replace the render
             self.engine.renders.add(
                 door, 
                 random.choice(self.engine.renders.shared['opened wooden door'])
@@ -155,13 +173,48 @@ class CommandSystem(System):
         self.engine.logger.add(f"You pick up {item_str}.")
         return True
 
-    # def throw_item(self, entity):
-    #     position = self.engine.positions.find(entity)
-    #     equipment = self.engine.equipments.find(entity)
-    #     g = join(
-    #         self.engine.items,
-    #         self.engine.infos,
-    #     )
+    def missile(self, cursor):
+        self.engine.logger.add("Throwing")
+        end = self.engine.positions.find(cursor)
+        cursor_component = self.engine.cursors.find(cursor)
+        start = self.engine.positions.find(cursor_component.entity)
+        equipment = self.engine.equipments.find(cursor_component.entity)
+        if equipment.missile and equipment.ammo:
+            ...
+        elif equipment.ammo:
+            ammo_id = equipment.ammo
+            info = self.engine.infos.find(ammo_id)
+            if info.name == 'stone':
+                self.engine.logger.add("Throwing stones")
+                # remove stone from inventory
+                ammo = equipment.ammo
+                equipment.ammo = None
+                path = pathfind(self.engine, start, end, pathfinder=bresenhams)
+                # add a position component to thrown item
+                position = Position(
+                    *path[-1], 
+                    self.engine.world.id, 
+                    movement_type=Position.MovementType.NONE,
+                    blocks_movement=None
+                )
+                self.engine.positions.add(ammo, position)
+                # check if there is a unit in the path of the throw item
+                # if there is one then calculate damage.
+                ...
+                # add ranged hit effect to effect list
+                effect = RangeHitEffect(cursor, '*', '0', path)
+                self.engine.effects.add(cursor_component.entity, effect)
+        return True
+
+    def check_tile_info(self, position):
+        describeables = list()
+        for p, i in join_drop_key(self.engine.positions, self.engine.infos):
+            if (position.x == p.x and 
+                position.y == p.y and 
+                i.name is not 'floor'
+            ):
+                describeables.append(i.name)
+        self.engine.logger.add(', '.join(describeables))
 
     def check_for_floor_items(self, position):
         query = join(
@@ -222,18 +275,20 @@ class CommandSystem(System):
             self.engine.grave_system.process(other)
         else:
             # add a hit effect
-            self.engine.effects.add(entity, Effect(other, '*', 0))
+            self.engine.effects.add(entity, MeleeHitEffect(other, '*', 0))
         self.engine.logger.add(''.join(strings))
         return True
 
     def collide(self, entity, collision):
+        if __debug__:
+            self.engine.logger.add(f"{entity}")
         # oob or environment collision. No logged message. Exit early
-        if collision.entity_id == -1:
+        if collision.entity == -1:
             return False
-        other = collision.entity_id
+        other = collision.entity
         is_player = entity == self.engine.player
         collidee = self.engine.infos.find(other)
-        health = self.engine.healths.find(eid=collision.entity_id)
+        health = self.engine.healths.find(eid=collision.entity)
         if not health:
             if is_player:
                 self.engine.logger.add(f'Collided with a {collidee.name}.')
@@ -246,34 +301,58 @@ class CommandSystem(System):
         return self.attack(entity, other)
 
     def move(self, entity, movement) -> bool:
+        if __debug__:
+            self.engine.logger.add(f"player: {self.engine.player}")
+            self.engine.logger.add(f"cursor: {self.engine.cursor}")
+            self.engine.logger.add(f"{entity} {movement}")
+
+        # if entity has no position component return early
         position = self.engine.positions.find(entity)
         if not position or not movement:
             return False
+
+        # save temp positions for collision checking
         x, y = position.x + movement.x, position.y + movement.y
 
+        # check map collisions
         tilemap = self.engine.tilemaps.find(eid=position.map_id)
         if not (0 <= x < tilemap.width and 0 <= y < tilemap.height):
             return self.collide(entity, Collision(-1))
 
-        positions = [
-            (entity_id, position)
-                for entity_id, position in self.engine.positions
-                    if position.map_id == self.engine.world.id
-                        and entity_id != entity
-                        and position.blocks_movement
-        ]
+        # check unit collisions for specific movment types
+        if position.movement_type == Position.MovementType.GROUND:
+            # check unit collisions
+            for entity_id, entity_position in self.engine.positions:
+                if (entity_position.x == x and 
+                    entity_position.y == y and 
+                    entity_position.map_id == self.engine.world.id and 
+                    entity_id != entity and 
+                    entity_position.blocks_movement is True
+                ):
+                    return self.collide(entity, Collision(entity_id))
 
-        for other_id, other_position in positions:
-            future_position_blocked = (
-                x == other_position.x and y == other_position.y
-            )
-            if future_position_blocked:
-                return self.collide(entity, Collision(other_id))
+        if position.movement_type == Position.MovementType.VISIBLE:
+            for entity_position, visible in join_drop_key(
+                self.engine.positions, 
+                self.engine.visibilities
+            ):
+                if (entity_position.x == x and
+                    entity_position.y == y and
+                    entity_position.map_id == self.engine.world.id and
+                    visible.level < 2
+                ):
+                    return False
+
+        # no collisions. move to the new position
         position.x += movement.x
         position.y += movement.y
 
+        # check 
         if entity == self.engine.player:
             self.check_for_floor_items(position)
+        elif entity == self.engine.cursor:
+            self.check_tile_info(position)
+            return False
         return True
 
     def go_up(self, entity):
@@ -314,7 +393,7 @@ class CommandSystem(System):
                 break
         
         position = tile_position.copy(
-            moveable=position.moveable, 
+            movement_type=position.movement_type,
             blocks_movement=position.blocks_movement
         )
         self.engine.positions.remove(self.engine.player)
@@ -372,37 +451,99 @@ class CommandSystem(System):
         
         # send entity to the position of stairs on child map
         position = tile_position.copy(
-            moveable=position.moveable, 
+            movement_type=position.movement_type,
             blocks_movement=position.blocks_movement
         )
         self.engine.positions.remove(self.engine.player)
         self.engine.positions.add(self.engine.player, position)
         return True
 
-    def process(self, entity, command):
-        if command in movement_keypresses:
-            return self.move(entity, Movement.keypress_to_direction(command))
-        elif command == 'escape':
-            self.engine.change_screen('gamemenu')
-            return False
-        elif command == 'i':
-            self.engine.change_screen('inventorymenu')
-            return False
-        elif command == 'e':
-            self.engine.change_screen('equipmentmenu')
-            return False
-        elif command == 'comma':
-            return self.pick_item(entity)
-        elif command == 'o':
-            return self.open_door(entity)
-        elif command == 'c':
-            return self.close_door(entity)
-        elif command == 'greater-than':
-            return self.go_down(entity)
-        elif command == 'less-than':
-            return self.go_up(entity)
-        # currenty disabled -- to reenable add the char to the allowed keypresses
-        elif command == 't':
-            self.engine.logger.add("Pressed t")
-            self.engine.change_screen('missilemenu')
-            return False
+    def able_to_target(self, entity: int) -> bool:
+        eq = self.engine.equipments.find(entity)
+        # most likely will not happen but handle anyways
+        if not eq:
+            self.engine.logger.add("You do not have any equipment on.")
+        elif eq and not eq.missile:
+            if eq.ammo:
+                ammo = self.engine.infos.find(eq.ammo)
+                if ammo.name == 'stone':
+                    return True
+            self.engine.logger.add("Cannot target without a missile weapon.")
+        elif eq and not eq.ammo:
+            self.engine.logger.add("Cannot target without any missile ammo.")
+        else:
+            return True
+        return False
+
+    def process(self, entity: int, command: str) -> bool:
+        """
+        Eventually would like this functions to be called somewhat like this:
+            >>> self.actions[self.engine.mode][command](entity, command)
+            or
+            >>> self.actions[self.engine.mode][command](entity)
+        """
+        if __debug__:
+            Logger.instance.add(f'command: {command}')
+        if self.engine.mode == GameMode.NORMAL:
+            print(f'Normal mode: command - {command}')
+            if command in movement_keypresses:
+                return self.move(entity, Movement.keypress_to_direction(command))
+            elif command == 'escape':
+                self.engine.change_screen('gamemenu')
+                return False
+            elif command == 'i':
+                self.engine.change_screen('inventorymenu')
+                return False
+            elif command == 'e':
+                self.engine.change_screen('equipmentmenu')
+                return False
+            elif command == 'comma':
+                return self.pick_item(entity)
+            elif command == 'o':
+                return self.open_door(entity)
+            elif command == 'c':
+                return self.close_door(entity)
+            elif command == 'greater-than':
+                return self.go_down(entity)
+            elif command == 'less-than':
+                return self.go_up(entity)
+            # currenty disabled -- to reenable add the char to the allowed keypresses
+            elif command == 'l':
+                self.engine.change_mode(GameMode.LOOKING)
+                return False
+            elif command == 't':
+                if self.able_to_target(entity):
+                    self.engine.change_mode(GameMode.MISSILE)
+                return False
+            elif command == 'tilde':
+                self.engine.change_mode(GameMode.DEBUG)
+                return False
+        elif self.engine.mode == GameMode.LOOKING:
+            if command in movement_keypresses:
+                self.engine.logger.add(f"Moving cursor {command}")
+                return self.move(entity, Movement.keypress_to_direction(command))
+                # return False
+            elif command == 'escape' or command == 'l':
+                self.engine.change_mode(GameMode.NORMAL)
+                return False
+        elif self.engine.mode == GameMode.MISSILE:
+            if command in movement_keypresses:
+                self.engine.logger.add(f"Moving cursor {command}")
+                return self.move(entity, Movement.keypress_to_direction(command))
+                # return False
+            elif command == 'escape' or command == 't':
+                self.engine.change_mode(GameMode.NORMAL)
+                return False
+            elif command == 'enter':
+                t = self.missile(entity)
+                self.engine.mode = GameMode.NORMAL
+                self.engine.logger.add(t)
+                return t
+        elif self.engine.mode == GameMode.DEBUG:
+            if command in movement_keypresses:
+                self.engine.logger.add(f"Moving cursor {command}")
+                return self.move(entity, Movement.keypress_to_direction(command))
+            elif command == 'escape' or command == 'tilde':
+                self.engine.change_mode(GameMode.NORMAL)
+                return False
+        return False

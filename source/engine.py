@@ -8,7 +8,7 @@ import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 
-from source.common import join
+from source.common import join, GameMode
 from source.ecs.components import (Collision, Effect, Information, Movement,
                                    Openable, Position, components)
 from source.ecs.managers import ComponentManager, EntityManager
@@ -21,6 +21,7 @@ from source.messenger import Logger
 
 
 class Engine(object):
+
     def __init__(self, components, systems, terminal, keyboard):
         self.running = True
         self.logger = Logger()
@@ -40,6 +41,9 @@ class Engine(object):
         self.entity_index = 0
         self.requires_input = True
         self.keypress = None
+
+        self.mode = GameMode.NORMAL
+        print(self.mode)
 
     def __repr__(self):
         attributes = []
@@ -81,6 +85,7 @@ class Engine(object):
             self.__setattr__(name, system)
 
     def get_input(self):
+        # curses.flushinp()
         return self.terminal.getch()
 
     def keypress_from_input(self, char):
@@ -96,6 +101,7 @@ class Engine(object):
                 InventoryMenu,
                 EquipmentMenu,
                 DeathMenu,
+                # LookingMenu,
                 # LogMenu,
                 # MissileMenu
             )
@@ -119,8 +125,27 @@ class Engine(object):
     def change_screen(self, name):
         self.screen.state = 'closed'
         print(self.screen)
-        self.screen = self.screens.get(name, self.screens['mainmenu'])
+        self.screen = self.screens.get(name, None)
+        if not self.screen:
+            raise ValueError(f"Invalid screen name: {name}")
         self.screen.state = 'open'
+
+    def change_mode(self, mode):
+        if mode == self.mode:
+            raise ValueError("Cannot change to same mode")
+        old_mode = self.mode
+        self.mode = mode
+        self.logger.add('mode changed')
+        Logger.instance.add(f'Switched from {old_mode} to {mode} mode')
+        if old_mode == GameMode.NORMAL:
+            player_position = self.positions.find(self.player)
+            self.positions.add(
+                self.cursor, 
+                player_position.copy(
+                    movement_type=Position.MovementType.VISIBLE, 
+                    blocks_movement=False
+                )
+            )
 
     def reset_entity_index(self):
         self.entity_index = 0

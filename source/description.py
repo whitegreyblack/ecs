@@ -15,6 +15,8 @@ TYPE_WEAPON = 3
 TYPE_ITEM = 4
 TYPE_UNIT = 5
 
+# key: value
+# name: (char, description, color, entity_type)
 shared_cache = {
     # environment
     'floor': ('.', '', 102, TYPE_DEFAULT_ENVIRON),

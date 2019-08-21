@@ -6,7 +6,7 @@ import random
 import time
 
 from source.common import join
-from source.ecs.components import Decay, Information, Item, Render
+from source.ecs.components import Decay, Information, Item, Render, Position
 from source.ecs.systems.system import System
 
 
@@ -25,22 +25,13 @@ class GraveSystem(System):
             self.engine.renders,
             self.engine.infos
         )
+        environment = 'bloodied floor'
         for entity, (_, tile, render, info) in tiles:
             if position.x == tile.x and position.y == tile.y:
-                if render.char == '.':
-                    if '*' not in self.engine.renders.shared:
-                        self.engine.renders.shared['*'] = Render('*')
-                    self.engine.renders.add(
-                        entity,
-                        self.engine.renders.shared['*']
-                    )
-                if 'bloodied floor' not in self.engine.infos.shared:
-                    i = Information('bloodied floor')
-                    self.engine.infos.shared['bloodied floor'] = i
-                self.engine.infos.add(
-                    entity,
-                    self.engine.infos.shared['bloodied floor']
-                )
+                render = random.choice(self.engine.renders.shared[environment])
+                self.engine.renders.add(entity, render)
+                info = self.engine.infos.shared[environment]
+                self.engine.infos.add(entity, info)
 
     def drop_body(self, entity):
         # get entity info
@@ -58,10 +49,13 @@ class GraveSystem(System):
         self.engine.renders.add(body, r)
         i = self.engine.infos.shared[name]
         self.engine.infos.add(body, i)
-        self.engine.positions.add(body, position.copy(
-            moveable=False,
-            blocks_movement=False
-        ))
+        self.engine.positions.add(
+            body, 
+            position.copy(
+                movement_type=Position.MovementType.NONE,
+                blocks_movement=False
+            )
+        )
         self.engine.decays.add(body, Decay(1000))
 
     def drop_inventory(self, entity):
@@ -71,7 +65,11 @@ class GraveSystem(System):
             return
         while inventory.items:
             item = inventory.items.pop()
-            item_position = position.copy(moveable=False, blocks_movement=False)
+            item_position = position.copy(
+                movement_type=Position.MovementType.NONE,
+                blocks_movement=False
+            )
+            print(item_position)
             self.engine.positions.add(item, item_position)
 
     def remove_from_inventory(self, entity):
