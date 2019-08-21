@@ -25,9 +25,8 @@ class GraveSystem(System):
             self.engine.renders,
             self.engine.infos
         )
-        for eid, (_, tile, render, info) in tiles:
+        for entity, (_, tile, render, info) in tiles:
             if position.x == tile.x and position.y == tile.y:
-                entity = self.engine.entities.find(eid=eid)
                 if render.char == '.':
                     if '*' not in self.engine.renders.shared:
                         self.engine.renders.shared['*'] = Render('*')
@@ -71,8 +70,7 @@ class GraveSystem(System):
         if not inventory:
             return
         while inventory.items:
-            item_id = inventory.items.pop()
-            item = self.engine.entities.find(eid=item_id)
+            item = inventory.items.pop()
             item_position = position.copy(moveable=False, blocks_movement=False)
             self.engine.positions.add(item, item_position)
 

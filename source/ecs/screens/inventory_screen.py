@@ -8,13 +8,10 @@ import time
 from collections import defaultdict
 from textwrap import wrap
 
-from source.astar import pathfind
 from source.common import (border, direction_to_keypress, eight_square, join,
                            scroll)
-from source.ecs.components import Movement
 from source.keyboard import valid_keypresses
 from source.messenger import Logger
-from source.raycast import cast_light
 
 from .screen import Screen
 
@@ -51,8 +48,8 @@ class InventoryMenu(Screen):
 
     def render_items(self):
         # will always find it since one is created on startup
-        self.items = list(self.engine.inventory_system.get_unit_inventory(
-            self.engine.player.id
+        self.items = list(self.engine.inventory_system.get_inventory(
+            self.engine.player
         ))
 
         # helpstring = f"[e]at  [E]quip  [D]rop [l]ook [U]se"
@@ -105,7 +102,7 @@ class InventoryMenu(Screen):
         self.terminal.addstr(h // 4, w // 4 + 1, '[info]')
 
         # hack to clear print area
-        blank_line = '.' * (w // 2 - 1)
+        blank_line = ' ' * (w // 2 - 1)
         for y in range(h // 2 - 1):
             self.terminal.addstr(h // 4 + y + 1, w // 4 + 1, blank_line)
 

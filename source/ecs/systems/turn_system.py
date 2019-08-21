@@ -8,7 +8,7 @@ class TurnSystem(System):
         while True:
             entity = self.engine.entity
             # end of entity list
-            if not entity:
+            if entity is None:
                 self.engine.reset_entity_index()
                 break
             takes_turn = self.engine.inputs.find(entity)

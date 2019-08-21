@@ -7,7 +7,7 @@ from copy import deepcopy
 
 import numpy as np
 
-from .common import squares
+from .common import squares, cardinal
 
 
 class MapGenerator:
@@ -57,7 +57,7 @@ def empty_mapstring(width: int, height: int, char: chr='.') -> str:
 def empty_room(width: int, height: int) -> list:
     return [
         ('#' * width)
-            if h in (0, height - 1) else ('#' + '.' * (width - 2) + '#')
+            if h in (0, height - 1) else (f"#{'.' * (width - 2)}#")
                 for h in range(height)
     ]
 
@@ -180,22 +180,25 @@ def add_blob(matrix: list) -> list:
     return matrix
 
 def cell_auto(matrix: list, alivelimit: int=4, deadlimit: int=5) -> list:
-    copy = deepcopy(matrix)
     w, h = dimensions(matrix)
+    copy = deepcopy(matrix)
     for i in range(w):
         for j in range(h):
             cell = matrix[j][i]
             neighbors = 0
-            for ii in range(-1, 2):
-                for jj in range(-1, 2):
-                    # check if neighbor is within bounds
-                    try:
-                        c = matrix[j+jj][i+ii]
-                    except:
-                        pass
-                    else:
-                        if c == '#':
-                            neighbors += 1
+            alive = 0
+            for ii, jj in squares(exclude_center=True):
+                # check if neighbor is within bounds
+                try:
+                    c = matrix[j+jj][i+ii]
+                except:
+                    pass
+                else:
+                    alive += 1
+                    if c == '#':
+                        neighbors += 1
+            if alive < 6:
+                continue
             if cell == '#':
                 if neighbors < deadlimit:
                     copy[j][i] = '.'
@@ -231,7 +234,7 @@ def flood_fill(matrix:list) -> list:
             matrix[y][x] = '#'
     return matrix
 
-def burrow_passage(height: int, width: int, matrix: list=None) -> list:
+def burrow_passage(width: int, height: int, matrix: list=None) -> list:
     if not matrix:
         matrix = [['#' for _ in range(width)] for _ in range(height)]
     else:
@@ -248,9 +251,117 @@ def burrow_passage(height: int, width: int, matrix: list=None) -> list:
         length = max(3, min(width // 2, length))
     return matrix
 
+weights = {
+    (-1, 0): 37.5,
+    (1, 0): 37.5,
+    (0, -1): 12.5,
+    (0, 1): 12.5
+}
+def drunkards_walk(width: int, height: int, limit=.45, m=None) -> list:
+    if not m:
+        m = empty_matrix(width, height, char='#')
+    area = width * height
+    cells = int(area * limit)
+    tiles = { 
+        (x, y) 
+            for x in range(1, width-1)
+                for y in range(1, height-1) 
+    }
+    dug = set()
+    # x, y = random.randint(1, width-1), random.randint(1, height-1)
+    x, y = width // 2, height // 2
+    while True:
+        dug.add((x, y))
+        if len(dug) >= cells:
+            break
+        directions = []
+        choices = []
+        for a, b in cardinal(exclude_center=True):
+            if (x+a, y+b) in tiles:
+                directions.append((x + a, y + b))
+                choices.append(weights[(a, b)])
+        x, y = random.choices(directions, weights=choices).pop()
+    for x, y in dug:
+        m[y][x] = '.'
+    return m
+
+def l_path(start, end):
+    x1, y1 = start
+    x2, y2 = end
+    if x2 < x1:
+        x1, x2 = x2, x1
+    if y2 < y1:
+        y1, y2 = y2, y1
+
+    # calculate slope
+    # dx = y2 - y1
+
+    # determine which axis is longer
+    # x_major = x2 - x1 > y2 - y1
+    # if x_major:
+    #     for x in range(x1, x2+1):
+    #         yield x, y1
+    #     for y in range(y1, y2+1):
+    #         yield x, y
+    # # else:
+    for y in range(y1, y2+1):
+        yield x1, y
+    for x in range(x1, x2+1):
+        yield x, y
+
+def bresenhams(start, end):
+    """Bresenham's Line Algo -- returns list of tuples from start and end"""
+
+    # Setup initial conditions
+    x1, y1 = start
+    x2, y2 = end
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Determine how steep the line is
+    is_steep = abs(dy) > abs(dx)
+
+    # Rotate line
+    if is_steep:
+        x1, y1 = y1, x1
+        x2, y2 = y2, x2
+
+    # Swap start and end points if necessary and store swap state
+    swapped = False
+    if x1 > x2:
+        x1, x2 = x2, x1
+        y1, y2 = y2, y1
+        swapped = True
+
+    # Recalculate differentials
+    dx = x2 - x1
+    dy = y2 - y1
+
+    # Calculate error
+    error = int(dx / 2.0)
+    ystep = 1 if y1 < y2 else -1
+
+    # Iterate over bounding box generating points between start and end
+    y = y1
+    points = []
+    for x in range(x1, x2 + 1):
+        coord = (y, x) if is_steep else (x, y)
+        points.append(coord)
+        error -= abs(dy)
+        if error < 0:
+            y += ystep
+            error += dx
+
+    # Reverse the list if the coordinates were swapped
+    if swapped:
+        points.reverse()
+    return points
+
 CHOKE = string(rotate(burrow_passage(60, 17)))
 
+STRESS = string(empty_room(500, 100))
 HALL = string(empty_room(200, 80))
+EMPTY = string(empty_room(58, 17))
 
 DUNGEON = """
 ###########################################################
@@ -368,6 +479,8 @@ CHILD = """
 #..<.#
 #....#
 ######"""[1:]
+
+ASTAR = string(empty_room(190, 44))
 
 # string maps added to config are pulled from variables() and added to list
 dungeons = {

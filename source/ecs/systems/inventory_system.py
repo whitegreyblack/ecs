@@ -12,7 +12,7 @@ from .system import System
 inventory_item = namedtuple("Item", "category char name color description")
 
 class InventorySystem(System):
-    def get_unit_inventory(self, eid):
+    def get_inventory(self, eid):
         inventory = self.engine.inventories.find(eid=eid)
 
         buckets = {

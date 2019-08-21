@@ -1,10 +1,7 @@
-# componentmanager.py
-
-"""Base class for component manager"""
-
-from dataclasses import dataclass, field
+# component_manager.py
 
 
+#  364.2 KiB with this class
 class ComponentManager(object):
 
     __slots__ = ['ctype', 'components', 'shared']
@@ -29,32 +26,48 @@ class ComponentManager(object):
             if eid not in other:
                 yield eid, component
 
-    def add(self, entity, component):
+    def add(self, entity_id: int, component: object) -> None:
+        """
+        Adds a key-value pair between an entity and the component to the 
+        component dictionary.
+        """
         if type(component).__name__ is not self.ctype:
             raise ValueError("Invalid component type added.")
-        self.components[entity.id] = component
+        self.components[entity_id] = component
 
-    def remove(self, entity=None, eid=None) -> bool:
-        if entity is None and eid is None or (eid and eid < 0):
-            raise Exception("need entity or eid")
-        if entity and entity.id in self.components:
-            del self.components[entity.id]
-            return True
-        if eid and eid in self.components.keys():
+    def remove(self, eid: int) -> bool:
+        """Removes a key-value pair from the component dictionary."""
+        if eid in self.components.keys():
             del self.components[eid]
             return True
         return False
 
-    def find(self, entity=None, eid=None):
-        if entity is None and eid is None:
-            raise Exception("need entity or eid")
-        if entity is not None and entity.id in self.components.keys():
-            return self.components[entity.id]
-        if eid is not None and eid in self.components.keys():
+    def find(self, eid: int) -> object:
+        """
+        Returns the component value of an entity key that exists in the 
+        component dictionary. Returns None if not found.
+        """
+        if eid in self.components.keys():
             return self.components[eid]
         return None
 
 if __name__ == "__main__":
-    from util import dprint, gso
-    c = ComponentManager()
+    from source.debug import dprint, gso
+    from source.ecs.components import components
+    c = ComponentManager(object)
     print(dprint(c))
+
+    # print memory footprint
+    # Total allocated size: 5.2 KiB
+    import tracemalloc
+    tracemalloc.start()
+    managers = [
+        ComponentManager(c)
+            for c in components
+    ]
+    snapshot = tracemalloc.take_snapshot()
+    top_stats = snapshot.statistics('traceback')
+    for stat in top_stats:
+        print(stat)
+    total = sum(stat.size for stat in top_stats)
+    print("Total allocated size: %.1f KiB" % (total / 1024))

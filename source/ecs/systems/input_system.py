@@ -123,15 +123,14 @@ class InputSystem(System):
         )
         descriptions = []
         items_picked_up = []
-        for eid, (item, item_position, info) in g:
+        for entity, (item, item_position, info) in g:
             if (position.x, position.y) == (item_position.x, item_position.y):
-                items_picked_up.append(eid)
+                items_picked_up.append(entity)
                 descriptions.append(info.name)
         if not items_picked_up:
             return False
-        for eid in items_picked_up:
+        for entity in items_picked_up:
             # remove from map
-            entity = self.engine.entities.find(eid)
             self.engine.visibilities.remove(entity)
             self.engine.renders.remove(entity)
             self.engine.positions.remove(entity)

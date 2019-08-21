@@ -1,16 +1,18 @@
+# astar.py
+
+"""Sample demo to test astar implementation"""
+
+
 import curses
 import time
 from dataclasses import dataclass
 
 import click
 
-from source.astar import astar_gui
+from source.astar import astar, cardinal
 from source.ecs.components import Position
 from source.keyboard import keyboard
-from source.maps import dungeons
-
-"""Sample demo to test astar implementation"""
-
+from source.maps import dimensions, dungeons, matrix
 
 d = {
     (-1, -1): '7',
@@ -35,13 +37,16 @@ def main(screen, mapstring):
     curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
     curses.init_pair(4, curses.COLOR_BLUE, curses.COLOR_BLACK)
 
-    dungeon = [[c for c in row] for row in mapstring.split('\n')]
-    w, height = len(dungeon[0]), len(dungeon)
-    cursor = Position(w//2, height//2)
+    # setup mapf
+    dungeon = matrix(mapstring)
+    w, height = dimensions(dungeon)
+    cursor = Position(w // 2, height // 2)
+    blocked = ('#', '+')
     tiles = {
-        (i, j): cell
+        (i, j)
             for j, row in enumerate(dungeon) 
                 for i, cell in enumerate(row)
+                    if cell not in blocked
     }
     a = None
     b = None
@@ -64,16 +69,16 @@ def main(screen, mapstring):
         if b:
             screen.addstr(b.y, b.x, 'b')
             screen.addstr(height+2, 0, f"b: {b.x:02}, {b.y:02}")
-        
         if a and b and changed:
             start = time.time()
-            path = list(astar_gui(tiles, a, b))
+            path = astar(tiles, a, b, paths=cardinal)
             screen.addstr(height+6, 0, f"{time.time()-start}")
+            print(time.time() - start)
             changed = False
         if path:
             nheight = 0
-            for (x, y), c in path:
-                screen.addch(y, x, 'o' if c == 3 else 'x', curses.color_pair(c))
+            for x, y in path:
+                screen.addch(y, x, 'o', curses.color_pair(3)) 
         screen.addstr(height, 0, f"c: {cursor.x:02}, {cursor.y:02}")
         screen.move(cursor.y, cursor.x)
         screen.refresh()
@@ -84,11 +89,11 @@ def main(screen, mapstring):
         if keypress == 'up':
             cursor.y -= 1 if cursor.y > 1 else 0
         elif keypress == 'down':
-            cursor.y += 1 if cursor.y < len(dungeon) - 2 else 0
+            cursor.y += 1 if cursor.y < len(dungeon) - 1 else 0
         elif keypress == 'left':
             cursor.x -= 1 if cursor.x > 1 else 0
         elif keypress == 'right':
-            cursor.x += 1 if cursor.x < len(dungeon[0]) - 2 else 0
+            cursor.x += 1 if cursor.x < len(dungeon[0]) - 1 else 0
         elif keypress == 'a':
             if not a or (a and a != cursor):
                 a = Position(cursor.x, cursor.y)
@@ -108,7 +113,7 @@ def main(screen, mapstring):
             path = None
 
 @click.command()
-@click.option('-d', "--dungeon", default="large")
+@click.option('-d', "--dungeon", default="shadowbarrow")
 def preload(dungeon):
     m = dungeons[dungeon]
     curses.wrapper(main, m)

@@ -13,8 +13,9 @@ from source.ecs.components import (Collision, Effect, Information, Movement,
                                    Openable, Position, components)
 from source.ecs.managers import ComponentManager, EntityManager
 from source.ecs.screens import (
-    DeathMenu, EquipmentMenu, GameMenu, GameScreen, InventoryMenu, LogMenu,
-    LookingMenu, MainMenu)
+    DeathMenu, EquipmentMenu, GameMenu, GameScreen, InventoryMenu, # LogMenu,
+    # LookingMenu, 
+    MainMenu) #, MissileMenu)
 from source.ecs.systems import RenderSystem
 from source.messenger import Logger
 
@@ -69,6 +70,8 @@ class Engine(object):
                 )
 
     def init_systems(self, systems):
+        if not systems:
+            return
         for system_type in systems:
             name = f"{system_type.classname().replace('system', '')}_system"
             if system_type.__name__ == 'RenderSystem':
@@ -88,12 +91,13 @@ class Engine(object):
         screen.__name__.lower(): screen(self, self.terminal)
             for screen in (
                 GameMenu, 
-                GameScreen, 
+                GameScreen,
                 MainMenu, 
                 InventoryMenu,
                 EquipmentMenu,
-                DeathMenu, 
-                LogMenu
+                DeathMenu,
+                # LogMenu,
+                # MissileMenu
             )
         } 
         self.screen = self.screens['mainmenu']
@@ -112,26 +116,23 @@ class Engine(object):
         self.terminal = terminal
         self.height, self.width = terminal.getmaxyx()
 
-    def add_player(self, entity):
-        self.player = entity
-        self.player_id = entity.id
-
     def change_screen(self, name):
         self.screen.state = 'closed'
-        self.screen = self.screens.get(name, 'mainmenu')
+        print(self.screen)
+        self.screen = self.screens.get(name, self.screens['mainmenu'])
         self.screen.state = 'open'
 
     def reset_entity_index(self):
         self.entity_index = 0
-        self.entity = self.entities.entities[self.entity_index]
+        self.entity = self.entities.entity_ids[self.entity_index]
 
     def next_entity(self):
-        # self.entity_index = (self.entity_index + 1) % len(self.entities.entities)
+        # self.entity_index = (self.entity_index + 1) % len(self.entities.entity_ids)
         self.entity_index += 1
-        if self.entity_index > len(self.entities.entities) - 1:
+        if self.entity_index > len(self.entities.entity_ids) - 1:
             self.entity = None
         else:
-            self.entity = self.entities.entities[self.entity_index]
+            self.entity = self.entities.entity_ids[self.entity_index]
 
     def update_ai_behaviors(self):
         self.ai_system.update()
@@ -145,29 +146,25 @@ class Engine(object):
         self.requires_input = True
         return self.keypress
 
-    def process(self, t):
+    def process(self):
         self.screen.render()
         processed = self.screen.process()
         if not processed:
             if self.requires_input:
                 self.input_system.process()
             processed = self.screen.process()
-        # time.sleep((max(1./25 - (time.time() - t), 0)))
 
     def run(self):
         self.initialize_screens()
-        self.entity = self.entities.entities[self.entity_index]
-        t = time.time()
+        self.entity = self.entities.entity_ids[self.entity_index]
         while self.running:
-            self.process(t)
-            t = time.time()
+            self.process()
 
     def count_objects(self):
         """Debugging information and object counting"""
         m = 0
         s = 0
         for c in sorted(components, key=lambda x: x.classname()):
-            # 428.3 KiB when using flyweight vs 549.8 KiB
             l = len(getattr(self, c.manager).components)
             g = len(getattr(self, c.manager).shared)
 

@@ -1,10 +1,10 @@
-# test_pickle.py
+# test_load.py
 
 """Try saving @dataclass classes with pickle"""
 
 import pickle
 
-from source.ecs.components import Position
+from source.ecs.components import Position, Tile
 
 
 def main():
@@ -25,6 +25,13 @@ def load_saved_map():
     print(data)
     print(maps)
 
+def save_singleton_component():
+    """Try to serialze a singleton class"""
+    t = Tile()
+    with open(f'tests/saves/singleton.pickle', 'wb') as f:
+        pickle.dump(t, f, pickle.HIGHEST_PROTOCOL)
+
 if __name__ == "__main__":
     # main()
     load_saved_map()
+    save_singleton_component()

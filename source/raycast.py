@@ -4,11 +4,11 @@
 Uses raycast algorithm to determine visibility
 """
 
+import math
 import time
 from array import array
 
-from source.common import j, join, join_without_key
-
+from source.common import j, join, join_drop_key
 
 sintable = array('f', [
     0.00000, 0.01745, 0.03490, 0.05234, 0.06976, 0.08716, 0.10453,
@@ -121,31 +121,58 @@ Exception:
     Tilemaps: {components}")"""[1:]
     )
 
-def cast_light(engine):
+def distance(x, y, a, b, d=10):
+    return math.sqrt((x - a) ** 2 + (y - b) ** 2)
+
+# `timings for raycast`
+# 15    0.723    0.048    1.573    0.105 raycast.py:135(<listcomp>) (500x100 map)
+# 10    0.175    0.017    0.365    0.037 raycast.py:137(<listcomp>) (200x80 map)
+# 24    0.040    0.002    0.075    0.003 raycast.py:139(<listcomp>) (58x17 map)
+def cast_light(engine, x0, x1, y0, y1):
     """Wrapper for raycast so that engine is not a parameter to raycast"""
     player = engine.positions.find(engine.player)
-    tilemap = engine.tilemaps.find(eid=engine.world.id)
+    tilemap = engine.tilemaps.find(engine.world.id)
     if not tilemap:
         no_tilemap_error(engine.world.id, engine.tilemaps.components.keys())
         exit(0)
-    # objs = cache.get(engine.world.id, None)
-    # if not objs:
     tiles = [
         (v, p)
-            for v, p in join_without_key(
+            for v, p in join_drop_key(
                 engine.visibilities,
                 engine.positions
             )
             if p.map_id == engine.world.id
+                and x0 <= p.x < x1
+                and y0 <= p.y < y1
     ]
     blocked = {
-        (position.x, position.y) 
+        (position.x, position.y)
             for _, position in tiles
                 if position.blocks_movement
     }
-    raycast(tiles, blocked, tilemap, player)
+    raycast(tiles, blocked, tilemap.width, tilemap.height, player)
 
-def raycast(tiles, blocked, tilemap, player):
+def cast_light2(engine, x0, x1, y0, y1):
+    """Wrapper for raycast so that engine is not a parameter to raycast"""
+    player = engine.positions.find(engine.player)
+    tilemap = engine.tilemaps.find(engine.world.id)
+    if not tilemap:
+        no_tilemap_error(engine.world.id, engine.tilemaps.components.keys())
+        exit(0)
+    tiles = dict()
+    blocked = set()
+    for v, p in join_drop_key(engine.visibilities, engine.positions):
+        if (p.map_id == engine.world.id 
+            and x0 <= p.x < x1
+            and y0 <= p.y < y1
+        ):
+            v.level = max(0, min(v.level, 1))
+            tiles[(p.x, p.y)] = v
+            if p.blocks_movement:
+                blocked.add((p.x, p.y))
+    raycast2(tiles, blocked, tilemap.width, tilemap.height, player)
+
+def raycast(tiles, blocked, width, height, player):
     """Sends out 120 rays (more if needed) where each ray is a degree"""
     # main algo to determine if light touches a block
     lighted = {(player.x, player.y)}
@@ -158,7 +185,7 @@ def raycast(tiles, blocked, tilemap, player):
         for z in range(10):
             x += ax
             y += ay
-            if not (0 <= x < tilemap.width and 0 <= y < tilemap.height):
+            if not (0 <= x < width and 0 <= y < height):
                 break
             rx = int(round(x))
             ry = int(round(y))
@@ -172,3 +199,197 @@ def raycast(tiles, blocked, tilemap, player):
             visible.level = 2
         else:
             visible.level = max(0, min(visible.level, 1))
+
+def raycast2(tiles, blocked, width, height, player):
+    """Sends out 120 rays (more if needed) where each ray is a degree"""
+    # main algo to determine if light touches a block
+    tiles[(player.x, player.y)].level = 2
+    for i in range(0, 361, 3):
+        ax = sintable[i]
+        ay = costable[i]
+
+        x = player.x
+        y = player.y
+        for z in range(10):
+            x += ax
+            y += ay
+            if not (0 <= x < width and 0 <= y < height):
+                break
+            rx = int(round(x))
+            ry = int(round(y))
+            if (rx, ry) in tiles and tiles[(rx, ry)].level < 2:
+                tiles[(rx, ry)].level = 2
+            if (rx, ry) in blocked:
+                break
+
+""" `script specific timings`
+58 x 17 = ~986
+    1    0.002    0.002    0.005    0.005 raycast.py:140(<listcomp>)
+100 x 25 = ~2500:
+    1    0.002    0.002    0.005    0.005 raycast.py:140(<listcomp>)
+100 x 50 = ~5000
+       1    0.004    0.004    0.010    0.010 raycast.py:140(<listcomp>)
+    5000    0.002    0.000    0.002    0.000 raycast.py:224(<lambda>)
+    ---
+    5000    0.002    0.000    0.002    0.000 raycast.py:237(<lambda>)
+       1    0.010    0.010    0.021    0.021 raycast.py:131(cast_light)
+       1    0.001    0.001    0.001    0.001 raycast.py:167(raycast)
+       1    0.020    0.020    0.041    0.041 raycast.py:131(cast_light)
+100 x 100 = ~10000 (without listcomp)
+    10000    0.005    0.000    0.005    0.000 raycast.py:246(<lambda>)
+        5    0.148    0.030    0.302    0.060 raycast.py:131(cast_light)
+        5    0.008    0.002    0.011    0.002 raycast.py:167(raycast)
+100 x 100 = ~10000 (with listcomp)
+    10000    0.006    0.000    0.006    0.000 raycast.py:247(<lambda>)
+        5    0.000    0.000    0.339    0.068 raycast.py:131(cast_light)
+        5    0.102    0.020    0.215    0.043 raycast.py:140(<listcomp>)
+        5    0.068    0.014    0.113    0.023 raycast.py:167(raycast)
+
+    10000    0.005    0.000    0.005    0.000 raycast.py:248(<lambda>) 
+        5    0.000    0.000    0.273    0.055 raycast.py:131(cast_light)
+        5    0.083    0.017    0.169    0.034 raycast.py:140(<listcomp>)
+        5    0.055    0.011    0.091    0.018 raycast.py:167(raycast)
+
+        5    0.000    0.000    0.205    0.041 raycast.py:131(cast_light)
+        5    0.065    0.013    0.133    0.027 raycast.py:140(<listcomp>)
+        5    0.008    0.002    0.008    0.002 raycast.py:160(<setcomp>)
+        5    0.041    0.008    0.064    0.013 raycast.py:167(raycast)
+
+    10000    0.005    0.000    0.005    0.000 raycast.py:256(<lambda>)
+        5    0.000    0.000    0.204    0.041 raycast.py:131(cast_light)
+        5    0.064    0.013    0.132    0.026 raycast.py:140(<listcomp>)
+        5    0.008    0.002    0.008    0.002 raycast.py:160(<setcomp>)
+cast_light1 vs cast_light2
+    0> 0.020981311798095703
+    0> 0.020981311798095703
+    0> 0.02198028564453125
+    0> 0.02198004722595215
+    0> 0.0209810733795166
+    SUM0> 0.021380805969238283
+    1> 0.02897334098815918
+    1> 0.03496837615966797
+    1> 0.02996993064880371
+    1> 0.04096269607543945
+    1> 0.029972553253173828
+    SUM1> 0.03296937942504883
+"""
+
+if __name__ == "__main__":
+    import copy
+    import random
+    import time
+    from source.common import scroll
+    from source.ecs.components import Position, Visibility, TileMap
+    from source.ecs.managers import ComponentManager, EntityManager
+    from source.engine import Engine
+    from source.maps import generate_poisson_array, array_to_matrix, dimensions, string
+    from source.graph import WorldGraph, DungeonNode
+
+    # define engine
+    engine = Engine(
+        components=(Position, Visibility), 
+        systems=None, 
+        terminal=None, 
+        keyboard=None
+    )
+
+    # define component managers
+    engine.positions = ComponentManager(Position)
+    engine.visibilities = ComponentManager(Visibility)
+    engine.tilemaps = ComponentManager(TileMap)
+
+    # create world to use
+    filterer = lambda x: 4 <= x < 5
+    x, y = 191, 24
+    m = array_to_matrix(
+        generate_poisson_array(x, y), 
+        width=x, height=y, 
+        filterer=filterer
+    )
+
+    # define world
+    w = engine.entities.create()
+    engine.world = WorldGraph({w: DungeonNode(w)}, w)
+
+    # define map properties
+    t = TileMap(x, y)
+    engine.tilemaps.add(w, t)
+
+    # define map objects
+    for y, row in enumerate(m):
+        for x, cell in enumerate(row):
+
+            e = engine.entities.create()
+            engine.positions.add(e, Position(
+                x, y, 
+                map_id=w,
+                blocks_movement=cell is '#'
+            ))
+            engine.visibilities.add(e, Visibility())
+    
+    # define player
+    e = engine.entities.create()
+    engine.player = e
+    
+    # define random unblocked position
+    walkable = [
+        (p.x, p.y)
+            for p in engine.positions.components.values()
+                if not p.blocks_movement
+    ]
+    random.shuffle(walkable)
+    p = Position(*walkable.pop(0))
+    engine.positions.add(e, p)
+
+    # loop until keyboard interrupt th  en print timing results for both methods
+    ss = []
+    ts = []
+    iters = 10
+    n = copy.deepcopy(m)
+    while True:
+
+        # get camera offsets
+        off_x = scroll(p.x, 57, x)
+        off_y = scroll(p.y, 17, y)
+
+        for recorder in (ss, ts):
+            # do some calculations
+            t = time.time()
+            cast_light(engine, off_x, 57 + off_x, off_y, 17 + off_y)
+            s = time.time()
+
+            # save the timing result
+            recorder.append(s - t)
+
+            # edit the map buffer with seen positions and player position
+            for p, v in join_drop_key(engine.positions, engine.visibilities):
+                m[p.y][p.x] = ' ' if v.level == 0 else n[p.y][p.x]
+            p = engine.positions.find(engine.player)
+            m[p.y][p.x] = '@'
+
+            # render
+            print(string(m))
+
+        try:
+            c = input().strip()
+        except KeyboardInterrupt:
+            break
+
+        p = engine.positions.find(engine.player)
+        if c == 'w' and n[p.y-1][p.x] == '.':
+            m[p.y][p.x] = '.'
+            p.y += -1
+        if c == 'a' and n[p.y][p.x-1] == '.':
+            m[p.y][p.x] = '.'
+            p.x += -1
+        if c == 's' and n[p.y+1][p.x] == '.':
+            m[p.y][p.x] = '.'
+            p.y += 1
+        if c == 'd' and n[p.y][p.x+1] == '.':
+            m[p.y][p.x] = '.'
+            p.x += 1
+
+    # output timing results
+    for s, t in zip(ss, ts):
+        print(f'1> {s:04f} | 2> {s:04f}')
+    print(f'S> {sum(ss) / len(ss):04f} | S> {sum(ts) / len(ts):04f}')

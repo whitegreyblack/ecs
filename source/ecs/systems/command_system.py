@@ -58,13 +58,11 @@ class CommandSystem(System):
             else:
                 door_to_close = door
         if door_to_close:
-            print(door_to_close)
-            door_id, closeable, position, render = door_to_close
-            door_entity = self.engine.entities.find(door_id)
+            door, closeable, position, render = door_to_close
             closeable.opened = False
             position.blocks_movement = True
             self.engine.renders.add(
-                door_entity, 
+                door, 
                 random.choice(self.engine.renders.shared['closed wooden door'])
             )
             self.engine.logger.add(f"You close the door.")
@@ -114,12 +112,11 @@ class CommandSystem(System):
             else:
                 door_to_open = door
         if door_to_open:
-            openable_id, openable, position, render = door_to_open
-            openable_entity = self.engine.entities.find(openable_id)
+            door, openable, position, render = door_to_open
             openable.opened = True
             position.blocks_movement = False
             self.engine.renders.add(
-                openable_entity, 
+                door, 
                 random.choice(self.engine.renders.shared['opened wooden door'])
             )
             self.engine.logger.add(f"You open the door.")
@@ -142,14 +139,13 @@ class CommandSystem(System):
                 items.append(info.name)
         if not items_picked_up:
             return False
-        for eid in items_picked_up:
+        for entity in items_picked_up:
             # remove from map
-            entity = self.engine.entities.find(eid)
             self.engine.visibilities.remove(entity)
             # self.engine.renders.remove(entity)
             self.engine.positions.remove(entity)
             # add to inventory
-            inventory.items.append(entity.id)
+            inventory.items.append(entity)
         if len(items) > 2:
             item_str = f"a {', a '.join(items[:len(items)-1])}, and a {items[-1]}"
         elif len(items) == 2:
@@ -158,6 +154,14 @@ class CommandSystem(System):
             item_str = f"a {items[0]}"
         self.engine.logger.add(f"You pick up {item_str}.")
         return True
+
+    # def throw_item(self, entity):
+    #     position = self.engine.positions.find(entity)
+    #     equipment = self.engine.equipments.find(entity)
+    #     g = join(
+    #         self.engine.items,
+    #         self.engine.infos,
+    #     )
 
     def check_for_floor_items(self, position):
         query = join(
@@ -218,7 +222,7 @@ class CommandSystem(System):
             self.engine.grave_system.process(other)
         else:
             # add a hit effect
-            self.engine.effects.add(entity, Effect(other.id, '*', 0))
+            self.engine.effects.add(entity, Effect(other, '*', 0))
         self.engine.logger.add(''.join(strings))
         return True
 
@@ -226,7 +230,7 @@ class CommandSystem(System):
         # oob or environment collision. No logged message. Exit early
         if collision.entity_id == -1:
             return False
-        other = self.engine.entities.find(eid=collision.entity_id)
+        other = collision.entity_id
         is_player = entity == self.engine.player
         collidee = self.engine.infos.find(other)
         health = self.engine.healths.find(eid=collision.entity_id)
@@ -255,7 +259,7 @@ class CommandSystem(System):
             (entity_id, position)
                 for entity_id, position in self.engine.positions
                     if position.map_id == self.engine.world.id
-                        and entity_id != entity.id
+                        and entity_id != entity
                         and position.blocks_movement
         ]
 
@@ -276,7 +280,7 @@ class CommandSystem(System):
         """Check if entity position is on stairs. If true go up"""
         went_up = False
         position = self.engine.positions.find(entity)
-        tilemap = self.engine.tilemaps.find(eid=position.map_id)
+        tilemap = self.engine.tilemaps.find(position.map_id)
         for _, (_, tile_position, render) in join(
             self.engine.tiles,
             self.engine.positions,
@@ -397,3 +401,8 @@ class CommandSystem(System):
             return self.go_down(entity)
         elif command == 'less-than':
             return self.go_up(entity)
+        # currenty disabled -- to reenable add the char to the allowed keypresses
+        elif command == 't':
+            self.engine.logger.add("Pressed t")
+            self.engine.change_screen('missilemenu')
+            return False

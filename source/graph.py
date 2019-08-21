@@ -27,7 +27,7 @@ from source.maps import dungeons
 
 
 class WorldGraph(dict):
-    def __init__(self, graph, start_id):
+    def __init__(self, graph: dict, start_id: id):
         self.update(graph)
         self.id = start_id
     @property
@@ -86,7 +86,12 @@ class WorldNode(Node):
 
 # renamed from world node
 class DungeonNode(Node):
-    def __init__(self, entity_id: int, parent_id: int, child_id: int = None):
+    def __init__(
+        self, 
+        entity_id: int, 
+        parent_id: int = None, 
+        child_id: int = None
+    ):
         super().__init__(entity_id, parent_id, child_id)
 
 class DungeonMap(DungeonNode):

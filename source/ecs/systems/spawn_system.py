@@ -4,7 +4,7 @@
 
 import random
 
-from source.common import join, join_without_key
+from source.common import join, join_drop_key
 from source.ecs import (
     AI, Armor, Health, Information, Input, Inventory, Item, Position, Render)
 
@@ -18,30 +18,32 @@ class SpawnSystem(System):
         self.respawn_rate = 50
         self.current_tick = self.respawn_rate
 
-    def find_valid_spaces(self):
-        return {
+    def find_valid_spaces(self) -> list:
+        return [
             (position.x, position.y)
-                for _, position, visible in join_without_key(
+                for _, position, visible in join_drop_key(
                     self.engine.tiles, 
                     self.engine.positions, 
                     self.engine.visibilities
                 )
-                if visible.level < 1 and not position.blocks_movement
-        }
+                if visible.level < 2 and not position.blocks_movement
+        ]
 
     def find_empty_spaces(self):
-        g = join_without_key(self.engine.tiles, self.engine.positions)
-        return {
+        return [
             (position.x, position.y)
-                for _, position in g
-                    if not position.blocks_movement
-        }
+                for _, position in join_drop_key(
+                    self.engine.tiles, 
+                    self.engine.positions
+                )
+                if not position.blocks_movement
+        ]
 
     def find_unlit_spaces(self):
-        g = join_without_key(self.engine.tiles, self.engine.positions)
+        g = join_drop_key(self.engine.tiles, self.engine.positions)
         return {
             (position.x, position.y)
-                for (_, position, visible) in join_without_key(
+                for (_, position, visible) in join_drop_key(
                     self.engine.tiles,
                     self.engine.positions,
                     self.engine.visibilities
@@ -55,7 +57,7 @@ class SpawnSystem(System):
         computer = self.engine.entities.create()
         self.engine.inputs.add(computer, Input())
         self.engine.positions.add(
-            computer, 
+            computer,
             Position(*space, map_id=self.engine.world.id)
         )
         self.engine.ais.add(computer, AI())
@@ -71,7 +73,7 @@ class SpawnSystem(System):
         r = random.choice(self.engine.renders.shared['spear'])
         self.engine.renders.add(item, r)
         self.engine.infos.add(item, self.engine.infos.shared['spear'])
-        self.engine.inventories.add(computer, Inventory(items=[item.id]))
+        self.engine.inventories.add(computer, Inventory(items=[item]))
 
         # self.engine.logger.add(f"Created a {info.name} from spawn_system!")
 
@@ -86,7 +88,7 @@ class SpawnSystem(System):
                     self.engine.positions
                 )
                 if position.map_id == self.engine.world.id
-                    and eid != self.engine.player.id
+                    and eid != self.engine.player
         ]
         if len(units) < 3:
             if self.current_tick < 0:
@@ -99,6 +101,6 @@ class SpawnSystem(System):
                 # probably wouldn't happen but if it does then exit early
                 if not spaces:
                     return
+                random.shuffle(spaces)
                 space = spaces.pop()
                 self.spawn_unit(space)
-                # self.engine.logger.add('spawned unit')

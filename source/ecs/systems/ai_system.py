@@ -83,7 +83,9 @@ class AISystem(System):
                     # self.engine.logger.add(f"{info.name}({entity.id}) saw player and is moving to attack on last path")
                 else:
                     target_position = self.engine.positions.find(self.engine.player)
+                    # s = time.time()
                     ai.path = pathfind(self.engine, position, target_position)
+                    # print(time.time() - s)
                     if not ai.path:
                         ai.behavior = 'wander'
                         # movement = Movement.random_move()

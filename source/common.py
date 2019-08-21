@@ -21,6 +21,18 @@ def squares(exclude_center:bool=False) -> tuple:
                 continue
             yield x, y
 
+def cardinal(exclude_center: bool=False) -> tuple:
+    """
+    Yields x, y values indicating axial directions on a grid.
+    @exclude_center: paramaeter deterimes if (0, 0) should be returned:
+    """
+    yield 0, -1
+    yield -1, 0
+    if not exclude_center:
+        yield 0, 0
+    yield 1, 0
+    yield 0, 1
+
 def eight_square() -> tuple:
     """
     Yields x, y values indicating cardinal directions on a grid
@@ -45,6 +57,10 @@ def parse_data(raw: str, fields: int):
     for i in range(fields):
         print(avg(data[i::fields]))
 
+def entity_component(eid, *managers):
+    for m in managers:
+        yield m.components[eid]
+
 def j(*managers) -> set:
     return set.intersection(*map(set, (m.components for m in managers)))
 
@@ -62,7 +78,7 @@ def join_on(keys, *managers):
     for eid in keys:
         yield eid, (m.components[eid] for m in managers)
 
-def join_without_key(*managers) -> tuple:
+def join_drop_key(*managers) -> tuple:
     # at least two needed else returns dict items
     if len(managers) == 1:
         return managers.components.items()
@@ -116,7 +132,7 @@ def direction_to_keypress(x: int, y: int) -> str:
         if (x, y) == direction:
             return keypress
 
-def scroll(position: int, termsize: int, mapsize: int) -> str:
+def scroll(position: int, termsize: int, mapsize: int) -> int:
     halfscreen = termsize // 2
     # less than half the screen - nothing
     if position < halfscreen:

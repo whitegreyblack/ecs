@@ -1,6 +1,30 @@
 # component.py
 
-"""Component classes"""
+""" `Component classes`
+
+Notes:
+    The way components are used is that they have no reference to the entity id
+    that they link to:
+    >>> e = EntityManager.create() # creates a new id
+    >>> i = Information(x, y)  # creates an information component
+    The component manager holds all linkage//de-linkage between entities and 
+    components created.
+    >>> ComponentManager.add(e, i) # link e to i. e also overwrites existing i
+    However...if we provide the entity during component instantiation we can 
+    remove the managers and move all linkage functionality within a base class
+    (most likely Component) and let the component types manage themselves.
+    >>> AI(e)
+    Internally it would call cls.components[e] = (return object from __new__)
+    >>> AI.components
+    { 
+        e: AI()
+    }
+    But sometimes it does not look right as a parameter call
+    >>> Position(e, 1, 1) # should position take in an entity as a parameter?
+    Allowing them to manage their own list of instances would allow global
+    access to those instances instead of creating managers inside the engine.
+    It is a possible route to consider.
+"""
 
 import random
 from dataclasses import dataclass, field
@@ -172,17 +196,15 @@ class Render(Component):
         self.char = char
         self.color = color
 
-# singleton pattern -- should only have one instance of this component
-# total mem size is ~450.8 KiB with singleton
-# without is ~481.2 KiB. 30 KiB for a single map of tiles
+# singleton using nested classes
 class Tile:
-    class _Tile(Component):
+    class Tile(Component):
         __slots__ = []
         manager: str = 'tiles'
     instance = None
     def __new__(self):
         if not Tile.instance:
-            Tile.instance = Tile._Tile()
+            Tile.instance = Tile.Tile()
         return Tile.instance
 
 class TileMap(Component):
@@ -213,19 +235,21 @@ class Inventory(Component):
         self.items = items if items else list()
 
 class Equipment(Component):
-    __slots__ = ['head', 'body', 'hand', 'feet']
+    equipment = __slots__ = ['head', 'body', 'hand', 'feet', 'missile']
     manager: str = 'equipments'
     def __init__(
         self, 
         head: int = None,
         body: int = None,
         hand: int = None,
-        feet: int = None
+        feet: int = None,
+        missile: int = None
     ):
         self.head = head
         self.body = body
         self.hand = hand
         self.feet = feet
+        self.missile = missile
 
 class Weapon(Component):
     __slots__ = ['damage']

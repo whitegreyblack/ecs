@@ -67,7 +67,8 @@ valid_keypresses = {
     # 'l', # look
     'comma', # pickup
     'less-than', # move up stairs
-    'greater-than', # move down stairs 
+    'greater-than', # move down stairs
+    # 't', # throw missle
 }
 
 menu_keypresses = {

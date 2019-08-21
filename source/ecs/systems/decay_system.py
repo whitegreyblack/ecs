@@ -13,8 +13,7 @@ class DecaySystem(System):
             if decay.lifetime < 1:
                 remove.add(eid)
         
-        for eid in remove:
-            entity = self.engine.entities.find(eid)
+        for entity in remove:
             info = self.engine.infos.find(entity)
             self.engine.logger.add(f"{info.name} decays")
             self.engine.grave_system.process(entity)

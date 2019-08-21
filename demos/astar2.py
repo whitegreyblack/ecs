@@ -1,18 +1,15 @@
-# astar.py
-
-"""Sample demo to test astar implementation"""
-
-
 import curses
 import time
 from dataclasses import dataclass
 
 import click
 
-from source.astar import astar
+from source.astar import astar_gui
 from source.ecs.components import Position
 from source.keyboard import keyboard
-from source.maps import dungeons
+from source.maps import dimensions, dungeons, matrix
+
+"""Sample demo to test astar implementation"""
 
 
 d = {
@@ -38,8 +35,8 @@ def main(screen, mapstring):
     curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
     curses.init_pair(4, curses.COLOR_BLUE, curses.COLOR_BLACK)
 
-    dungeon = [[c for c in row] for row in mapstring.split('\n')]
-    w, height = len(dungeon[0]), len(dungeon)
+    dungeon = matrix(mapstring)
+    w, height = dimensions(dungeon)
     cursor = Position(w//2, height//2)
     tiles = {
         (i, j): cell
@@ -70,13 +67,13 @@ def main(screen, mapstring):
         
         if a and b and changed:
             start = time.time()
-            path = astar(tiles, a, b)
+            path = list(astar_gui(tiles, a, b))
             screen.addstr(height+6, 0, f"{time.time()-start}")
             changed = False
         if path:
             nheight = 0
-            for x, y in path:
-                screen.addch(y, x, 'o', curses.color_pair(3)) 
+            for (x, y), c in path:
+                screen.addch(y, x, 'o' if c == 3 else 'x', curses.color_pair(c))
         screen.addstr(height, 0, f"c: {cursor.x:02}, {cursor.y:02}")
         screen.move(cursor.y, cursor.x)
         screen.refresh()

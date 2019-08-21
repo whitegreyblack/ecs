@@ -11,7 +11,7 @@ import time
 
 import click
 
-from source.common import border, join, join_without_key
+from source.common import border, join, join_drop_key
 from source.description import shared_cache
 from source.ecs import (AI, Armor, Collision, Decay, Effect,
                         Equipment, Health, Information, Input,
@@ -53,13 +53,13 @@ def build_shared_components(engine):
 def add_world(engine, mappairs):
     world_graph = {}
     g = {
-        0: DungeonNode(0, parent_id=None, child_id=1),
+        0: DungeonNode(0, child_id=1),
         1: DungeonNode(1, parent_id=0),
     }
     # create entity per node
     for eid, node in g.items():
         world_graph[eid] = node
-        engine.entities.create(eid)
+        engine.entities.add(eid)
     # create components per entity
     for eid, mapstring in mappairs:
         engine.map_system.generate_map(eid, mapstring)
@@ -67,31 +67,48 @@ def add_world(engine, mappairs):
 def find_empty_spaces(engine):
     return {
         (position.x, position.y)
-            for _, position in join_without_key(engine.tiles, engine.positions)
+            for _, position in join_drop_key(engine.tiles, engine.positions)
                 if not position.blocks_movement
     }
 
 def add_player(engine, spaces):
     player = engine.entities.create()
-    engine.add_player(player)
+    engine.player = player
     engine.inputs.add(player, Input())
     if not spaces:
         raise Exception("No empty spaces to place player")
     space = spaces.pop()
+    
     engine.positions.add(player, Position(*space, map_id=engine.world.id))
     engine.renders.add(player, Render('@'))
     engine.healths.add(player, Health(10, 20))
     engine.infos.add(player, Information("Hero"))
-    engine.inventories.add(player, Inventory())
     engine.inputs.add(player, Input(needs_input=True))
+
     # create a weapon for player
     spear = engine.entities.create()
     engine.items.add(spear, Item('weapon'))
     engine.renders.add(spear, random.choice(engine.renders.shared['spear']))
     engine.infos.add(spear, engine.infos.shared['spear'])
     engine.weapons.add(spear, Weapon(4))
-    e = Equipment(hand=spear.id)
+    
+    # create some missiles for player
+    stone = engine.entities.create()
+    engine.items.add(stone, Item('stone'))
+    engine.renders.add(stone, Render('*'))
+    engine.infos.add(stone, Information(
+        'stone', 
+        'A common item useful for throwing.'
+    ))
+    engine.weapons.add(stone, Weapon(1))
+
+    # add items to an equipment component
+    e = Equipment(hand=spear, missile=stone)
     engine.equipments.add(player, e)
+    
+    # add an inventory
+    i = Inventory()
+    engine.inventories.add(player, Inventory())
 
 def add_computers(engine, npcs, spaces):
     for i in range(npcs):
@@ -155,14 +172,16 @@ def preload(world, npcs, items, debug):
     if debug:
         import tracemalloc
         tracemalloc.start()
-    curses.wrapper(main, world, npcs, items)
-    if debug:
+        curses.wrapper(main, world, npcs, items)
         snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
+        top_stats = snapshot.statistics('traceback')
         for stat in top_stats:
             print(stat)
         total = sum(stat.size for stat in top_stats)
         print("Total allocated size: %.1f KiB" % (total / 1024))
+    else:
+        curses.wrapper(main, world, npcs, items)
+
 
 if __name__ == "__main__":
     preload()

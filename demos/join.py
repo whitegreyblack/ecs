@@ -191,7 +191,7 @@ if __name__ == "__main__":
     start = time.time()
     tiles = [
         (v, p)
-            for v, p in join_without_key(
+            for v, p in join_drop_key(
                 engine.visibilities,
                 engine.positions
             )

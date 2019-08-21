@@ -8,7 +8,7 @@ import time
 
 from source.astar import pathfind
 from source.common import (border, direction_to_keypress, eight_square, join,
-                           join_on, join_without_key, scroll)
+                           join_on, join_drop_key, scroll)
 from source.ecs.components import Movement
 from source.keyboard import valid_keypresses
 from source.raycast import cast_light
@@ -195,6 +195,8 @@ class GameScreen(Screen):
         else:
             cam_y = scroll(player_position.y, self.map_height, tilemap.height)
         y0, y1 = cam_y, self.map_height + cam_y
+        # do line of sight calculations
+        cast_light(self.engine, x0, x1, y0, y1)
 
         # draw map panel border
         self.render_map_border()
@@ -202,10 +204,13 @@ class GameScreen(Screen):
         # draw environment
         self.render_map(player_position.map_id, cam_x, cam_y, x0, x1, y0, y1)
         
+        # 0.463    0.011    1.192    0.028 game_screen.py:207(<dictcomp>)py
+        # 0.180    0.013    0.462    0.033 game_screen.py:208(<setcomp>)
+        # 0.216    0.012    0.549    0.030 game_screen.py:209(<setcomp>)
         tiles = {
-            (position.x, position.y): visibility
-                for position, visibility in join_without_key(
-                    self.engine.positions, 
+            (position.x, position.y)
+                for position, visibility in join_drop_key(
+                    self.engine.positions,
                     self.engine.visibilities
                 )
                 if visibility.level > 1
@@ -245,11 +250,13 @@ class GameScreen(Screen):
     # 0.395    0.019    1.024    0.049 <- join w/ key and w/o tuple
     # 0.651    0.018    1.697    0.046 <- ...
     # 0.432    0.017    1.121    0.045 <- ...
+    # 1.712    0.002    3.688    0.005 game_screen.py:250(render_map) with 57x17 map
+    # 0.576    0.014    1.530    0.036 game_screen.py:251(render_map) with 200x50 map (x7 slower)
     def render_map(self, map_id, cam_x, cam_y, x0, x1, y0, y1):
         x_offset = self.map_x - cam_x
         y_offset = self.map_y - cam_y
         
-        for visibility, position, render in join_without_key(
+        for visibility, position, render in join_drop_key(
             self.engine.visibilities,
             self.engine.positions,
             self.engine.renders
@@ -285,8 +292,7 @@ class GameScreen(Screen):
                 and x0 <= position.x < x1 and y0 <= position.y < y1
             ):
                 # current_map_id = position.map_id == map_id
-                visibility = tiles[(position.x, position.y)]
-                color = render.color if visibility.level == 2 else 0
+                color = render.color if (position.x, position.y) in tiles else 0
                 self.render_char(
                     position.x + x_offset,
                     position.y + y_offset,
@@ -294,7 +300,7 @@ class GameScreen(Screen):
                     curses.color_pair(color)
                 )
                 # check if enemy needs to added to the panel
-                non_player = eid != self.engine.player.id
+                non_player = eid != self.engine.player
                 description_space = enemy_count < self.enemy_panel_height - 1
                 if non_player:
                         enemy_count += int(self.render_enemy_panel_detail(
@@ -315,7 +321,7 @@ class GameScreen(Screen):
             self.engine.infos
         ):
             current_map = position.map_id == self.engine.world.id
-            visibility = tiles.get((position.x, position.y), None)
+            visibility = (position.x, position.y) in tiles
             inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
             if current_map and visibility and inbounds:
                 self.render_char(
@@ -332,10 +338,11 @@ class GameScreen(Screen):
             position = self.engine.positions.find(eid=effect.entity_id)
             render = self.engine.renders.find(eid=effect.entity_id)
             info = self.engine.infos.find(eid=effect.entity_id)
-            visibility = tiles.get((position.x, position.y), None)
-            inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
             # only shows if inside the view area and space is lighted
-            if visibility and inbounds:
+            if ((position.x, position.y) in tiles 
+                and x0 <= position.x < x1 
+                and y0 <= position.y < y1
+            ):
                 self.render_char(
                     self.map_x + position.x - cam_x,
                     self.map_y + position.y - cam_y,
@@ -343,7 +350,7 @@ class GameScreen(Screen):
                 )
                 self.terminal.noutrefresh()
                 curses.doupdate()
-                time.sleep(.085)
+                time.sleep(.1)
                 self.render_char(
                     self.map_x + position.x - cam_x,
                     self.map_y + position.y - cam_y,
@@ -352,10 +359,9 @@ class GameScreen(Screen):
                 )
                 self.terminal.noutrefresh()
                 curses.doupdate()
-                # time.sleep(.085)
 
     def render_log(self, log, ly, lx):
-        self.terminal.addstr(ly, lx, str(log))
+        self.terminal.addstr(ly, lx, '> ' + str(log))
         # log.lifetime -= 1
 
     def render_logs_panel(self):
@@ -379,7 +385,7 @@ class GameScreen(Screen):
 
     def render(self):
         self.terminal.clear()
-        self.render_fov()
+        # self.render_fov()
         self.render_player_panel()
         self.render_enemy_panel()
         self.render_logs_panel()
