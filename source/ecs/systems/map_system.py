@@ -9,10 +9,11 @@ from source.common import join
 from source.description import env_char_to_name
 from source.ecs.components import (Information, Item, Openable, Position,
                                    Render, Tile, TileMap, Visibility)
+from source.generate import (add_boundry_to_matrix, array_to_matrix,
+                             build_cave, cell_auto, flood_fill,
+                             generate_poisson_array, matrix,
+                             replace_cell_with_stairs, string)
 from source.graph import DungeonNode, WorldGraph
-from source.maps import (add_boundry_to_matrix, array_to_matrix, cell_auto,
-                         flood_fill, generate_poisson_array, matrix,
-                         replace_cell_with_stairs, string)
 
 from .system import System
 
@@ -79,13 +80,14 @@ class MapSystem(System):
             tilemap = TileMap(len(dungeon[0]), len(dungeon))
         else:
             w, h = 58, 17
-            random_array = generate_poisson_array(w, h)
-            no_stairs = array_to_matrix(random_array, w, h, filterer=lambda x: x < 3 or x >= 8)
-            no_stairs = add_boundry_to_matrix(no_stairs, bounds=1)
-            for i in range(4):
-                no_stairs = cell_auto(no_stairs, deadlimit=5+(i-5))
-            no_stairs = flood_fill(no_stairs)
-            dungeon = replace_cell_with_stairs(no_stairs)
+            # random_array = generate_poisson_array(w, h)
+            # no_stairs = array_to_matrix(random_array, w, h, filterer=lambda x: x < 3 or x >= 8)
+            # no_stairs = add_boundry_to_matrix(no_stairs, bounds=1)
+            # for i in range(4):
+            #     no_stairs = cell_auto(no_stairs, deadlimit=5+(i-5))
+            # no_stairs = flood_fill(no_stairs)
+            # dungeon = replace_cell_with_stairs(no_stairs)
+            dungeon = build_cave(w, h)
             print(string(dungeon))
             tilemap = TileMap(w, h)
         self.engine.tilemaps.add(map_id, tilemap)
@@ -102,6 +104,8 @@ class MapSystem(System):
                 Render()      -> shared
                 Information() -> shared
                 """
+                if c == ' ':
+                    continue
                 tile = self.engine.entities.create()
                 # shared components
                 self.engine.tiles.add(tile, Tile())

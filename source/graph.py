@@ -22,8 +22,10 @@ Each array node can then have any multiple number of children worlds
 """
 
 from dataclasses import dataclass
+from math import inf
+from random import choice
 
-from source.maps import dungeons
+# from source.maps import dungeons
 
 
 class WorldGraph(dict):
@@ -129,10 +131,38 @@ def find_parent(graph, start_id, end_id):
         if not n:
             return False
 
-graph = {
-    0: (DungeonNode(0, None, child_id=1), dungeons['parent']),
-    1: (DungeonNode(1, 0), dungeons['child'])
-}
+# graph = {
+#     0: (DungeonNode(0, None, child_id=1), dungeons['parent']),
+#     1: (DungeonNode(1, 0), dungeons['child'])
+# }
+
+def create_mst(graph):
+    """
+        Minimum spanning tree
+    """
+    q, p = {}, {}
+
+    for key in graph.keys(): 
+        q[key] = inf
+        p[key] = 0
+
+    q[0] = 0
+    p[0] = 0
+    
+    while q:
+        u = min(k for k in q.keys())
+        for z in graph[u].keys():
+            if z in q.keys() and 0 < graph[u][z] < q[z]: 
+                p[z] = u
+                q[z] = graph[u][z]
+        q.pop(u)
+        if choice([0, 1]) == 1 and q.keys():
+            u = min(k for k in q.keys())
+            for z in graph[u].keys():
+                if z in q.keys() and 0 < graph[u][z] < q[z]: 
+                    p[z] = u
+                    q[z] = graph[u][z]  
+    return p
 
 if __name__ == "__main__":
     print(Node(3))

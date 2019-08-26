@@ -12,6 +12,7 @@ import time
 import click
 
 from source.common import border, join, join_drop_key
+from source.controllers import controllers
 from source.description import shared_cache
 from source.ecs import (
     AI, Armor, Collision, Cursor, Decay, Effect, Equipment, Health,
@@ -19,7 +20,7 @@ from source.ecs import (
     Tile, TileMap, Visibility, Weapon, components)
 from source.ecs.systems import systems
 from source.engine import Engine
-from source.graph import DungeonNode, WorldGraph, WorldNode, graph
+from source.graph import DungeonNode, WorldGraph, WorldNode
 from source.keyboard import keyboard
 from source.maps import dungeons
 
@@ -152,18 +153,54 @@ def ecs_setup(terminal, dungeon):
     engine = Engine(
         components=components, 
         systems=systems,
+        controllers=controllers,
         terminal=terminal,
         keyboard=keyboard
     )
     build_shared_components(engine)
     add_world(engine, ((0, dungeon),))
     spaces = find_empty_spaces(engine)
-    print(engine)
     add_player(engine, spaces)
     add_cursor(engine)
     add_computers(engine, 2, spaces)
     add_items(engine, 1, spaces)
     return engine
+
+def count_objects(engine):
+    """Debugging information and object counting"""
+    m = 0
+    s = 0
+    for c in sorted(components, key=lambda x: x.classname()):
+        l = len(getattr(engine, c.manager).components)
+        g = len(getattr(engine, c.manager).shared)
+        print(c.manager, l, g)
+        m += l
+        s += g
+    print('total objects:', m, s)
+
+    # environment entities
+    print('tiles:', len(list(join(
+        engine.tiles, 
+        engine.positions, 
+        engine.visibilities, 
+        engine.renders, 
+        engine.infos
+    ))))
+    # movable units
+    print('units:', len(list(join(
+        engine.healths,
+        engine.positions,
+        engine.infos,
+        engine.renders
+    ))))
+    # items
+    print('items:', len(list(join(
+        engine.healths,
+        engine.positions,
+        engine.infos,
+        engine.renders,
+        engine.inventories
+    ))))
 
 def create_save_folder_if_not_exists():
     if not os.path.exists("source/saves"):
@@ -176,7 +213,7 @@ def main(terminal, dungeon):
     dungeon = dungeons.get(dungeon.lower(), 'small')
     engine = ecs_setup(terminal, dungeon=dungeon)
     engine.run()
-    engine.count_objects()
+    count_objects(engine)
 
 @click.command()
 @click.option('-w', '--world', default='shadowbarrow')

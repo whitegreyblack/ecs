@@ -403,7 +403,6 @@ class GameScreen(Screen):
                     curses.doupdate()
                 else:
                     for x, y in effect.path[1:]:
-                        print(x, y)
                         self.render_char(
                             x + x_offset,
                             y + y_offset,

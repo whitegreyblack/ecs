@@ -22,7 +22,7 @@ from source.messenger import Logger
 
 class Engine(object):
 
-    def __init__(self, components, systems, terminal, keyboard):
+    def __init__(self, components, systems, controllers, terminal=None, keyboard=None):
         self.running = True
         self.logger = Logger()
         self.debugger = Logger()
@@ -35,6 +35,7 @@ class Engine(object):
         self.entities = EntityManager()
         self.init_managers(components)
         self.init_systems(systems)
+        self.init_controllers(controllers)
 
         self.screen = None
         self.entity = None
@@ -43,7 +44,6 @@ class Engine(object):
         self.keypress = None
 
         self.mode = GameMode.NORMAL
-        print(self.mode)
 
     def __repr__(self):
         attributes = []
@@ -83,6 +83,12 @@ class Engine(object):
             else:
                 system = system_type(self)
             self.__setattr__(name, system)
+
+    def init_controllers(self, controllers):
+        if not controllers:
+            return
+        for controller in controllers:
+            self.__setattr__(controller.name, controller(self))
 
     def get_input(self):
         # curses.flushinp()
@@ -124,7 +130,6 @@ class Engine(object):
 
     def change_screen(self, name):
         self.screen.state = 'closed'
-        print(self.screen)
         self.screen = self.screens.get(name, None)
         if not self.screen:
             raise ValueError(f"Invalid screen name: {name}")
@@ -184,39 +189,3 @@ class Engine(object):
         self.entity = self.entities.entity_ids[self.entity_index]
         while self.running:
             self.process()
-
-    def count_objects(self):
-        """Debugging information and object counting"""
-        m = 0
-        s = 0
-        for c in sorted(components, key=lambda x: x.classname()):
-            l = len(getattr(self, c.manager).components)
-            g = len(getattr(self, c.manager).shared)
-
-            print(c.manager, l, g)
-            m += l
-            s += g
-        print('total objects:', m, s)
-
-        print(len(list(join(
-            self.tiles, 
-            self.positions, 
-            self.visibilities, 
-            self.renders, 
-            self.infos
-        ))))
-
-        print(len(list(join(
-            self.healths,
-            self.positions,
-            self.infos,
-            self.renders
-        ))))
-
-        print(len(list(join(
-            self.healths,
-            self.positions,
-            self.infos,
-            self.renders,
-            self.inventories
-        ))))

@@ -40,7 +40,6 @@ class CommandSystem(System):
                 x = coordinate.x - position.x
                 y = coordinate.y - position.y
                 doors[(x, y)] = (closeable_id, closeable, coordinate, render)
-        print(doors)
         door_to_close = None
         if not doors:
             self.engine.logger.add(f"No opened door to close.")
@@ -143,7 +142,6 @@ class CommandSystem(System):
 
     def pick_item(self, entity):
         position = self.engine.positions.find(entity)
-        inventory = self.engine.inventories.find(entity)
         g = join(
             self.engine.items,
             self.engine.positions,
@@ -157,13 +155,13 @@ class CommandSystem(System):
                 items.append(info.name)
         if not items_picked_up:
             return False
-        for entity in items_picked_up:
+        for item_id in items_picked_up:
             # remove from map
-            self.engine.visibilities.remove(entity)
+            self.engine.visibilities.remove(item_id)
             # self.engine.renders.remove(entity)
-            self.engine.positions.remove(entity)
+            self.engine.positions.remove(item_id)
             # add to inventory
-            inventory.items.append(entity)
+            self.engine.inventory_controller.add_item(entity, item_id)
         if len(items) > 2:
             item_str = f"a {', a '.join(items[:len(items)-1])}, and a {items[-1]}"
         elif len(items) == 2:
@@ -280,8 +278,6 @@ class CommandSystem(System):
         return True
 
     def collide(self, entity, collision):
-        if __debug__:
-            self.engine.logger.add(f"{entity}")
         # oob or environment collision. No logged message. Exit early
         if collision.entity == -1:
             return False
@@ -301,11 +297,6 @@ class CommandSystem(System):
         return self.attack(entity, other)
 
     def move(self, entity, movement) -> bool:
-        if __debug__:
-            self.engine.logger.add(f"player: {self.engine.player}")
-            self.engine.logger.add(f"cursor: {self.engine.cursor}")
-            self.engine.logger.add(f"{entity} {movement}")
-
         # if entity has no position component return early
         position = self.engine.positions.find(entity)
         if not position or not movement:
@@ -482,10 +473,7 @@ class CommandSystem(System):
             or
             >>> self.actions[self.engine.mode][command](entity)
         """
-        if __debug__:
-            Logger.instance.add(f'command: {command}')
         if self.engine.mode == GameMode.NORMAL:
-            print(f'Normal mode: command - {command}')
             if command in movement_keypresses:
                 return self.move(entity, Movement.keypress_to_direction(command))
             elif command == 'escape':
@@ -520,7 +508,6 @@ class CommandSystem(System):
                 return False
         elif self.engine.mode == GameMode.LOOKING:
             if command in movement_keypresses:
-                self.engine.logger.add(f"Moving cursor {command}")
                 return self.move(entity, Movement.keypress_to_direction(command))
                 # return False
             elif command == 'escape' or command == 'l':
@@ -528,7 +515,6 @@ class CommandSystem(System):
                 return False
         elif self.engine.mode == GameMode.MISSILE:
             if command in movement_keypresses:
-                self.engine.logger.add(f"Moving cursor {command}")
                 return self.move(entity, Movement.keypress_to_direction(command))
                 # return False
             elif command == 'escape' or command == 't':
@@ -537,11 +523,9 @@ class CommandSystem(System):
             elif command == 'enter':
                 t = self.missile(entity)
                 self.engine.mode = GameMode.NORMAL
-                self.engine.logger.add(t)
                 return t
         elif self.engine.mode == GameMode.DEBUG:
             if command in movement_keypresses:
-                self.engine.logger.add(f"Moving cursor {command}")
                 return self.move(entity, Movement.keypress_to_direction(command))
             elif command == 'escape' or command == 'tilde':
                 self.engine.change_mode(GameMode.NORMAL)

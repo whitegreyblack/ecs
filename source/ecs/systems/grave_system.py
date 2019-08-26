@@ -69,7 +69,6 @@ class GraveSystem(System):
                 movement_type=Position.MovementType.NONE,
                 blocks_movement=False
             )
-            print(item_position)
             self.engine.positions.add(item, item_position)
 
     def remove_from_inventory(self, entity):
@@ -90,6 +89,5 @@ class GraveSystem(System):
             self.color_environment(entity)
         # if the entity exists inside a container
         elif not self.engine.positions.find(entity):
-            print('entity exists in container')
             self.remove_from_inventory(entity)
         self.delete(entity)

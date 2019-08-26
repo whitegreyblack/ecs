@@ -2,8 +2,9 @@
 
 """Example program for ecs package"""
 
-from source.ecs.managers import EntityManager, Entity, ComponentManager
-from source.ecs import Component, Position, Health
+from source.ecs import Component, Health, Position
+from source.ecs.managers import ComponentManager, EntityManager
+
 
 def setup_entities(manager, entity_count):
     for e in range(entity_count):

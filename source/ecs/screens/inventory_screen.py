@@ -20,47 +20,17 @@ class InventoryMenu(Screen):
     def __init__(self, engine, terminal):
         super().__init__(engine, terminal)
         self.logger = Logger()
-        self.index = -1
         self.page = 0
         self.max_items = 14
-        self.current_item_id = None
-        self.valid_keypresses.update({
-            'e',
-            'd',
-            'escape', 
-            'enter', 
-            'down', 
-            'up', 
-            'i',
-            'less-than',
-            'greater-than'
-        })
-
-    @property
-    def empty(self):
-        return self.size == 0
-
-    @property
-    def size(self):
-        if self.items:
-            return len(self.items)
-        return 0
+        self.index = -1
+        self.valid_keypresses.update({ 'escape', 'enter' })
 
     def render_items(self):
-        # will always find it since one is created on startup
-        self.items = list(self.engine.inventory_system.get_inventory(
+        items = list(self.engine.inventory_controller.get_all(
             self.engine.player
         ))
 
-        # helpstring = f"[e]at  [E]quip  [D]rop [l]ook [U]se"
-        # self.terminal.addstr(
-        #     self.engine.height - 2,
-        #     self.engine.width // 2 - len(helpstring) // 2,
-        #     helpstring
-        # )
-
-        # exit early if inventory is empty
-        if not self.items:
+        if not items:
             string = 'no items in inventory'
             self.terminal.addstr(
                 self.engine.height // 2, 
@@ -76,7 +46,7 @@ class InventoryMenu(Screen):
         # display items by item list order. Add cursor indicator if available
         current_row = 1
         current_category = None
-        for i, item in enumerate(self.items[start:chunk]):
+        for i, (item, render, info) in enumerate(items[start:chunk]):
             if current_category is not item.category:
                 current_category = item.category
                 self.terminal.addstr(
@@ -85,17 +55,30 @@ class InventoryMenu(Screen):
                     item.category.capitalize()
                 )
                 current_row += 1
-            cursor = '>' if i == self.index else ' '
-            self.terminal.addstr(i + current_row, 3, f"{cursor} ")
+            self.terminal.addstr(i + current_row, 3, f"{chr(i + 97)} ")
             self.terminal.addch(
-                i + current_row, 
+                i + current_row,
                 5, 
-                item.char, 
-                curses.color_pair(item.color)
+                render.char, 
+                curses.color_pair(render.color)
             )
-            self.terminal.addstr(i + current_row, 7, item.name)
+            self.terminal.addstr(i + current_row, 7, info.name)
+
+        self.set_valid_keypresses(
+            { chr(x+97) for x in range(i+1) }.union({ 'enter' })
+        )
 
     def render_item(self):
+        # get item information
+        iid = self.engine.inventory_controller.get_item_id(
+            self.engine.player,
+            self.index
+        )
+        item, render, info = self.engine.inventory_controller.get_item(
+            self.engine.player,
+            iid
+        )
+
         # display single item information box
         w, h = self.engine.width, self.engine.height
         border(self.terminal, w // 4, h // 4, w // 2, h // 2)
@@ -105,83 +88,94 @@ class InventoryMenu(Screen):
         blank_line = ' ' * (w // 2 - 1)
         for y in range(h // 2 - 1):
             self.terminal.addstr(h // 4 + y + 1, w // 4 + 1, blank_line)
-
-        item = self.items[self.index]
         self.terminal.addch(
             h // 4 + 1, 
             w // 4 + 3, 
-            item.char,
-            curses.color_pair(item.color)
+            render.char,
+            curses.color_pair(render.color)
         ) 
-        self.terminal.addstr(h // 4 + 1, w // 4 + 5, item.name)
+        self.terminal.addstr(h // 4 + 1, w // 4 + 5, info.name)
         self.terminal.addstr(h // 4 + 2, w // 4 + 3, item.category)
-        if item.description:
-            lines = wrap(item.description, w // 2 - 6)
+        save_y = 0
+        if info.description:
+            lines = wrap(info.description, w // 2 - 6)
             for y, line in enumerate(lines):
                 self.terminal.addstr(h // 4 + 4 + y, w // 4 + 3, line)
+            save_y = y
+        actions = []
+        keys = { 'd' }
+        if item.category == 'weapon':
+            actions.append('e: equip')
+            keys.add('e')
+        elif item.category == 'food':
+            actions.append('e: eat')
+            keys.add('e')
+        elif item.category == 'use':
+            actions.append('u: use')
+            keys.add('u')
+        actions.append('d: drop')
+        if actions:
+            for y, line in enumerate(actions):
+                self.terminal.addstr(
+                    h // 4 + 4 + save_y + y + 2, 
+                    w // 4 + 3, 
+                    line
+                )
+        self.set_valid_keypresses(keys)
 
     def render_logs(self):
         logs = self.logger.messages
         if len(logs) >= 2:
             l = max(0, len(logs)) - 3
             logs = logs[l:]
-        
         for y, log in enumerate(logs):
             log_y = self.engine.height - 4 + y
             self.terminal.addstr(log_y, 1, str(log))
 
     def render(self):
-        if not self.current_item_id:
+        if self.index < 0:
             self.terminal.erase()
             border(
                 self.terminal, 
                 0, 0, 
-                self.engine.width-1, 
-                self.engine.height-1
+                self.engine.width - 1, 
+                self.engine.height - 1
             )
             self.terminal.addstr(0, 1, '[inventory]')
             self.render_items()
         else:
             self.render_item()
-
         self.render_logs()
         self.terminal.refresh()
+
+    def set_valid_keypresses(self, keys):
+        self.valid_keypresses = { 'escape' }.union(keys)
+
+    def handle_keypress(self, key):
+        """Handles drop keypress"""
+        iid = self.engine.inventory_controller.get_item_id(
+            self.engine.player,
+            self.index
+        )
+        done = self.engine.inventory_controller.keypress(
+            key,
+            self.engine.player,
+            iid
+        )
+        if not done:
+            return
+        # reset item pointer
+        self.index = -1
     
     def handle_input(self):
-        """TODO: disable up/down keypress when single item info box is shown"""
         key = self.engine.keypress
-        if key == 'down':
-            # if inventory ran for the first time and down was pressed 
-            # -- initialize index
-            if self.index is None and self.current_item_id is None:
-                self.index = 0
-            elif not self.empty and self.current_item_id is None:
-                self.index = (self.index + 1) % self.size
-        elif key == 'up':
-            # if inventory ran for the first time and down was pressed 
-            # -- initialize index
-            if self.index is None and self.current_item_id is None:
-                self.index = self.size - 1
-            else:
-                self.index = (self.index - 1) % self.size
-        elif key == 'escape' or key == 'i':
-            if self.current_item_id:
-                self.current_item_id = None
-            else:
-                self.index = None
+        if key == 'escape':
+            if self.index < 0:
                 self.engine.change_screen('gamescreen')
-        elif key == 'enter':
-            if not self.empty and self.index is not None:
-                self.current_item_id = self.items[self.index]
-        elif key == 'less-than':
-            pass
-        elif key == 'greater-than':
-            pass
-        elif key == 'e':
-            self.logger.add('Pressed e')
-            if self.index < 0:
-                self.logger.add('Pressed e but no item selected')
-        elif key == 'd':
-            self.logger.add('Pressed d')
-            if self.index < 0:
-                self.logger.add('Pressed d but no item selected')
+            else:
+                self.index = -1
+        elif self.index > -1:
+            self.handle_keypress(key)
+        else:
+            self.index = ord(key) - 97
+ 

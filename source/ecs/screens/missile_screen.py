@@ -42,9 +42,7 @@ class MissileMenu(Screen):
 
     def render(self):
         # draw the cursor
-        print(self.cursor_x, self.cursor_y)
         if self.cursor_x == -1 and self.cursor_y == -1:
-            print('setting up')
             self.setup_cursor_position()
         self.terminal.addch(
             self.cursor_y + self.map_panel_y,
