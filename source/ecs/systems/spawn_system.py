@@ -73,7 +73,7 @@ class SpawnSystem(System):
         
         # add items to inventory
         item = self.engine.entities.create()
-        self.engine.items.add(item, Item('weapon'))
+        self.engine.items.add(item, Item('weapon', ('hand', 'missile')))
         r = random.choice(self.engine.renders.shared['spear'])
         self.engine.renders.add(item, r)
         self.engine.infos.add(item, self.engine.infos.shared['spear'])

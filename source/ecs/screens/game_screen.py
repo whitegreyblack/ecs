@@ -283,6 +283,10 @@ class GameScreen(Screen):
                     render.char,
                     curses.color_pair(c)
                 )
+        # self.render_char(x_offset, y_offset, curses.ACS_BOARD)
+        # self.render_char(x_offset+1, y_offset, curses.ACS_BLOCK)
+        # self.render_char(x_offset+2, y_offset, curses.ACS_CKBOARD)
+        # self.render_char(x_offset+3, y_offset, curses.ACS_BULLET)
 
     def render_cursor(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
         cursor = self.engine.positions.find(self.engine.cursor)
@@ -350,12 +354,17 @@ class GameScreen(Screen):
             visibility = (position.x, position.y) in tiles
             inbounds = x0 <= position.x < x1 and y0 <= position.y < y1
             if current_map and visibility and inbounds:
-                self.render_char(
-                    self.map_x + position.x - cam_x,
-                    self.map_y + position.y - cam_y,
-                    render.char,
-                    curses.color_pair(render.color)
-                )
+                try:
+                    self.render_char(
+                        self.map_x + position.x - cam_x,
+                        self.map_y + position.y - cam_y,
+                        render.char,
+                        curses.color_pair(render.color)
+                    )
+                except:
+                    print(position, render, info)
+                    print(render.color)
+                    raise
 
     def update_effects(self):
         self.engine.effects.components.clear()

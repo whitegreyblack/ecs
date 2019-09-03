@@ -80,14 +80,16 @@ class MapSystem(System):
             tilemap = TileMap(len(dungeon[0]), len(dungeon))
         else:
             w, h = 58, 17
-            # random_array = generate_poisson_array(w, h)
-            # no_stairs = array_to_matrix(random_array, w, h, filterer=lambda x: x < 3 or x >= 8)
-            # no_stairs = add_boundry_to_matrix(no_stairs, bounds=1)
-            # for i in range(4):
-            #     no_stairs = cell_auto(no_stairs, deadlimit=5+(i-5))
-            # no_stairs = flood_fill(no_stairs)
-            # dungeon = replace_cell_with_stairs(no_stairs)
-            dungeon = build_cave(w, h)
+            # w, h = 80, 24
+            # w, h = 180, 50
+            random_array = generate_poisson_array(w, h)
+            no_stairs = array_to_matrix(random_array, w, h, filterer=lambda x: x < 3 or x >= 8)
+            no_stairs = add_boundry_to_matrix(no_stairs, bounds=1)
+            for i in range(4):
+                no_stairs = cell_auto(no_stairs, deadlimit=5+(i-5))
+            no_stairs = flood_fill(no_stairs)
+            dungeon = replace_cell_with_stairs(no_stairs)
+            # dungeon = build_cave(w, h)
             print(string(dungeon))
             tilemap = TileMap(w, h)
         self.engine.tilemaps.add(map_id, tilemap)

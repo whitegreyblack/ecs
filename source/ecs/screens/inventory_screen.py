@@ -1,6 +1,8 @@
 # inventoryscreen.py
 
-"""Inventory screen class that renders and processes inputs for the inventory menu"""
+"""
+Inventory screen class that renders and processes inputs for the inventory menu
+"""
 
 import curses
 import random
@@ -10,7 +12,6 @@ from textwrap import wrap
 
 from source.common import (border, direction_to_keypress, eight_square, join,
                            scroll)
-# from source.keyboard import valid_keypresses
 from source.messenger import Logger
 
 from .screen import Screen
@@ -23,10 +24,13 @@ class InventoryMenu(Screen):
         self.page = 0
         self.max_items = 14
         self.index = -1
-        self.valid_keypresses.update({ 'escape', 'enter' })
+        self.last_item_id = -1
+        self.valid_keypresses.update({ 'escape', 'e' })
 
     def render_items(self):
-        items = list(self.engine.inventory_controller.get_all(
+        items = list(self.engine.router.route(
+            'inventory', 
+            'get_all', 
             self.engine.player
         ))
 
@@ -55,14 +59,14 @@ class InventoryMenu(Screen):
                     item.category.capitalize()
                 )
                 current_row += 1
-            self.terminal.addstr(i + current_row, 3, f"{chr(i + 97)} ")
+            self.terminal.addstr(i + current_row, 3, f"{chr(i + 97)}.")
             self.terminal.addch(
                 i + current_row,
-                5, 
+                6, 
                 render.char, 
                 curses.color_pair(render.color)
             )
-            self.terminal.addstr(i + current_row, 7, info.name)
+            self.terminal.addstr(i + current_row, 8, info.name)
 
         self.set_valid_keypresses(
             { chr(x+97) for x in range(i+1) }.union({ 'enter' })
@@ -70,13 +74,16 @@ class InventoryMenu(Screen):
 
     def render_item(self):
         # get item information
-        iid = self.engine.inventory_controller.get_item_id(
-            self.engine.player,
+        self.last_item_id = self.engine.router.route(
+            'inventory', 
+            'get_item_id', 
+            self.engine.player, 
             self.index
         )
-        item, render, info = self.engine.inventory_controller.get_item(
-            self.engine.player,
-            iid
+        item, render, info = self.engine.router.route(
+            'inventory',
+            'get_item',
+            self.last_item_id
         )
 
         # display single item information box
@@ -88,6 +95,8 @@ class InventoryMenu(Screen):
         blank_line = ' ' * (w // 2 - 1)
         for y in range(h // 2 - 1):
             self.terminal.addstr(h // 4 + y + 1, w // 4 + 1, blank_line)
+
+        # add the character representing item selected
         self.terminal.addch(
             h // 4 + 1, 
             w // 4 + 3, 
@@ -149,22 +158,27 @@ class InventoryMenu(Screen):
         self.terminal.refresh()
 
     def set_valid_keypresses(self, keys):
-        self.valid_keypresses = { 'escape' }.union(keys)
+        self.valid_keypresses = { 'escape', 'e' }.union(keys)
 
     def handle_keypress(self, key):
-        """Handles drop keypress"""
-        iid = self.engine.inventory_controller.get_item_id(
-            self.engine.player,
-            self.index
-        )
-        done = self.engine.inventory_controller.keypress(
+        # iid = self.engine.inventory_controller.get_item_id(
+        #     self.engine.player,
+        #     self.index
+        # )
+        done = self.engine.router.route(
+            'inventory',
+            'keypress',
             key,
             self.engine.player,
-            iid
+            self.last_item_id
         )
+        # done = self.engine.inventory_controller.keypress(
+        #     key,
+        #     self.engine.player,
+        #     self.last_item_id
+        # )
         if not done:
             return
-        # reset item pointer
         self.index = -1
     
     def handle_input(self):
@@ -174,8 +188,9 @@ class InventoryMenu(Screen):
                 self.engine.change_screen('gamescreen')
             else:
                 self.index = -1
+        elif key == 'e' and self.index == -1:
+            self.engine.change_screen('equipmentmenu')
         elif self.index > -1:
             self.handle_keypress(key)
         else:
             self.index = ord(key) - 97
- 

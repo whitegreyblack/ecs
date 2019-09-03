@@ -12,7 +12,8 @@ import time
 import click
 
 from source.common import border, join, join_drop_key
-from source.controllers import controllers
+from source.controllers import (EquipmentController, InventoryController,
+                                controllers)
 from source.description import shared_cache
 from source.ecs import (
     AI, Armor, Collision, Cursor, Decay, Effect, Equipment, Health,
@@ -23,6 +24,7 @@ from source.engine import Engine
 from source.graph import DungeonNode, WorldGraph, WorldNode
 from source.keyboard import keyboard
 from source.maps import dungeons
+from source.router import Router
 
 
 def resize(screen):
@@ -94,14 +96,14 @@ def add_player(engine, spaces):
 
     # create a weapon for player
     spear = engine.entities.create()
-    engine.items.add(spear, Item('weapon'))
+    engine.items.add(spear, Item('weapon', ('hand', 'missile')))
     engine.renders.add(spear, random.choice(engine.renders.shared['spear']))
     engine.infos.add(spear, engine.infos.shared['spear'])
     engine.weapons.add(spear, Weapon(4))
     
     # create some missiles for player
     stone = engine.entities.create()
-    engine.items.add(stone, Item('weapon'))
+    engine.items.add(stone, Item('weapon', ('hand', 'missile')))
     engine.renders.add(stone, Render('*'))
     engine.infos.add(stone, Information(
         'stone', 
@@ -149,14 +151,20 @@ def add_items(engine, items, spaces):
         engine.items.add(item, Item('food'))
         engine.decays.add(item, Decay())
 
+def add_router(engine):
+    engine.add_router(Router, (
+        ('equipment', EquipmentController),
+        ('inventory', InventoryController)
+    ))
+
 def ecs_setup(terminal, dungeon):
     engine = Engine(
         components=components, 
         systems=systems,
-        controllers=controllers,
         terminal=terminal,
         keyboard=keyboard
     )
+    add_router(engine)
     build_shared_components(engine)
     add_world(engine, ((0, dungeon),))
     spaces = find_empty_spaces(engine)

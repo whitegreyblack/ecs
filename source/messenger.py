@@ -14,19 +14,30 @@ class Message:
         count = f" (x{self.count})" if self.count > 0 else ''
         return f"{self.string}{count}"
 
+# class Logger:
+#     instance = None
+#     @dataclass
+#     class _Logger:
+#         last: str = None
+#         messages: list = field(default_factory=list)
+#         def add(self, message, count=0, lifetime=1):
+#             if self.last == message:
+#                 self.messages[-1].count += 1
+#             else:
+#                 self.messages.append(Message(message, 0, lifetime))
+#                 self.last = message
+#     def __new__(self):
+#         if not Logger.instance:
+#             Logger.instance = Logger._Logger()
+#         return Logger.instance
+
+@dataclass
 class Logger:
-    instance = None
-    @dataclass
-    class _Logger:
-        last: str = None
-        messages: list = field(default_factory=list)
-        def add(self, message, count=0, lifetime=1):
-            if self.last == message:
-                self.messages[-1].count += 1
-            else:
-                self.messages.append(Message(message, 0, lifetime))
-                self.last = message
-    def __new__(self):
-        if not Logger.instance:
-            Logger.instance = Logger._Logger()
-        return Logger.instance
+    last: str = None
+    messages: list = field(default_factory=list)
+    def add(self, message, count=0, lifetime=1):
+        if self.last == message:
+            self.messages[-1].count += 1
+        else:
+            self.messages.append(Message(message, 0, lifetime))
+            self.last = message

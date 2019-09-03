@@ -283,11 +283,11 @@ class Weapon(Component):
         self.damage = damage
 
 class Item(Component):
-    __slots__ = ['category', 'seen']
+    __slots__ = ['category', 'equipment_type']
     manager: str = 'items'
-    def __init__(self, category: str = 'general'):
+    def __init__(self, category: str = 'general', eqtype: list = None):
         self.category = category
-        self.seen = False
+        self.equipment_types = eqtype
 
 class Armor(Component):
     __slots__ = ['defense']

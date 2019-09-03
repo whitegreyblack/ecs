@@ -367,7 +367,7 @@ def bresenhams(start, end):
     return points
 
 def intersects(minx, miny, maxx, maxy, other):
-    o = 2 # offset
+    o = 0 # offset
     return (minx < other[2] + o and miny < other[3] + o and 
             maxx > other[0] - o and maxy > other[1] - o)
 
@@ -382,10 +382,92 @@ def distance(a, b):
 def maze(matrix: list):
     ...
 
+def wall_coordinates(room):
+    for y in (room[1], room[3]):
+        for x in range(room[0], room[2]+1):
+            yield x, y
+    for x in (room[0], room[2]):
+        for y in range(room[1]+1, room[3]):
+            yield x, y
+
+def add_maze(cave, rooms):
+    """ `example`
+        +-------------------------+
+        |                         |
+        | ##########              |
+        | #........#    ######### |
+        | #........#    #.......# |
+        | #........#    #.......# |
+        | ##########    #.......# |
+        |               ######### |
+        |                         |
+        +-------------------------+
+        1.start from corner
+        +-------------------------+
+        |             ############|
+        | ##########  #           |
+        | #........#  # ##########|
+        | #........#  # #.......# |
+        | #........#  # #.......# |
+        | ##########  # #.......# |
+        |    #   # #  # ######### |
+        |###   #   #              |
+        +-------------------------+
+    """
+
+def add_doors(cave, rooms):
+    # create doors based on specific rules
+    # _ | 0 1 2
+    # --+-------
+    # 0 | 0 1 2
+    # 1 | 3 4 5
+    # 2 | 6 7 8
+    # if the tile @ 5 has neighbors only at 2/8 or 4/6 that are both walls
+    # and the 5 tile is a floor then the 5 tile can transform into a door
+    transform = set()
+    width, height = dimensions(cave)
+    for r, room in enumerate(rooms):
+        # chance to a closed room
+        if not random.randint(0, 1):
+            continue
+        # x, y = center(room)
+        # cave[y][x] = r+1
+        for x, y in wall_coordinates(room):
+            if cave[y][x] != '.':
+                continue
+            subset = empty_matrix(3, 3, ' ')
+            # check both cases to generate a door
+            for i, j in squares(exclude_center=True):
+                if x + i > width - 1:
+                    continue
+                if y + j > height - 1:
+                    continue
+                subset[j+1][i+1] = cave[y+j][x+i]
+            added = 0
+            # 1/7 are walls, 3/5 are floors
+            if (subset[0][1] == '#' and 
+                subset[2][1] == '#' and 
+                (x - 1, y) not in transform and 
+                (x + 1, y) not in transform
+            ):
+                transform.add((x, y))
+                added = 1
+            # 3/5 are walls, 1/7 are floors
+            elif (subset[1][0] == '#' and
+                subset[1][2] == '#' and 
+                (x, y - 1) not in transform and
+                (x, y + 1) not in transform
+            ):
+                transform.add((x, y))
+                added = 2
+            # print(string(subset), f'{r+1} {cave[y][x]} {added}\n')
+    for x, y in transform:     
+        cave[y][x] = '+'
+
 def build_cave(width, height):
     cave = empty_matrix(width, height, ' ')
     tries = 0
-    max_rooms = 15
+    max_rooms = 12
     spaces = set()
     rooms = list()
 
@@ -449,20 +531,16 @@ def build_cave(width, height):
             mst[x] = [val, y]
 
     room_tiles = set()
-    # post processing (also adds stairs)
+    # post processing
+    # add floor and wall tiles per room instance
     for i, room in enumerate(rooms):
         # add floor tiles
         for y in range(room[1]+1, room[3]):
             for x in range(room[0]+1, room[2]):
                 cave[y][x] = '.'
                 room_tiles.add((x, y))
-        # add vertical walls
-        for x in (room[0], room[2]):
-            for y in range(room[1], room[3]+1):
-                cave[y][x] = '#'
-        # add horizontal walls
-        for y in (room[1], room[3]):
-            for x in range(room[0], room[2]+1):
+        # add walls
+        for x, y in wall_coordinates(room):
                 cave[y][x] = '#'
         # make rooms circular
         # regular = random.randint(0, 2)
@@ -472,22 +550,27 @@ def build_cave(width, height):
         #     cave[room[3]-1][room[2]-1] = '#'
         #     cave[room[3]-1][room[0]+1] = '#'
 
-    # carve out paths
-    for i, (a, b) in enumerate(mst.items()):
-        if isinstance(b, int):
-            if a != b:
-                for x, y in lpath(rooms[a], rooms[b]):
-                    cave[y][x] = '.'
-                    for i, j in squares(exclude_center=True):
-                        if cave[y+j][x+i] == ' ':
-                            cave[y+j][x+i] = '#'
-        else:
-            for c in b:
-                for x, y in lpath(rooms[a], rooms[c]):
-                    cave[y][x] = '.'
-                    for i, j in squares(exclude_center=True):
-                        if cave[y+j][x+i] == ' ':
-                            cave[y+j][x+i] = '#'
+    # carve out paths using lpath
+    # for i, (a, b) in enumerate(mst.items()):
+    #     if isinstance(b, int):
+    #         if a != b:
+    #             for x, y in lpath(rooms[a], rooms[b]):
+    #                 cave[y][x] = '.'
+    #                 for i, j in squares(exclude_center=True):
+    #                     if cave[y+j][x+i] == ' ':
+    #                         cave[y+j][x+i] = '#'
+    #     else:
+    #         for c in b:
+    #             for x, y in lpath(rooms[a], rooms[c]):
+    #                 cave[y][x] = '.'
+    #                 for i, j in squares(exclude_center=True):
+    #                     if cave[y+j][x+i] == ' ':
+    #                         cave[y+j][x+i] = '#'
+    # -- or maze paths algo ---
+    add_maze(cave, rooms)
+
+    # doors added to map
+    add_doors(cave, rooms)
 
     # add some stairs
     room_tiles = list(room_tiles)
@@ -496,4 +579,10 @@ def build_cave(width, height):
     cave[y][x] = '<'
     x, y = room_tiles.pop()
     cave[y][x] = '>'
+    return cave
+
+def build_blob(width, height):
+    cave = empty_matrix(width, height, ' ')
+    # make a random blob
+    ...
     return cave

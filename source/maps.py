@@ -2,11 +2,11 @@
 
 """Holds premade levels used for testing"""
 
-from source.generate import burrow_passage, empty_room, rotate, string
+from source.generate import burrow_passage, empty_room, rotate, string, cell_auto
 
 # generated levels
 ASTAR = string(empty_room(190, 44))
-CHOKE = string(rotate(burrow_passage(60, 17)))
+CHOKE = string(cell_auto(rotate(burrow_passage(24, 50))))
 EMPTY = string(empty_room(58, 17))
 HALL = string(empty_room(200, 80))
 STRESS = string(empty_room(500, 100))

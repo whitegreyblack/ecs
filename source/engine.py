@@ -22,7 +22,7 @@ from source.messenger import Logger
 
 class Engine(object):
 
-    def __init__(self, components, systems, controllers, terminal=None, keyboard=None):
+    def __init__(self, components, systems, terminal=None, keyboard=None):
         self.running = True
         self.logger = Logger()
         self.debugger = Logger()
@@ -35,7 +35,6 @@ class Engine(object):
         self.entities = EntityManager()
         self.init_managers(components)
         self.init_systems(systems)
-        self.init_controllers(controllers)
 
         self.screen = None
         self.entity = None
@@ -84,11 +83,8 @@ class Engine(object):
                 system = system_type(self)
             self.__setattr__(name, system)
 
-    def init_controllers(self, controllers):
-        if not controllers:
-            return
-        for controller in controllers:
-            self.__setattr__(controller.name, controller(self))
+    def add_router(self, router, controllers):
+        self.router = router(self, controllers)
 
     def get_input(self):
         # curses.flushinp()
@@ -141,7 +137,7 @@ class Engine(object):
         old_mode = self.mode
         self.mode = mode
         self.logger.add('mode changed')
-        Logger.instance.add(f'Switched from {old_mode} to {mode} mode')
+        self.logger.add(f'Switched from {old_mode} to {mode} mode')
         if old_mode == GameMode.NORMAL:
             player_position = self.positions.find(self.player)
             self.positions.add(

@@ -161,7 +161,7 @@ class CommandSystem(System):
             # self.engine.renders.remove(entity)
             self.engine.positions.remove(item_id)
             # add to inventory
-            self.engine.inventory_controller.add_item(entity, item_id)
+            self.engine.router.route('inventory', 'add_item', entity, item_id)
         if len(items) > 2:
             item_str = f"a {', a '.join(items[:len(items)-1])}, and a {items[-1]}"
         elif len(items) == 2:
