@@ -90,6 +90,8 @@ class GameScreen(Screen):
         self.engine.positions.add(self.cursor, Position())
 
     def render_string(self, x, y, string, attr=0):
+        if not isinstance(string, str):
+            string = str(string)
         self.terminal.addstr(y, x, string, attr)
 
     def render_char(self, x, y, character, attr=0):
@@ -104,10 +106,11 @@ class GameScreen(Screen):
             self.player_panel_y + 1,
             info.name
         )
+        # player hp
         self.render_string(
             self.player_panel_x + 1,
             self.player_panel_y + 2,
-            "HP: ",
+            "HP: "
         )
         cur_hp = str(health.cur_hp)
         self.render_string(
@@ -121,6 +124,56 @@ class GameScreen(Screen):
             self.player_panel_y + 2,
             f"/ {health.max_hp}",
             curses.color_pair(125)
+        )
+        # player mp
+        mana = self.engine.manas.find(self.engine.player)
+        self.render_string(
+            self.player_panel_x + 1,
+            self.player_panel_y + 3,
+            "MP: "
+        )
+        cur_mp = str(mana.cur_mp)
+        self.render_string(
+            self.player_panel_x + 5,
+            self.player_panel_y + 3,
+            cur_mp,
+            curses.color_pair(22)
+        )
+        self.render_string(
+            self.player_panel_x + len(cur_mp) + 6,
+            self.player_panel_y + 3,
+            f"/ {mana.max_mp}",
+            curses.color_pair(20)
+        )
+        # player weapon damage
+        equipment = self.engine.equipments.find(self.engine.player)
+        weapon = self.engine.weapons.find(equipment.hand)
+        damage = weapon.damage if weapon else 1
+        self.render_string(
+            self.player_panel_x + 1,
+            self.player_panel_y + 5,
+            "DMG: "
+        )
+        self.render_string(
+            self.player_panel_x + 6,
+            self.player_panel_y + 5,
+            damage
+        )
+        armor = 0
+        for eq_slot in (equipment.head, equipment.body, equipment.feet):
+            eq = self.engine.armors.find(eq_slot)
+            if eq:
+                armor += eq.defense
+
+        self.render_string(
+            self.player_panel_x + 1,
+            self.player_panel_y + 6,
+            "DEF: "
+        )
+        self.render_string(
+            self.player_panel_x + 6,
+            self.player_panel_y + 6,
+            str(armor)
         )
 
     def render_player_panel(self):
@@ -301,7 +354,6 @@ class GameScreen(Screen):
             y_offset = self.map_y - cam_y
             for x, y in path[1:]:
                 self.render_char(x + x_offset, y + y_offset, 'X')
-        self.engine.logger.add("Rendered cursor")
 
     def render_units(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
         # look for all positions not in tile positions and visibilities.

@@ -72,7 +72,11 @@ class EquipmentMenu(Screen):
             keypresses = set()
             for i, (item, render, info) in enumerate(items):
                 keypresses.add(chr(i+97))
-                self.terminal.addstr(h // 4 + 2 + i, w // 4 + 3, f"{chr(i+97)}. {info.name}")
+                self.terminal.addstr(
+                    h // 4 + 2 + i, 
+                    w // 4 + 3, 
+                    f"{chr(i+97)}. {info.name}"
+                )
             self.set_valid_keypresses(keypresses)
             return
             
@@ -104,14 +108,13 @@ class EquipmentMenu(Screen):
         self.terminal.addstr(h // 4 + 2, w // 4 + 3, item.category)
 
         # append actions
-        actions = ['e: unequip', 'd: drop']        
-        for y, action in enumerate(actions):
-            self.terminal.addstr(
-                h // 4 + 4 + y + 2, 
-                w // 4 + 3, 
-                action
-            )
-        self.set_valid_keypresses({ 'e', 'd' })
+        actions = ('e', 'unequip')
+        self.terminal.addstr(
+            h // 4 + 4 + 2, 
+            w // 4 + 3, 
+            f'{actions[0]}: {actions[1]}'
+        )
+        self.set_valid_keypresses(set(actions[1]))
 
     def render_logs(self):
         logs = self.logger.messages

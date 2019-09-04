@@ -111,26 +111,21 @@ class InventoryMenu(Screen):
             for y, line in enumerate(lines):
                 self.terminal.addstr(h // 4 + 4 + y, w // 4 + 3, line)
             save_y = y
-        actions = []
-        keys = { 'd' }
-        if item.category == 'weapon':
-            actions.append('e: equip')
-            keys.add('e')
+        actions = {'d': 'drop'} # items will always have drop option
+        if item.equipment_types is not None:
+            actions['e'] = 'equip'
         elif item.category == 'food':
-            actions.append('e: eat')
-            keys.add('e')
+            actions['e'] = 'eat'
         elif item.category == 'use':
-            actions.append('u: use')
-            keys.add('u')
-        actions.append('d: drop')
+            actions['u'] = 'use'
         if actions:
-            for y, line in enumerate(actions):
+            for y, (key, info) in enumerate(actions.items()):
                 self.terminal.addstr(
                     h // 4 + 4 + save_y + y + 2, 
                     w // 4 + 3, 
-                    line
+                    f'{key}: {info}'
                 )
-        self.set_valid_keypresses(keys)
+        self.set_valid_keypresses(actions.keys())
 
     def render_logs(self):
         logs = self.logger.messages

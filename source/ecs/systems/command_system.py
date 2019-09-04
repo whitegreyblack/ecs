@@ -172,7 +172,6 @@ class CommandSystem(System):
         return True
 
     def missile(self, cursor):
-        self.engine.logger.add("Throwing")
         end = self.engine.positions.find(cursor)
         cursor_component = self.engine.cursors.find(cursor)
         start = self.engine.positions.find(cursor_component.entity)
@@ -183,7 +182,6 @@ class CommandSystem(System):
             ammo_id = equipment.ammo
             info = self.engine.infos.find(ammo_id)
             if info.name == 'stone':
-                self.engine.logger.add("Throwing stones")
                 # remove stone from inventory
                 ammo = equipment.ammo
                 equipment.ammo = None
@@ -212,7 +210,8 @@ class CommandSystem(System):
                 i.name is not 'floor'
             ):
                 describeables.append(i.name)
-        self.engine.logger.add(', '.join(describeables))
+        if describeables:
+            self.engine.logger.add(', '.join(describeables))
 
     def check_for_floor_items(self, position):
         query = join(
@@ -495,7 +494,6 @@ class CommandSystem(System):
                 return self.go_down(entity)
             elif command == 'less-than':
                 return self.go_up(entity)
-            # currenty disabled -- to reenable add the char to the allowed keypresses
             elif command == 'l':
                 self.engine.change_mode(GameMode.LOOKING)
                 return False
@@ -509,14 +507,12 @@ class CommandSystem(System):
         elif self.engine.mode == GameMode.LOOKING:
             if command in movement_keypresses:
                 return self.move(entity, Movement.keypress_to_direction(command))
-                # return False
             elif command == 'escape' or command == 'l':
                 self.engine.change_mode(GameMode.NORMAL)
                 return False
         elif self.engine.mode == GameMode.MISSILE:
             if command in movement_keypresses:
                 return self.move(entity, Movement.keypress_to_direction(command))
-                # return False
             elif command == 'escape' or command == 't':
                 self.engine.change_mode(GameMode.NORMAL)
                 return False

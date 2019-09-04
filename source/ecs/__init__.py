@@ -1,4 +1,5 @@
-from .components import (AI, Armor, Collision, Component, Decay,
-                         Effect, Equipment, Health, Information, MeleeHitEffect, RangeHitEffect,
-                         Input, Inventory, Item, Movement, Openable, Position, Cursor,
-                         Render, Tile, TileMap, Visibility, Weapon, components)
+from .components import (AI, Armor, Collision, Component, Cursor, Decay,
+                         Effect, Equipment, Health, Information, Input,
+                         Inventory, Item, Mana, MeleeHitEffect, Movement,
+                         Openable, Position, RangeHitEffect, Render, Tile,
+                         TileMap, Visibility, Weapon, components)

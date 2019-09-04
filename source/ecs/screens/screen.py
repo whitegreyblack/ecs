@@ -102,7 +102,6 @@ class LookingMenu(Screen):
         self.trigger_cursor(False)
 
     def render(self):
-        self.engine.logger.add("Looking rendered")
         units = join(
             self.engine.healths,
             self.engine.infos,

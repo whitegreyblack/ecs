@@ -21,9 +21,6 @@ class EquipmentController:
                 info = None
                 render = None
             yield eq_type, info, render
-        
-    def add_item(self, entity, item):
-        ...
 
     def get_item_id(self, entity, index):
         e = self.engine.equipments.find(entity)
@@ -63,7 +60,6 @@ class EquipmentController:
 
     def equip_item(self, entity, item_id, eq_type):
         eq = self.engine.equipments.find(entity)
-        # empty slot -- equip item
         if not getattr(eq, eq_type):
             setattr(eq, eq_type, item_id)
             print(self.engine.infos.find(item_id))

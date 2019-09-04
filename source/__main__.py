@@ -16,7 +16,7 @@ from source.controllers import (EquipmentController, InventoryController,
                                 controllers)
 from source.description import shared_cache
 from source.ecs import (
-    AI, Armor, Collision, Cursor, Decay, Effect, Equipment, Health,
+    AI, Armor, Collision, Cursor, Decay, Effect, Equipment, Health, Mana,
     Information, Input, Inventory, Item, Movement, Openable, Position, Render,
     Tile, TileMap, Visibility, Weapon, components)
 from source.ecs.systems import systems
@@ -91,8 +91,37 @@ def add_player(engine, spaces):
     )
     engine.renders.add(player, Render('@'))
     engine.healths.add(player, Health(10, 20))
+    engine.manas.add(player, Mana(10, 20))
     engine.infos.add(player, Information("Hero"))
     engine.inputs.add(player, Input(needs_input=True))
+
+    # create armor for player
+    helmet = engine.entities.create()
+    engine.items.add(helmet, Item('armor', ('head',)))
+    engine.renders.add(helmet, Render('['))
+    engine.infos.add(
+        helmet, 
+        Information('iron helmet', 'Helps protect your head.')
+    )
+    engine.armors.add(helmet, Armor(2))
+
+    platemail = engine.entities.create()
+    engine.items.add(platemail, Item('armor', ('body',)))
+    engine.renders.add(platemail, Render('['))
+    engine.infos.add(
+        platemail, 
+        Information(
+            'platemail', 
+            'Armor made from sheets of metal. Heavy but durable.'
+        )
+    )
+    engine.armors.add(platemail, Armor(5))
+
+    ironboots = engine.entities.create()
+    engine.items.add(ironboots, Item('armor', ('feet',)))
+    engine.renders.add(ironboots, Render('['))
+    engine.infos.add(ironboots, Information('iron boots', 'Reinforced footwear.'))
+    engine.armors.add(ironboots, Armor(3))
 
     # create a weapon for player
     spear = engine.entities.create()
@@ -103,7 +132,7 @@ def add_player(engine, spaces):
     
     # create some missiles for player
     stone = engine.entities.create()
-    engine.items.add(stone, Item('weapon', ('hand', 'missile')))
+    engine.items.add(stone, Item('weapon', ('hand', 'ammo')))
     engine.renders.add(stone, Render('*'))
     engine.infos.add(stone, Information(
         'stone', 
@@ -111,8 +140,14 @@ def add_player(engine, spaces):
     ))
     engine.weapons.add(stone, Weapon(1))
 
-    # add items to an equipment component
-    e = Equipment(hand=spear, ammo=stone)
+    # add created items to an equipment component
+    e = Equipment(
+        head=helmet,
+        body=platemail,
+        hand=spear, 
+        feet=ironboots,
+        ammo=stone
+    )
     engine.equipments.add(player, e)
     
     # add an inventory

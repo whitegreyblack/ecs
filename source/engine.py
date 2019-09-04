@@ -136,8 +136,6 @@ class Engine(object):
             raise ValueError("Cannot change to same mode")
         old_mode = self.mode
         self.mode = mode
-        self.logger.add('mode changed')
-        self.logger.add(f'Switched from {old_mode} to {mode} mode')
         if old_mode == GameMode.NORMAL:
             player_position = self.positions.find(self.player)
             self.positions.add(

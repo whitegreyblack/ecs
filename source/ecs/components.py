@@ -110,24 +110,42 @@ class RangeHitEffect(Effect):
 #     manager: str = 'experiences'
 
 class Health(Component):
-    __slots__ = ['cur_hp', 'max_hp', 'heal_tick', 'heal_curr', 'heal_full']
+    __slots__ = ['cur_hp', 'max_hp', 'tick_amount', 'curr_amount', 'full_amount']
     manager: str = 'healths'
     def __init__(
         self, 
-        cur_hp: int=1, 
-        max_hp: int=1, 
-        heal_tick: int=200, 
-        heal_full: int=10000
+        cur_hp: int = 1, 
+        max_hp: int = 1, 
+        tick_amount: int = 200, 
+        full_amount: int = 10000,
+        curr_amount: int = 0
     ):
         self.cur_hp = cur_hp
         self.max_hp = max_hp
-        self.heal_tick = heal_tick
-        self.heal_full = heal_full
-        self.heal_curr = 0
+        self.tick_amount = tick_amount
+        self.full_amount = full_amount
+        self.curr_amount = curr_amount
 
     @property
     def alive(self) -> bool:
         return self.cur_hp > 0
+
+class Mana(Component):
+    __slots__ = ['cur_mp', 'max_mp', 'tick_amount', 'curr_amount', 'full_amount']
+    manager: str = 'manas'
+    def __init__(
+        self,
+        cur_mp: int = 1,
+        max_mp: int = 1,
+        tick_amount: int = 200,
+        full_amount: int = 10000,
+        curr_amount: int = 0
+    ):
+        self.cur_mp = cur_mp
+        self.max_mp = max_mp
+        self.tick_amount = tick_amount
+        self.full_amount = full_amount
+        self.curr_amount = curr_amount
 
 class Information(Component):
     __slots__ = ['name', 'description']
@@ -248,6 +266,9 @@ class Inventory(Component):
     manager: str = 'inventories'
     categories = [
         'weapon', 
+        'helmets',
+        'armor',
+        'footwear',
         'general', 
         'food', 
         'crafting', 
