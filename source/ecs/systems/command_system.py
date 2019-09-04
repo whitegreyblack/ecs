@@ -5,15 +5,16 @@
 import curses
 import random
 import time
+from collections import defaultdict
 
 from source.common import GameMode, join, join_drop_key, squares
-from source.ecs.components import (Collision, Effect, Information, Item,
-                                   MeleeHitEffect, Movement, Position,
+from source.ecs.components import (Collision, Destroyed, Effect, Information,
+                                   Item, MeleeHitEffect, Movement, Position,
                                    RangeHitEffect, Render)
 from source.ecs.systems.system import System
 from source.keyboard import keypress_to_direction, movement_keypresses
 from source.messenger import Logger
-from source.pathfind import pathfind, bresenhams
+from source.pathfind import bresenhams, pathfind
 
 
 class CommandSystem(System):
@@ -176,29 +177,95 @@ class CommandSystem(System):
         cursor_component = self.engine.cursors.find(cursor)
         start = self.engine.positions.find(cursor_component.entity)
         equipment = self.engine.equipments.find(cursor_component.entity)
-        if equipment.missile and equipment.ammo:
+        if equipment.missile_weapon and equipment.missiles:
             ...
-        elif equipment.ammo:
-            ammo_id = equipment.ammo
-            info = self.engine.infos.find(ammo_id)
-            if info.name == 'stone':
-                # remove stone from inventory
-                ammo = equipment.ammo
-                equipment.ammo = None
+        elif equipment.missiles:
+            # save missiles item id
+            missiles = equipment.missiles
+
+            # remove stone from inventory
+            unequipped = self.engine.router.route(
+                'equipment',
+                'unequip_item',
+                cursor_component.entity,
+                missiles
+            )
+            # processed correctly
+            if unequipped:
+                render = self.engine.renders.find(missiles)
+                self.engine.logger.add(render.char)
                 path = pathfind(self.engine, start, end, pathfinder=bresenhams)
                 # add a position component to thrown item
-                position = Position(
+                self.engine.positions.add(missiles, Position(
                     *path[-1], 
                     self.engine.world.id, 
                     movement_type=Position.MovementType.NONE,
                     blocks_movement=None
-                )
-                self.engine.positions.add(ammo, position)
+                ))
                 # check if there is a unit in the path of the throw item
                 # if there is one then calculate damage.
-                ...
+                # Do this by: 
+                #     1. Getting all units in the missile path[1:]
+                #        Note: this works since only one unit will be on a
+                #              tile at any given time
+                #     2 Check each position in the path against the unit
+                #       positions. 
+                #     3. If a unit exists then calculate chance to hit.
+                #     4. If hit then calculate damage applied.
+                units = {
+                    (position.x, position.y): (uid, health)
+                        for uid, (health, position) in join(
+                            self.engine.healths, 
+                            self.engine.positions
+                        )
+                        if (position.x, position.y) in path[1:]
+                }
+                # skip altogether if no units found in the unit query
+                log = []
+                is_player = cursor_component.entity == self.engine.player
+                weapon = self.engine.infos.find(missiles)
+                if units:
+                    for p in path[1:]:
+                        uid, health = units.get(p, (None, None))
+                        if not uid:
+                            continue
+                        attacker = self.engine.infos.find(cursor_component.entity)
+                        attack = self.engine.weapons.find(missiles).damage_throw
+                        defender = self.engine.infos.find(uid)
+                        if is_player:
+                            log.append(f"You throw the {weapon.name} at {defender.name}")
+                        else:
+                            log.append(f"The {attacker.name} throws a {weapon.name} at {defender.name}")
+                        # calculate chance to hit
+                        # NOTE: calculate with a skill based chance later
+                        # currently 50% chance to hit
+                        if True:
+                            armor = self.engine.router.route(
+                                'armor',
+                                'get_total_armor_value',
+                                uid
+                            )
+                            damage = max(0, attack - armor)
+                            health.cur_hp -= damage
+
+                            if damage < 1:
+                                log.append(f", but the missile did no damage!")
+                            else:
+                                log.append(f". It hits for {damage} damage.")
+                            if health.cur_hp < 1:
+                                log.append(f" The {defender.name} dies!")
+                                self.engine.destroyed.add(uid, Destroyed())
+                        else:
+                            if is_player:
+                                log.append(f", but miss!")
+                            else:
+                                log.append(f", but misses.")
+                else:
+                    if is_player:
+                        log.append(f"You throw the {weapon.name} at nothing in particular.") 
+                self.engine.logger.add(''.join(log))
                 # add ranged hit effect to effect list
-                effect = RangeHitEffect(cursor, '*', '0', path)
+                effect = RangeHitEffect(cursor, render.char, '0', path)
                 self.engine.effects.add(cursor_component.entity, effect)
         return True
 
@@ -234,7 +301,6 @@ class CommandSystem(System):
 
     def attack(self, entity, other):
         # attacker properties
-        is_player = entity == self.engine.player
         attacker = self.engine.infos.find(entity)
         equipment = self.engine.equipments.find(entity)
 
@@ -248,7 +314,7 @@ class CommandSystem(System):
         if equipment and equipment.hand:
             weapon = self.engine.weapons.find(eid=equipment.hand)
             if weapon:
-                damage = weapon.damage
+                damage = weapon.damage_swing
 
         # armor based reductions
         if armor:
@@ -259,7 +325,7 @@ class CommandSystem(System):
 
         # record fight
         strings = []
-        if is_player:
+        if entity == self.engine.player:
             strings.append(f"You attack the {attackee.name} for {damage} damage")
         else:
             strings.append(f"The {attacker.name} attacks the {attackee.name} for {damage} damage")
@@ -269,7 +335,7 @@ class CommandSystem(System):
             strings.append(".")
         if health.cur_hp < 1:
             strings.append(f" The {attackee.name} dies.")
-            self.engine.grave_system.process(other)
+            self.engine.destroyed.add(other, Destroyed())
         else:
             # add a hit effect
             self.engine.effects.add(entity, MeleeHitEffect(other, '*', 0))
@@ -453,13 +519,13 @@ class CommandSystem(System):
         # most likely will not happen but handle anyways
         if not eq:
             self.engine.logger.add("You do not have any equipment on.")
-        elif eq and not eq.missile:
-            if eq.ammo:
-                ammo = self.engine.infos.find(eq.ammo)
-                if ammo.name == 'stone':
+        elif eq and not eq.missile_weapon:
+            if eq.missiles:
+                missiles = self.engine.weapons.find(eq.missiles)
+                if not missiles.throw_requires_missile_weapon:
                     return True
             self.engine.logger.add("Cannot target without a missile weapon.")
-        elif eq and not eq.ammo:
+        elif eq and not eq.missiles:
             self.engine.logger.add("Cannot target without any missile ammo.")
         else:
             return True

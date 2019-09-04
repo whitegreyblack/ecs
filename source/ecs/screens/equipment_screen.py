@@ -31,9 +31,9 @@ class EquipmentMenu(Screen):
         )
         for i, (eq, info, render) in enumerate(descriptions):
             if info and render:
-                desc = f"{chr(i+97)}. {eq:9}: {render.char} {info.name}"
+                desc = f"{chr(i+97)}. {eq:15}: {render.char} {info.name}"
             else:
-                desc = f"{chr(i+97)}. {eq:9}:    ---"
+                desc = f"{chr(i+97)}. {eq:15}:    ---"
             self.terminal.addstr(i+2, 2, desc)
         self.set_valid_keypresses({ chr(x+97) for x in range(i+1) })
     

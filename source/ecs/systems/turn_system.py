@@ -33,6 +33,7 @@ class TurnSystem(System):
             if not self.engine.player:
                 self.engine.change_screen('deathmenu')
                 return True
+            self.engine.grave_system.process()
             self.engine.next_entity()
         # end of turn stuff here
         self.engine.decay_system.process()

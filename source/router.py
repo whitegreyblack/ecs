@@ -13,8 +13,8 @@ class Router:
             self.controllers = dict()
         else:
             self.controllers = {
-                name: controller(self.engine)
-                    for name, controller in controllers
+                controller.router_name: controller(self.engine)
+                    for controller in controllers
             }
 
     def add_controller(self, name, controller):

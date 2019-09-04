@@ -3,13 +3,14 @@
 """Handles internal inventory functions"""
 
 from source.common import join
-from source.ecs.components import Inventory, Position, Equipment
+from source.ecs.components import Equipment, Inventory, Position
+
+from .controller import Controller
 
 
-class InventoryController:
-    name = 'inventory'
-    def __init__(self, engine):
-        self.engine = engine
+class InventoryController(Controller):
+    __slots__ = ['engine']
+    router_name = 'inventory'
 
     def get_inventory_size(self, entity):
         inventory = self.engine.inventories.find(entity)
@@ -103,6 +104,10 @@ class InventoryController:
             items.append((inv_item_id, Inventory.categories.index(item.category)))
         items.sort(key=lambda x: x[1])
         inventory.items = [i[0] for i in items]
+
+    def remove_item(self, entity, item_id):
+        inventory = self.engine.inventories.find(entity)
+        inventory.items.remove(item_id)
 
     def equip_item(self, entity, item_id, eq_type):
         """Keypress action: e"""

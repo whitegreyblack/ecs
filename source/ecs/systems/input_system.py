@@ -138,60 +138,6 @@ class InputSystem(System):
         self.engine.logger.add(f"Picked up {', '.join(descriptions)}")
         return True
 
-    # def player_command(self, entity):
-    #     moved = False
-    #     while True:
-    #         exit_prog = False
-    #         turn_over = False
-    #         char = self.engine.get_input()
-    #         if char == -1:
-    #             break
-    #         keypress = self.engine.keypress_from_input(char)
-    #         if keypress == 'q':
-    #             self.engine.running = False
-    #             break
-    #         elif char in movement_keypresses:
-    #             turn_over = self.move(entity, Movement.from_input(keypress))
-    #             moved = True
-    #         elif keypress == 'escape':
-    #             self.engine.render_system.main_menu.process()
-    #             if not self.engine.running:
-    #                 break
-    #         elif keypress == 'i':
-    #             self.engine.render_system.inventory_menu.process()
-    #         elif keypress == 'e':
-    #             self.engine.render_system.equipment_menu.process()
-    #         elif keypress == 'o':
-    #             turn_over = self.open_door(entity)
-    #         elif keypress == 'c':
-    #             turn_over = self.close_door(entity)
-    #         elif keypress == 'comma':
-    #             turn_over = self.pick_item(entity)
-    #         elif keypress == 'l':
-    #             self.engine.render_system.looking_menu.process()
-    #         elif keypress == 'less-than':
-    #             stairs_exists = self.check_up_stairs(entity)
-    #             world_exists = self.engine.world.go_up()
-    #             if stairs_exists and world_exists:
-    #                 turn_over = self.go_up(entity)
-    #             elif not stairs_exists:
-    #                 self.engine.logger.add("No stairs to descend into")
-    #             else:
-    #                 self.engine.logger.add("No world to descend into")
-    #         elif keypress == 'greater-than':
-    #             self.engine.logger.add("going down")
-    #             can_go_down = self.check_down_stairs(entity) 
-    #             did_go_down = self.engine.world.go_down()
-    #             self.engine.logger.add(f"{can_go_down}, {did_go_down}")
-    #             if can_go_down and did_go_down:
-    #                 turn_over = self.go_down(entity)
-    #         else:
-    #             self.engine.logger.add(f"unknown command {char} {chr(char)}")
-    #         if turn_over:
-    #             break
-    #         self.engine.render_system.process()
-    #     return moved
-
     def process(self, valid_keypresses=None) -> str:
         if not valid_keypresses:
             valid_keypresses = self.engine.screen.valid_keypresses

@@ -71,13 +71,13 @@ class Decay(Component):
     def __init__(self, lifetime:int=1000):
         self.lifetime = lifetime
 
-# class Destroy(Component):
-#     __slots__ = []
-#     manager: str = 'destroyed'
+class Destroyed(Component):
+    __slots__ = []
+    manager: str = 'destroyed'
 
 class Effect(Component):
+    __slots__ = []
     manager: str = 'effects'
-    ...
 
 class MeleeHitEffect(Effect):
     __slots__ = ['entity', 'char', 'color']
@@ -279,7 +279,7 @@ class Inventory(Component):
         self.items = items if items else list()
 
 class Equipment(Component):
-    equipment = __slots__ = ['head', 'body', 'hand', 'feet', 'missile', 'ammo']
+    equipment = __slots__ = ['head', 'body', 'hand', 'feet', 'missile_weapon', 'missiles']
     manager: str = 'equipments'
     def __init__(
         self, 
@@ -287,21 +287,28 @@ class Equipment(Component):
         body: int = None,
         hand: int = None,
         feet: int = None,
-        missile: int = None,
-        ammo: int = None
+        missile_weapon: int = None,
+        missiles: int = None
     ):
         self.head = head
         self.body = body
         self.hand = hand
         self.feet = feet
-        self.missile = missile
-        self.ammo = ammo
+        self.missile_weapon = missile_weapon
+        self.missiles = missiles
 
 class Weapon(Component):
     __slots__ = ['damage']
     manager: str = 'weapons'
-    def __init__(self, damage: int = 0):
-        self.damage = damage
+    def __init__(
+        self, 
+        damage_swing: int = 1, 
+        damage_throw: int = 1,
+        throw_requires_weapon: bool = False
+    ):
+        self.damage_swing = damage_swing
+        self.damage_throw = damage_throw
+        self.throw_requires_missile_weapon = False
 
 class Item(Component):
     __slots__ = ['category', 'equipment_type']

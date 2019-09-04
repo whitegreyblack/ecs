@@ -1,6 +1,6 @@
 # grave_system
 
-"""Graveyard system class"""
+"""Graveyard system handles entity/components removal"""
 
 import random
 import time
@@ -78,7 +78,7 @@ class GraveSystem(System):
                 break
         inventory.items.remove(entity.id)
 
-    def process(self, entity):
+    def remove_entity(self, entity):
         if entity == self.engine.player:
             self.engine.player = None
             return
@@ -91,3 +91,9 @@ class GraveSystem(System):
         elif not self.engine.positions.find(entity):
             self.remove_from_inventory(entity)
         self.delete(entity)
+
+    def process(self):
+        while self.engine.destroyed.components:
+            key, _ = self.engine.destroyed.components.popitem()
+            self.remove_entity(key)
+        self.engine.destroyed.components.clear()

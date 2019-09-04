@@ -79,8 +79,6 @@ class SpawnSystem(System):
         self.engine.infos.add(item, self.engine.infos.shared['spear'])
         self.engine.inventories.add(computer, Inventory(items=[item]))
 
-        # self.engine.logger.add(f"Created a {info.name} from spawn_system!")
-
     def spawn_item(self):
         ...
 
@@ -96,7 +94,6 @@ class SpawnSystem(System):
         ]
         if len(units) < 3:
             if self.current_tick < 0:
-                # self.engine.logger.add('resetting current tick')
                 self.current_tick = self.respawn_rate
             # self.engine.logger.add(self.current_tick)
             self.current_tick -= 1

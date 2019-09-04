@@ -5,10 +5,12 @@
 from source.common import join
 from source.ecs.components import Equipment, Position
 
-class EquipmentController:
-    name = 'equipment'
-    def __init__(self, engine):
-        self.engine = engine
+from .controller import Controller
+
+
+class EquipmentController(Controller):
+    __slots__ = ['engine']
+    router_name = 'equipment'
     
     def get_all(self, entity):
         e = self.engine.equipments.find(entity)
@@ -20,7 +22,15 @@ class EquipmentController:
             else:
                 info = None
                 render = None
-            yield eq_type, info, render
+            yield eq_type.replace('_', ' '), info, render
+
+    def get_armor_item_ids(self, entity):
+        eq = self.engine.equipments.find(entity)
+        if not eq:
+            return
+        for eq_type in ('head', 'body', 'feet'):
+            item = getattr(eq, eq_type)
+            yield item
 
     def get_item_id(self, entity, index):
         e = self.engine.equipments.find(entity)

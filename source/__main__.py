@@ -125,14 +125,14 @@ def add_player(engine, spaces):
 
     # create a weapon for player
     spear = engine.entities.create()
-    engine.items.add(spear, Item('weapon', ('hand', 'missile')))
+    engine.items.add(spear, Item('weapon', ('hand', 'missiles')))
     engine.renders.add(spear, random.choice(engine.renders.shared['spear']))
     engine.infos.add(spear, engine.infos.shared['spear'])
-    engine.weapons.add(spear, Weapon(4))
+    engine.weapons.add(spear, Weapon(4, 3))
     
     # create some missiles for player
     stone = engine.entities.create()
-    engine.items.add(stone, Item('weapon', ('hand', 'ammo')))
+    engine.items.add(stone, Item('weapon', ('hand', 'missiles')))
     engine.renders.add(stone, Render('*'))
     engine.infos.add(stone, Information(
         'stone', 
@@ -146,7 +146,7 @@ def add_player(engine, spaces):
         body=platemail,
         hand=spear, 
         feet=ironboots,
-        ammo=stone
+        missiles=stone
     )
     engine.equipments.add(player, e)
     
@@ -187,10 +187,7 @@ def add_items(engine, items, spaces):
         engine.decays.add(item, Decay())
 
 def add_router(engine):
-    engine.add_router(Router, (
-        ('equipment', EquipmentController),
-        ('inventory', InventoryController)
-    ))
+    engine.add_router(Router, controllers)
 
 def ecs_setup(terminal, dungeon):
     engine = Engine(

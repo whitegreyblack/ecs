@@ -148,7 +148,7 @@ class GameScreen(Screen):
         # player weapon damage
         equipment = self.engine.equipments.find(self.engine.player)
         weapon = self.engine.weapons.find(equipment.hand)
-        damage = weapon.damage if weapon else 1
+        damage = weapon.damage_swing if weapon else 1
         self.render_string(
             self.player_panel_x + 1,
             self.player_panel_y + 5,
@@ -434,8 +434,8 @@ class GameScreen(Screen):
         x_offset = self.map_x - cam_x
         y_offset = self.map_y - cam_y
         for eid, effect in self.engine.effects.components.items():
-            if isinstance(effect, RangeHitEffect):
-                self.engine.logger.add(f"Range hit effect {effect}")
+            # if isinstance(effect, RangeHitEffect):
+            #     self.engine.logger.add(f"Range hit effect {effect}")
             position = self.engine.positions.find(effect.entity)
             render = self.engine.renders.find(effect.entity)
             info = self.engine.infos.find(effect.entity)
@@ -467,7 +467,7 @@ class GameScreen(Screen):
                         self.render_char(
                             x + x_offset,
                             y + y_offset,
-                            '*',
+                            effect.char,
                             0
                         )
                         self.terminal.noutrefresh()
