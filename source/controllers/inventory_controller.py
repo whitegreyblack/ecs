@@ -142,7 +142,15 @@ class InventoryController(Controller):
     def eat_item(self, entity, item_id) -> bool:
         inventory = self.engine.inventories.find(entity)
         info = self.engine.infos.find(item_id)
-        self.engine.logger.add(f"You eat the {info.name}. It tastes bitter.")
+        healed = self.engine.heal_system.eat(entity, item_id)
+        log = [f"You eat the {info.name}. It tastes bitter"]
+        if healed == 2:
+            log.append(" but you feel better.")
+        elif healed == 1:
+            log.append(" but fills your stomach.")
+        else:
+            log.append(".")
+        self.engine.logger.add(''.join(log))
         # remove item from engine
         self.engine.items.remove(item_id)
         self.engine.renders.remove(item_id)

@@ -310,12 +310,26 @@ class Weapon(Component):
         self.damage_throw = damage_throw
         self.throw_requires_missile_weapon = False
 
+class HealEffect:
+    """
+        Item sub component -- shouldn't inherit from component
+    """
+    __slots__ = ['heal_amount']
+    def __init__(self, heal_amount: int = 0):
+        self.heal_amount = heal_amount
+
 class Item(Component):
-    __slots__ = ['category', 'equipment_type']
+    __slots__ = ['category', 'equipment_type', 'effect']
     manager: str = 'items'
-    def __init__(self, category: str = 'general', eqtype: list = None):
+    def __init__(
+        self, 
+        category: str = 'general', 
+        eqtype: list = None, 
+        effect: object = None
+    ):
         self.category = category
         self.equipment_types = eqtype
+        self.effect = effect
 
 class Armor(Component):
     __slots__ = ['defense']

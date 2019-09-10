@@ -16,9 +16,9 @@ from source.controllers import (EquipmentController, InventoryController,
                                 controllers)
 from source.description import shared_cache
 from source.ecs import (
-    AI, Armor, Collision, Cursor, Decay, Effect, Equipment, Health, Mana,
-    Information, Input, Inventory, Item, Movement, Openable, Position, Render,
-    Tile, TileMap, Visibility, Weapon, components)
+    AI, Armor, Collision, Cursor, Decay, Effect, Equipment, HealEffect, Health,
+    Information, Input, Inventory, Item, Mana, Movement, Openable, Position,
+    Render, Tile, TileMap, Visibility, Weapon, components)
 from source.ecs.systems import systems
 from source.engine import Engine
 from source.graph import DungeonNode, WorldGraph, WorldNode
@@ -183,7 +183,7 @@ def add_items(engine, items, spaces):
         r = random.choice(engine.renders.shared['food'])
         engine.renders.add(item, r)
         engine.infos.add(item, engine.infos.shared['food'])
-        engine.items.add(item, Item('food'))
+        engine.items.add(item, Item('food', effect=HealEffect(3)))
         engine.decays.add(item, Decay())
 
 def add_router(engine):
