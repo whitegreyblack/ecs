@@ -43,7 +43,6 @@ class GameScreen(Screen):
     def initialize_coordinates(self):
         self.height, self.width = self.terminal.getmaxyx()
 
-        tilemap = self.engine.tilemaps.find(eid=self.engine.world.id)
         # player info
         self.player_panel_x = 0
         self.player_panel_y = 0
