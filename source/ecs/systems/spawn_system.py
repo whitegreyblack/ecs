@@ -5,8 +5,9 @@
 import random
 
 from source.common import join, join_drop_key
-from source.ecs import (
-    AI, Armor, Health, Information, Input, Inventory, Item, Position, Render)
+from source.ecs import (AI, Armor, Cursor, Decay, Equipment, HealEffect,
+                        Health, Information, Input, Inventory, Item, Mana,
+                        Position, Render, Weapon)
 
 from .system import System
 
@@ -51,6 +52,89 @@ class SpawnSystem(System):
                 if visible.level > 1
                     and not position.blocks_movement
         }
+    
+    def spawn_player(self, space):
+        player = self.engine.entities.create()
+        self.engine.inputs.add(player, Input())
+        self.engine.positions.add(
+            player, 
+            Position(
+                *space, 
+                map_id=self.engine.world.id, 
+                movement_type=Position.MovementType.GROUND
+            )
+        )
+        self.engine.renders.add(player, Render('@'))
+        self.engine.healths.add(player, Health(10, 20))
+        self.engine.manas.add(player, Mana(10, 20))
+        self.engine.infos.add(player, Information("Hero"))
+        self.engine.inputs.add(player, Input(needs_input=True))
+
+        # create armor for player
+        helmet = self.engine.entities.create()
+        self.engine.items.add(helmet, Item('armor', ('head',)))
+        self.engine.renders.add(helmet, Render('['))
+        self.engine.infos.add(
+            helmet, 
+            Information('iron helmet', 'Helps protect your head.')
+        )
+        self.engine.armors.add(helmet, Armor(2))
+
+        platemail = self.engine.entities.create()
+        self.engine.items.add(platemail, Item('armor', ('body',)))
+        self.engine.renders.add(platemail, Render('['))
+        self.engine.infos.add(
+            platemail, 
+            Information(
+                'platemail', 
+                'Armor made from sheets of metal. Heavy but durable.'
+            )
+        )
+        self.engine.armors.add(platemail, Armor(5))
+
+        ironboots = self.engine.entities.create()
+        self.engine.items.add(ironboots, Item('armor', ('feet',)))
+        self.engine.renders.add(ironboots, Render('['))
+        self.engine.infos.add(ironboots, Information('iron boots', 'Reinforced footwear.'))
+        self.engine.armors.add(ironboots, Armor(3))
+
+        # create a weapon for player
+        spear = self.engine.entities.create()
+        self.engine.items.add(spear, Item('weapon', ('hand', 'missiles')))
+        self.engine.renders.add(spear, random.choice(self.engine.renders.shared['spear']))
+        self.engine.infos.add(spear, self.engine.infos.shared['spear'])
+        self.engine.weapons.add(spear, Weapon(4, 3))
+        
+        # create some missiles for player
+        stone = self.engine.entities.create()
+        self.engine.items.add(stone, Item('weapon', ('hand', 'missiles')))
+        self.engine.renders.add(stone, Render('*'))
+        self.engine.infos.add(stone, Information(
+            'stone', 
+            'A common item useful for throwing.'
+        ))
+        self.engine.weapons.add(stone, Weapon(1))
+
+        # add created items to an equipment component
+        e = Equipment(
+            head=helmet,
+            body=platemail,
+            hand=spear, 
+            feet=ironboots,
+            missiles=stone
+        )
+        self.engine.equipments.add(player, e)
+        
+        # add an inventory
+        i = Inventory()
+        self.engine.inventories.add(player, Inventory())
+        return player
+
+    def spawn_cursor(self, entity):
+        cursor = self.engine.entities.create()
+        self.engine.cursors.add(cursor, Cursor(entity))
+        self.engine.positions.add(cursor, Position(blocks_movement=False))
+        return cursor
 
     def spawn_unit(self, space):
         # create unit entity
@@ -79,9 +163,21 @@ class SpawnSystem(System):
         self.engine.infos.add(item, self.engine.infos.shared['spear'])
         self.engine.inventories.add(computer, Inventory(items=[item]))
 
-    def spawn_item(self):
-        ...
-
+    def spawn_item(self, space):
+        item = self.engine.entities.create()
+        self.engine.positions.add(item, Position(
+            *space, 
+            map_id=self.engine.world.id, 
+            movement_type=Position.MovementType.NONE, 
+            blocks_movement=False
+        ))
+        r = random.choice(self.engine.renders.shared['food'])
+        self.engine.renders.add(item, r)
+        self.engine.infos.add(item, self.engine.infos.shared['food'])
+        self.engine.items.add(item, Item('food', effect=HealEffect(3)))
+        self.engine.decays.add(item, Decay())
+        return item
+    
     def process(self):
         units = [
             (eid, health, position)
