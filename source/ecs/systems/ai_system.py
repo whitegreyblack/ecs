@@ -5,8 +5,8 @@
 import random
 import time
 
-from source.common import (direction_to_keypress, eight_square, join,
-                           join_conditional, nine_square, squares)
+from source.common import (direction_to_keypress, join, join_conditional,
+                           squares)
 from source.ecs.components import (Collision, Information, Item, Movement,
                                    Render)
 from source.ecs.systems.system import System

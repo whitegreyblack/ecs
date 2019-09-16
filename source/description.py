@@ -14,6 +14,7 @@ TYPE_ALTERED_ENVIRON = 2
 TYPE_WEAPON = 3
 TYPE_ITEM = 4
 TYPE_UNIT = 5
+TYPE_SPELL = 6
 
 # key: value
 # name: (char, description, color, entity_type)
@@ -40,6 +41,12 @@ shared_cache = {
     'spear': ('/', SPEAR_DESC, 253, TYPE_WEAPON),
     'food': ('%', EDIBL_ITEM, 167, TYPE_ITEM),
     'flower': (';', FLOWR_DESC, 227, TYPE_ITEM)
+}
+
+FIREBALL_DESC = "Throws a giant ball of fire at a location"
+spells = {
+    # name(key) :: (mana cost, color, )
+    'fireball': (5, '*', (167, 13, 125, 161, 89), FIREBALL_DESC),
 }
 
 env_char_to_name = {

@@ -7,10 +7,10 @@ import random
 import time
 from collections import defaultdict
 
-from source.common import GameMode, join, join_drop_key, squares
+from source.common import GameMode, diamond, join, join_drop_key, squares
 from source.ecs.components import (Collision, Destroyed, Effect, Information,
                                    Item, MeleeHitEffect, Movement, Position,
-                                   RangeHitEffect, Render)
+                                   RangeHitEffect, Render, SpellEffect)
 from source.ecs.systems.system import System
 from source.keyboard import keypress_to_direction, movement_keypresses
 from source.messenger import Logger
@@ -23,7 +23,7 @@ class CommandSystem(System):
         """TODO: cannot close door when unit is standing on the cell"""
         position = self.engine.positions.find(entity)
         turn_over = False
-        # get all cardinal coordinates surrounding current entity position
+        # get all coordinates surrounding current entity position
         coordinates = [
             (position.x + x, position.y + y)
                 for x, y in squares(exclude_center=True)
@@ -76,7 +76,7 @@ class CommandSystem(System):
         """TODO: render log message when opening a door of multiple doors"""
         position = self.engine.positions.find(entity)
         turn_over = False
-        # get all cardinal coordinates surrounding current entity position
+        # get all coordinates surrounding current entity position
         coordinates = [
             (position.x + x, position.y + y)
                 for x, y in squares(exclude_center=True)
@@ -267,6 +267,78 @@ class CommandSystem(System):
                 # add ranged hit effect to effect list
                 effect = RangeHitEffect(cursor, render.char, '0', path)
                 self.engine.effects.add(cursor_component.entity, effect)
+        return True
+
+    def cast_magic(self, cursor_id):
+        cursor = self.engine.cursors.find(cursor_id)
+        start = self.engine.positions.find(cursor.entity)
+        end = self.engine.positions.find(cursor_id)
+        spellname = self.engine.spells.shared[cursor.using]
+        i = 0
+        path = pathfind(self.engine, start, end, pathfinder=bresenhams)
+        # TODO: this needs to be reduced from two lists to a zipped list
+        flight_path = [
+            (
+                [(x, y),], 
+                [random.choice(self.engine.renders.shared[spellname]),]
+            )
+            for x, y in path
+        ]
+        blast = (
+            [(x+end.x, y+end.y) for x, y in diamond()],
+            [
+                random.choice(self.engine.renders.shared[spellname])
+                    for _ in range(13)
+            ]
+        )
+        flight_path.append(blast)
+        for uid, (health, position) in join(
+                self.engine.healths, 
+                self.engine.positions):
+            print(uid, position.x, position.y)        
+
+        units = {
+            (position.x, position.y): (uid, health)
+                for uid, (health, position) in join(
+                    self.engine.healths, 
+                    self.engine.positions
+                )
+                if (position.x, position.y) in blast[0]
+        }
+        print(blast[0])
+        print(units)
+        # handle effects of spells
+        blast_positions = []
+        blast_colors = []
+        if units:
+            units_hit = []
+            if spellname == "fireball":
+                log = []
+                for i, j in diamond():
+                    x = i + end.x
+                    y = j + end.y
+                    blast_positions.append((x, y))
+                    blast_colors.append(
+                        random.choice(self.engine.renders.shared[spellname])
+                    )
+                    # just means no units are hit by the blast
+                    if (x, y) not in units:
+                        continue
+                    damage = (2 - abs(i)) + (2 - abs(j)) + 1
+                    log.append(f"{damage}")
+                    units_hit.append((*units[(x, y)], damage))
+                for uid, health, damage in units_hit:
+                    info = self.engine.infos.find(uid)
+                    health.cur_hp -= damage
+                    log.append(f"The {info.name} was {'burned' if damage < 2 else 'scorched'} by fire. ({damage})")
+                    if health.cur_hp < 1:
+                        self.engine.destroyed.add(uid, Destroyed())
+                        log.append(f"The {info.name} takes {damage} and dies!")
+                    self.engine.logger.add(' '.join(log))
+        else:
+            self.engine.logger.add(f"You cast {spellname} at nothing in particular")
+        effect = SpellEffect(cursor_id, flight_path)
+        self.engine.effects.add(cursor.entity, effect)
         return True
 
     def check_tile_info(self, position):
@@ -543,13 +615,10 @@ class CommandSystem(System):
                 return self.move(entity, Movement.keypress_to_direction(command))
             elif command == 'escape':
                 self.engine.change_screen('gamemenu')
-                return False
             elif command == 'i':
                 self.engine.change_screen('inventorymenu')
-                return False
             elif command == 'e':
                 self.engine.change_screen('equipmentmenu')
-                return False
             elif command == 'comma':
                 return self.pick_item(entity)
             elif command == 'o':
@@ -562,34 +631,39 @@ class CommandSystem(System):
                 return self.go_up(entity)
             elif command == 'l':
                 self.engine.change_mode(GameMode.LOOKING)
-                return False
             elif command == 't':
                 if self.able_to_target(entity):
                     self.engine.change_mode(GameMode.MISSILE)
-                return False
-            elif command == 'tilde':
+            elif command == 'backtick':
                 self.engine.change_mode(GameMode.DEBUG)
-                return False
+            elif command == 'tilde':
+                self.engine.change_screen('spellmenu')
         elif self.engine.mode == GameMode.LOOKING:
             if command in movement_keypresses:
                 return self.move(entity, Movement.keypress_to_direction(command))
             elif command == 'escape' or command == 'l':
                 self.engine.change_mode(GameMode.NORMAL)
-                return False
         elif self.engine.mode == GameMode.MISSILE:
             if command in movement_keypresses:
                 return self.move(entity, Movement.keypress_to_direction(command))
             elif command == 'escape' or command == 't':
                 self.engine.change_mode(GameMode.NORMAL)
-                return False
             elif command == 'enter':
                 t = self.missile(entity)
                 self.engine.mode = GameMode.NORMAL
                 return t
+        elif self.engine.mode == GameMode.MAGIC:
+            if command in movement_keypresses:
+                return self.move(entity, Movement.keypress_to_direction(command))
+            elif command == 'escape':
+                self.engine.change_mode(GameMode.NORMAL)
+            elif command == 'enter':
+                m = self.cast_magic(entity)
+                self.engine.mode = GameMode.NORMAL
+                return m
         elif self.engine.mode == GameMode.DEBUG:
             if command in movement_keypresses:
                 return self.move(entity, Movement.keypress_to_direction(command))
             elif command == 'escape' or command == 'tilde':
                 self.engine.change_mode(GameMode.NORMAL)
-                return False
         return False

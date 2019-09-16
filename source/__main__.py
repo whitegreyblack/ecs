@@ -14,11 +14,11 @@ import click
 from source.common import border, join, join_drop_key
 from source.controllers import (EquipmentController, InventoryController,
                                 controllers)
-from source.description import shared_cache
+from source.description import shared_cache, spells
 from source.ecs import (
     AI, Armor, Collision, Cursor, Decay, Effect, Equipment, HealEffect, Health,
     Information, Input, Inventory, Item, Mana, Movement, Openable, Position,
-    Render, Tile, TileMap, Visibility, Weapon, components)
+    Render, Spell, Tile, TileMap, Visibility, Weapon, components)
 from source.ecs.systems import systems
 from source.engine import Engine
 from source.graph import DungeonNode, WorldGraph, WorldNode
@@ -52,6 +52,16 @@ def build_shared_components(engine):
             engine.renders.shared[info] = [Render(char, color),]
         engine.infos.shared[info] = Information(info, desc)
     
+def build_spells(engine):
+    for spellname, (manacost, char, colors, desc) in spells.items():
+        spell_id = engine.entities.create()
+        # shared cache will hold all spell info that is needed to build a spell
+        engine.spells.shared[spellname] = spell_id
+        engine.spells.shared[spell_id] = spellname
+        engine.renders.shared[spellname] = [Render(char, c) for c in colors]
+        engine.infos.shared[spellname] = Information(spellname, desc)
+        engine.infos.add(spell_id, engine.infos.shared[spellname])
+
 def add_world(engine, mappairs):
     world_graph = {}
     g = {
@@ -85,6 +95,7 @@ def ecs_setup(terminal, dungeon):
     )
     add_router(engine)
     build_shared_components(engine)
+    build_spells(engine)
     add_world(engine, ((0, dungeon),))
     spaces = find_empty_spaces(engine)
     # add player

@@ -16,7 +16,7 @@ class Screen:
         self.engine = engine
         self.terminal = terminal
         self.state = 'closed'
-        self.valid_keypresses = set()
+        self.valid_keypresses = {'escape'}
 
     def process(self):
         if not self.engine.requires_input:
@@ -28,6 +28,15 @@ class Screen:
     def get_input(self):
         """Needs override from children classes that inherit screen"""
         return False
+
+    def border(self):
+        border(
+            self.terminal, 
+            0, 0, 
+            self.engine.width - 1, 
+            self.engine.height - 1
+        )
+        self.terminal.addstr(0, 1, f"[{type(self).menu_title}]")
 
     @property
     def running(self):

@@ -1,4 +1,4 @@
-# inventoryscreen.py
+# inventory_screen.py
 
 """
 Inventory screen class that renders and processes inputs for the inventory menu
@@ -10,14 +10,14 @@ import time
 from collections import defaultdict
 from textwrap import wrap
 
-from source.common import (border, direction_to_keypress, eight_square, join,
-                           scroll)
+from source.common import border, direction_to_keypress, join, scroll
 from source.messenger import Logger
 
 from .screen import Screen
 
 
 class InventoryMenu(Screen):
+    menu_title = 'inventory'
     def __init__(self, engine, terminal):
         super().__init__(engine, terminal)
         self.logger = Logger()
@@ -25,7 +25,7 @@ class InventoryMenu(Screen):
         self.max_items = 14
         self.index = -1
         self.last_item_id = -1
-        self.valid_keypresses.update({ 'escape', 'e' })
+        self.valid_keypresses.update({ 'e' })
 
     def render_items(self):
         items = list(self.engine.router.route(
@@ -139,13 +139,7 @@ class InventoryMenu(Screen):
     def render(self):
         if self.index < 0:
             self.terminal.erase()
-            border(
-                self.terminal, 
-                0, 0, 
-                self.engine.width - 1, 
-                self.engine.height - 1
-            )
-            self.terminal.addstr(0, 1, '[inventory]')
+            self.border()
             self.render_items()
         else:
             self.render_item()
@@ -156,10 +150,6 @@ class InventoryMenu(Screen):
         self.valid_keypresses = { 'escape', 'e' }.union(keys)
 
     def handle_keypress(self, key):
-        # iid = self.engine.inventory_controller.get_item_id(
-        #     self.engine.player,
-        #     self.index
-        # )
         done = self.engine.router.route(
             'inventory',
             'keypress',
@@ -167,14 +157,8 @@ class InventoryMenu(Screen):
             self.engine.player,
             self.last_item_id
         )
-        # done = self.engine.inventory_controller.keypress(
-        #     key,
-        #     self.engine.player,
-        #     self.last_item_id
-        # )
-        if not done:
-            return
-        self.index = -1
+        if done:
+            self.index = -1
     
     def handle_input(self):
         key = self.engine.keypress

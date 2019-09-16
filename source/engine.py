@@ -8,14 +8,13 @@ import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 
-from source.common import join, GameMode
+from source.common import GameMode, join
 from source.ecs.components import (Collision, Effect, Information, Movement,
                                    Openable, Position, components)
 from source.ecs.managers import ComponentManager, EntityManager
 from source.ecs.screens import (
-    DeathMenu, EquipmentMenu, GameMenu, GameScreen, InventoryMenu, # LogMenu,
-    # LookingMenu, 
-    MainMenu) #, MissileMenu)
+    DeathMenu, EquipmentMenu, GameMenu, GameScreen, InventoryMenu, MainMenu,
+    SpellMenu)
 from source.ecs.systems import RenderSystem
 from source.messenger import Logger
 
@@ -103,9 +102,7 @@ class Engine(object):
                 InventoryMenu,
                 EquipmentMenu,
                 DeathMenu,
-                # LookingMenu,
-                # LogMenu,
-                # MissileMenu
+                SpellMenu,
             )
         } 
         self.screen = self.screens['mainmenu']

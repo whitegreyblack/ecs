@@ -6,10 +6,11 @@ import curses
 import random
 import time
 
-from source.common import (GameMode, border, direction_to_keypress,
-                           eight_square, join, join_drop_key, join_on, scroll)
-from source.ecs.components import Movement, Position, Effect, MeleeHitEffect, RangeHitEffect
-from source.pathfind import pathfind, bresenhams
+from source.common import (GameMode, border, direction_to_keypress, join,
+                           join_drop_key, join_on, scroll)
+from source.ecs.components import (Effect, MeleeHitEffect, Movement, Position,
+                                   RangeHitEffect, SpellEffect)
+from source.pathfind import bresenhams, pathfind
 from source.raycast import cast_light
 
 from .screen import Screen
@@ -38,6 +39,7 @@ class GameScreen(Screen):
             't', # throw missile,
             'tilde',
             'enter',
+            'backtick',
         })
 
     def initialize_coordinates(self):
@@ -302,7 +304,7 @@ class GameScreen(Screen):
             self.render_effects(tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
             self.update_effects()
         
-        if self.engine.mode in (GameMode.LOOKING, GameMode.MISSILE, GameMode.DEBUG):
+        if self.engine.mode is not GameMode.NORMAL:
             self.render_cursor(visible_tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
 
     def render_map_border(self):
@@ -344,7 +346,7 @@ class GameScreen(Screen):
         cursor = self.engine.positions.find(self.engine.cursor)
         x_offset = self.map_x - cam_x
         y_offset = self.map_y - cam_y
-        if self.engine.mode in (GameMode.LOOKING, GameMode.DEBUG):
+        if self.engine.mode in (GameMode.LOOKING, GameMode.DEBUG, GameMode.MAGIC):
             self.render_char(cursor.x + x_offset, cursor.y + y_offset, 'X')
         else:
             player = self.engine.positions.find(self.engine.player)
@@ -420,21 +422,56 @@ class GameScreen(Screen):
     def update_effects(self):
         self.engine.effects.components.clear()
 
+    def render_melee_hit_effect(self, x, y, render, effect):
+        self.render_char(x, y, effect.char, 0)
+        self.terminal.noutrefresh()
+        curses.doupdate()
+        time.sleep(.045)
+        color = curses.color_pair(render.color)
+        self.render_char(x, y, render.char, color)
+        self.terminal.noutrefresh()
+
+    def render_range_hit_effect(self, x, y, ox, oy, render, effect, tiles):
+        self.render_char(x+ox, y+oy, effect.char, 0)
+        self.terminal.noutrefresh()
+        curses.doupdate()
+        time.sleep(.023)
+        color = curses.color_pair(tiles[(x, y)].color)
+        self.render_char(x+ox, y+oy, tiles[(x, y)].char, color)
+        self.terminal.noutrefresh()
+        curses.doupdate()
+        time.sleep(.023)
+
+    def render_spell_hit_effect(self, positions, previous, ox, oy, renders, tiles):
+        for (x, y), render in zip(positions, renders):
+            if (x, y) not in tiles:
+                continue
+            self.render_char(x + ox, y + oy, 
+                             render.char, 
+                             curses.color_pair(render.color))
+        self.terminal.noutrefresh()
+        curses.doupdate()
+        time.sleep(.05)
+        for (x, y) in positions:
+            if (x, y) not in tiles:
+                continue
+            tile = tiles[(x, y)]
+            self.render_char(x + ox, y + oy, tile.char, curses.color_pair(tile.color))
+        self.terminal.noutrefresh() 
+        curses.doupdate()
+        # time.sleep(0.033)
+
     def render_effects(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
         """
         Currently have the following effects:
             - attack animation
-        Working on:
-            - missile animation
+            - range animation
         Want:
             - spell animation
         """
-
         x_offset = self.map_x - cam_x
         y_offset = self.map_y - cam_y
         for eid, effect in self.engine.effects.components.items():
-            # if isinstance(effect, RangeHitEffect):
-            #     self.engine.logger.add(f"Range hit effect {effect}")
             position = self.engine.positions.find(effect.entity)
             render = self.engine.renders.find(effect.entity)
             info = self.engine.infos.find(effect.entity)
@@ -444,43 +481,32 @@ class GameScreen(Screen):
                 and y0 <= position.y < y1
             ):
                 if isinstance(effect, MeleeHitEffect):
-                    self.render_char(
-                        position.x + x_offset,
-                        position.y + y_offset,
-                        effect.char,
-                        0
-                    )
-                    self.terminal.noutrefresh()
-                    curses.doupdate()
-                    time.sleep(.045)
-                    self.render_char(
-                        position.x + x_offset,
-                        position.y + y_offset,
-                        render.char,
-                        curses.color_pair(render.color)
-                    )
-                    self.terminal.noutrefresh()
-                    curses.doupdate()
-                else:
+                    x = position.x + x_offset
+                    y = position.y + y_offset
+                    self.render_melee_hit_effect(x, y, render, effect)
+                elif isinstance(effect, RangeHitEffect):
                     for x, y in effect.path[1:]:
-                        self.render_char(
-                            x + x_offset,
-                            y + y_offset,
-                            effect.char,
-                            0
+                        self.render_range_hit_effect(
+                            x,
+                            y,
+                            x_offset,
+                            y_offset,
+                            render,
+                            effect,
+                            tiles
                         )
-                        self.terminal.noutrefresh()
-                        curses.doupdate()
-                        time.sleep(.023)
-                        self.render_char(
-                            x + x_offset,
-                            y + y_offset,
-                            tiles[(x, y)].char,
-                            curses.color_pair(tiles[(x, y)].color)
+                elif isinstance(effect, SpellEffect):
+                    previous = None
+                    for positions, renders in effect.ticks[1:]:
+                        self.render_spell_hit_effect(
+                            positions,
+                            previous,
+                            x_offset,
+                            y_offset,
+                            renders,
+                            tiles
                         )
-                        self.terminal.noutrefresh()
-                        curses.doupdate()
-                        time.sleep(.023)
+                        previous = positions
 
     def render_log(self, log, ly, lx):
         self.terminal.addstr(ly, lx, '> ' + str(log))

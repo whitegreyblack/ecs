@@ -7,7 +7,7 @@ import time
 from collections import namedtuple
 from heapq import heappop, heappush
 
-from source.common import cardinal, distance, join, join_drop_key, squares
+from source.common import distance, join, join_drop_key, squares
 from source.ecs.components import Position
 
 # precompute square root (2) once vs every call

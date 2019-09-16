@@ -81,7 +81,6 @@ class Effect(Component):
 
 class MeleeHitEffect(Effect):
     __slots__ = ['entity', 'char', 'color']
-    manager: str = 'effects'
     def __init__(self, entity: int, char: str, color:int):
         self.entity = entity
         self.char = char
@@ -89,13 +88,18 @@ class MeleeHitEffect(Effect):
 
 class RangeHitEffect(Effect):
     __slots__ = ['entity', 'char', 'color', 'path']
-    manager: str = 'effects'
     def __init__(self, entity: int, char: str, color: int, path: list):
         self.entity = entity
         self.char = char
         self.color = color
         self.path = path
 
+class SpellEffect(Effect):
+    __slots__ = ['entity', 'ticks']
+    def __init__(self, entity, ticks):
+        self.entity = entity
+        self.ticks = ticks
+        
 # class Energy(Component):
 #     amount: int
 #     full: int
@@ -297,6 +301,16 @@ class Equipment(Component):
         self.missile_weapon = missile_weapon
         self.missiles = missiles
 
+class Spellbook(Component):
+    __slots__ = ['spells']
+    manager: str = 'spellbooks'
+    def __init__(self, spells=None):
+        self.spells = spells if spells else list()
+
+class Spell(Component):
+    __slots__ = ['spellname']
+    manager: str = 'spells'
+
 class Weapon(Component):
     __slots__ = ['damage']
     manager: str = 'weapons'
@@ -338,10 +352,11 @@ class Armor(Component):
         self.defense = defense
 
 class Cursor(Component):
-    __slots__ = ['entity']
+    __slots__ = ['entity', 'using']
     manager: str = 'cursors'
     def __init__(self, entity: int):
         self.entity = entity
+        self.using = -1
 
 
 components = Component.__subclasses__()

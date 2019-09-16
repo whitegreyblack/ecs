@@ -69,6 +69,7 @@ def create_player():
     engine.inputs.add(player, Input(needs_input=True))
 
     # create armor for player
+    # head
     helmet = engine.entities.create()
     engine.items.add(helmet, Item('armor', ('head',)))
     engine.renders.add(helmet, Render('['))
@@ -77,7 +78,7 @@ def create_player():
         Information('iron helmet', 'Helps protect your head.')
     )
     engine.armors.add(helmet, Armor(2))
-
+    # body
     platemail = engine.entities.create()
     engine.items.add(platemail, Item('armor', ('body',)))
     engine.renders.add(platemail, Render('['))
@@ -89,7 +90,7 @@ def create_player():
         )
     )
     engine.armors.add(platemail, Armor(5))
-
+    # feet
     ironboots = engine.entities.create()
     engine.items.add(ironboots, Item('armor', ('feet',)))
     engine.renders.add(ironboots, Render('['))

@@ -7,7 +7,7 @@ import random
 import time
 from dataclasses import dataclass, field
 
-from source.common import eight_square, join, nine_square
+from source.common import join, squares
 from source.ecs.components import (Collision, Information, Item, Movement,
                                    Position, Render)
 from source.ecs.systems.system import System
@@ -101,7 +101,7 @@ class InputSystem(System):
 
     def wander(self, entity):
         possible_spaces = []
-        for x, y in nine_square():
+        for x, y in squares():
             possible_spaces.append((x, y))
         index = random.randint(0, len(possible_spaces)-1)
         x, y = possible_spaces[index]

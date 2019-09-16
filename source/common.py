@@ -16,6 +16,7 @@ class GameMode(Enum):
     NORMAL = auto()
     LOOKING = auto()
     MISSILE = auto()
+    MAGIC = auto()
 
 def squares(exclude_center:bool=False) -> tuple:
     """
@@ -40,22 +41,16 @@ def cardinal(exclude_center: bool=False) -> tuple:
     yield 1, 0
     yield 0, 1
 
-def eight_square() -> tuple:
+def diamond(distance=2, exclude_center: bool=False) -> tuple:
     """
-    Yields x, y values indicating cardinal directions on a grid
+    Yields all x, y, values representing a units withing 2 units
     """
-    for x in range(-1, 2):
-        for y in range(-1 ,2):
-            if (x, y) != (0, 0):
+    for x in range(-distance, distance+1):
+        for y in range(-distance, distance+1):
+            if x == 0 and y == 0 and exclude_center:
+                continue
+            if abs(x) + abs(y) < distance+1:
                 yield x, y
-
-def nine_square() -> tuple:
-    """
-    Yields x, y values indicating cardinal directions on a grid including 0, 0
-    """
-    for x in range(-1, 2):
-        for y in range(-1 ,2):
-            yield x, y
 
 def parse_data(raw: str, fields: int):
     """Returns avg values of join timings"""

@@ -5,9 +5,9 @@
 import random
 
 from source.common import join, join_drop_key
-from source.ecs import (AI, Armor, Cursor, Decay, Equipment, HealEffect,
+from source.ecs import (AI, Armor, Cursor, Decay, Equipment, HealEffect, Spell, 
                         Health, Information, Input, Inventory, Item, Mana,
-                        Position, Render, Weapon)
+                        Position, Render, Spellbook, Weapon)
 
 from .system import System
 
@@ -55,6 +55,7 @@ class SpawnSystem(System):
     
     def spawn_player(self, space):
         player = self.engine.entities.create()
+        # add components
         self.engine.inputs.add(player, Input())
         self.engine.positions.add(
             player, 
@@ -70,7 +71,8 @@ class SpawnSystem(System):
         self.engine.infos.add(player, Information("Hero"))
         self.engine.inputs.add(player, Input(needs_input=True))
 
-        # create armor for player
+        # create armor items for player to equip
+        # head
         helmet = self.engine.entities.create()
         self.engine.items.add(helmet, Item('armor', ('head',)))
         self.engine.renders.add(helmet, Render('['))
@@ -79,7 +81,7 @@ class SpawnSystem(System):
             Information('iron helmet', 'Helps protect your head.')
         )
         self.engine.armors.add(helmet, Armor(2))
-
+        # body
         platemail = self.engine.entities.create()
         self.engine.items.add(platemail, Item('armor', ('body',)))
         self.engine.renders.add(platemail, Render('['))
@@ -91,7 +93,7 @@ class SpawnSystem(System):
             )
         )
         self.engine.armors.add(platemail, Armor(5))
-
+        # feet
         ironboots = self.engine.entities.create()
         self.engine.items.add(ironboots, Item('armor', ('feet',)))
         self.engine.renders.add(ironboots, Render('['))
@@ -128,6 +130,11 @@ class SpawnSystem(System):
         # add an inventory
         i = Inventory()
         self.engine.inventories.add(player, Inventory())
+
+        # add a spellbook with a spell
+        spell = self.engine.spells.shared['fireball'] # => eid
+        spellbook = Spellbook(spells=[spell])
+        self.engine.spellbooks.add(player, spellbook)
         return player
 
     def spawn_cursor(self, entity):

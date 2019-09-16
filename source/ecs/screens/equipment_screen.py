@@ -8,14 +8,14 @@ import time
 from collections import defaultdict
 from textwrap import wrap
 
-from source.common import (border, direction_to_keypress, eight_square, join,
-                           scroll)
+from source.common import border, direction_to_keypress, join, scroll
 from source.messenger import Logger
 
 from .screen import Screen
 
 
 class EquipmentMenu(Screen):
+    menu_title = "equipment"
     def __init__(self, engine, terminal):
         super().__init__(engine, terminal)
         self.logger = Logger()
@@ -128,13 +128,7 @@ class EquipmentMenu(Screen):
     def render(self):
         if self.index < 0:
             self.terminal.erase()
-            border(
-                self.terminal, 
-                0, 0, 
-                self.engine.width - 1, 
-                self.engine.height - 1
-            )
-            self.terminal.addstr(0, 1, '[equipment]')
+            self.border()
             self.render_equipment()
         else:
             self.render_item()

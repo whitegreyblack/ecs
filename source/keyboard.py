@@ -32,7 +32,8 @@ keyboard.update({
     456: 'down',
     457: 'down-right',
     # debug key
-    126: 'tilde'
+    126: 'tilde',
+    96: 'backtick',
 })
 
 movement_keypresses = (
