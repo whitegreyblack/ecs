@@ -18,6 +18,13 @@ class GameMode(Enum):
     MISSILE = auto()
     MAGIC = auto()
 
+def find_empty_spaces(engine):
+    return {
+        (position.x, position.y)
+            for _, position in join_drop_key(engine.tiles, engine.positions)
+                if not position.blocks_movement
+    }
+
 def squares(exclude_center:bool=False) -> tuple:
     """
     Yields x, y values indicating cardinal directions on a grid

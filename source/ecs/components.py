@@ -99,7 +99,7 @@ class SpellEffect(Effect):
     def __init__(self, entity, ticks):
         self.entity = entity
         self.ticks = ticks
-        
+
 # class Energy(Component):
 #     amount: int
 #     full: int
@@ -164,6 +164,30 @@ class Input(Component):
     def __init__(self, needs_input: bool = False):
         self.needs_input = needs_input
 
+class CurrentTurn(Component):
+    __slots__ = ['finished']
+    manager = 'current_turns'
+    def __init__(self, finished=False):
+        self.finished = finished
+
+class Turn(Component):
+    __slots__ = ['needs_turn', 'tick_amount', 'curr_amount', 'full_amount']
+    manager = 'turns'
+    def __init__(self,
+                 tick_amount: int = 100,
+                 full_amount: int = 1000,
+                 curr_amount: int = 0):
+        self.needs_turn = False
+        self.tick_amount = tick_amount
+        self.full_amount = full_amount
+        self.curr_amount = curr_amount
+
+class Openable(Component):
+    __slots__ = ['opened']
+    manager: str = 'openables'
+    def __init__(self, opened: bool = False):
+        self.opened = opened
+
 class Movement(Component):
     __slots__ = ['x', 'y']
     manager: str = 'movements'
@@ -180,12 +204,6 @@ class Movement(Component):
         index = random.randint(0, len(possible_spaces) - 1)
         x, y = possible_spaces[index]
         return cls(x, y)
-
-class Openable(Component):
-    __slots__ = ['opened']
-    manager: str = 'openables'
-    def __init__(self, opened: bool = False):
-        self.opened = opened
 
 class Position(Component):
     __slots__ = 'x', 'y', 'map_id', 'movement_type', 'blocks_movement'

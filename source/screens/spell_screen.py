@@ -16,7 +16,7 @@ from source.messenger import Logger
 from .screen import Screen
 
 
-class SpellMenu(Screen):
+class SpellScreen(Screen):
     menu_title: str = "spell book"
     def __init__(self, engine, terminal):
         super().__init__(engine, terminal)

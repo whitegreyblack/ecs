@@ -17,5 +17,9 @@ class System(object):
     def classname(cls):
         return cls.__name__.lower()
 
+    @classmethod
+    def system_name(cls):
+        return f"{cls.classname().replace('system', '')}_system"
+
     def process(self):
         raise NotImplementedError("Implement base system process method")

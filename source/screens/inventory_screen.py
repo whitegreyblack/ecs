@@ -16,7 +16,7 @@ from source.messenger import Logger
 from .screen import Screen
 
 
-class InventoryMenu(Screen):
+class InventoryScreen(Screen):
     menu_title = 'inventory'
     def __init__(self, engine, terminal):
         super().__init__(engine, terminal)
@@ -168,7 +168,7 @@ class InventoryMenu(Screen):
             else:
                 self.index = -1
         elif key == 'e' and self.index == -1:
-            self.engine.change_screen('equipmentmenu')
+            self.engine.change_screen('equipmentscreen')
         elif self.index > -1:
             self.handle_keypress(key)
         else:

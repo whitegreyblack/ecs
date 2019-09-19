@@ -1,6 +1,6 @@
 # equipment_screen.py
 
-"""Equipment screen"""
+"""Equipment menu screen"""
 
 import curses
 import random
@@ -14,7 +14,7 @@ from source.messenger import Logger
 from .screen import Screen
 
 
-class EquipmentMenu(Screen):
+class EquipmentScreen(Screen):
     menu_title = "equipment"
     def __init__(self, engine, terminal):
         super().__init__(engine, terminal)
@@ -146,7 +146,7 @@ class EquipmentMenu(Screen):
             else:
                 self.index = -1
         elif key == 'i' and self.index == -1:
-            self.engine.change_screen('inventorymenu')
+            self.engine.change_screen('inventoryscreen')
         elif self.index > -1:
             if self.last_item_id:
                 done = self.engine.router.route(

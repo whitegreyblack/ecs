@@ -10,8 +10,14 @@ keyboard = {
     i: chr(i) for x in (65, 97) for i in range(x, x + 26) 
 }
 
+# numeric characters
+keyboard.update({
+    i + 48: str(i) for i in range(10)
+})
+
 # arrow keys and other characters
 keyboard.update({
+    3: '^C',
     258: 'down',
     259: 'up',
     260: 'left',

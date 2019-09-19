@@ -12,11 +12,11 @@ from source.common import GameMode, join
 from source.ecs.components import (Collision, Effect, Information, Movement,
                                    Openable, Position, components)
 from source.ecs.managers import ComponentManager, EntityManager
-from source.ecs.screens import (
-    DeathMenu, EquipmentMenu, GameMenu, GameScreen, InventoryMenu, MainMenu,
-    SpellMenu)
 from source.ecs.systems import RenderSystem
 from source.messenger import Logger
+from source.screens import (DeathScreen, EquipmentScreen, GameScreen,
+                            InventoryScreen, MenuScreen, SpellScreen,
+                            StartScreen)
 
 
 class Engine(object):
@@ -96,16 +96,16 @@ class Engine(object):
         self.screens = {
         screen.__name__.lower(): screen(self, self.terminal)
             for screen in (
-                GameMenu, 
-                GameScreen,
-                MainMenu, 
-                InventoryMenu,
-                EquipmentMenu,
-                DeathMenu,
-                SpellMenu,
+                GameScreen, 
+                MenuScreen,
+                StartScreen, 
+                InventoryScreen,
+                EquipmentScreen,
+                DeathScreen,
+                SpellScreen,
             )
         } 
-        self.screen = self.screens['mainmenu']
+        self.screen = self.screens['startscreen']
 
     def find_entity(self, entity_id):
         return self.entity_manager.find(entity_id)

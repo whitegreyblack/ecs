@@ -31,7 +31,7 @@ class TurnSystem(System):
                 else:
                     self.engine.ai_system.update()
             if not self.engine.player:
-                self.engine.change_screen('deathmenu')
+                self.engine.change_screen('deathscreen')
                 return True
             self.engine.grave_system.process()
             self.engine.next_entity()

@@ -13,6 +13,20 @@ from source.ecs.systems.system import System
 from source.keyboard import keypress_to_direction, movement_keypresses
 from source.pathfind import pathfind
 
+"""
+    def wander(self, entity):
+        possible_spaces = []
+        for x, y in squares():
+            possible_spaces.append((x, y))
+        index = random.randint(0, len(possible_spaces)-1)
+        x, y = possible_spaces[index]
+        if x == 0 and y == 0:
+            return 'center'
+        return keypress_from_direction(x, y)
+
+    def wait(self, entity):
+        return True
+"""
 
 class AISystem(System):
     def update(self):

@@ -257,6 +257,7 @@ class GameScreen(Screen):
     #  0.000    0.000    1.858    0.093
     def render_map_panel(self):
         # calculate offsets on scrolling map
+        print('player', self.engine.player)
         player = self.engine.positions.find(self.engine.player)
         tilemap = self.engine.tilemaps.find(eid=player.map_id)
         if tilemap.width < self.map_width:
@@ -539,7 +540,6 @@ class GameScreen(Screen):
         self.render_logs_panel()
         self.render_map_panel()
 
-        # self.terminal.refresh()
         self.terminal.noutrefresh()
         curses.doupdate()
    
