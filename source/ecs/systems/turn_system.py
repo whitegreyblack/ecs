@@ -41,3 +41,7 @@ class TurnSystem(System):
         self.engine.manaregen_system.process()
         self.engine.spawn_system.process()
         return True
+
+    def __del__(self):
+        if __debug__:
+            print('TURNS: ', self.engine.turns)

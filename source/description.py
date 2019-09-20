@@ -43,10 +43,12 @@ shared_cache = {
     'flower': (';', FLOWR_DESC, 227, TYPE_ITEM)
 }
 
-FIREBALL_DESC = "Throws a giant ball of fire at a location"
+SPELL_FIRE_BALL = "Throws a giant ball of fire at a location"
+SPELL_CRYSTAL_NOVA = "Ice spikes burst from the earth towards a location"
 spells = {
     # name(key) :: (mana cost, color, )
-    'fireball': (5, '*', (167, 13, 125, 161, 89), FIREBALL_DESC),
+    'fireball': (5, '*', (167, 13, 125, 161, 89), SPELL_FIRE_BALL),
+    'crystal nova': (3, '^', (46, 87, 160), SPELL_CRYSTAL_NOVA),
 }
 
 env_char_to_name = {

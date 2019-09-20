@@ -8,8 +8,10 @@ from .input_system import InputSystem
 from .look_system import LookSystem
 from .mana_system import ManaRegenSystem
 from .map_system import MapSystem
+from .move_system import MoveSystem
 from .render_system import RenderSystem
 from .spawn_system import SpawnSystem
+from .spell_system import SpellSystem
 from .system import System
 from .turn_system import TurnSystem
 

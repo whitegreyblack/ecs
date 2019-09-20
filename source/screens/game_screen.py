@@ -6,14 +6,15 @@ import curses
 import random
 import time
 
-from source.common import (GameMode, border, direction_to_keypress, join,
-                           join_drop_key, join_on, scroll)
+from source.common import (
+    GameMode, border, circle, diamond, direction_to_keypress, join,
+    join_drop_key, join_on, scroll)
 from source.ecs.components import (Effect, MeleeHitEffect, Movement, Position,
-                                   RangeHitEffect, SpellEffect)
+                                   RangeHitEffect, SpellEffect, Spell)
 from source.pathfind import bresenhams, pathfind
 from source.raycast import cast_light
 
-from .screen import Screen
+from .screen import Panel, Screen
 
 
 class GameScreen(Screen):
@@ -46,12 +47,9 @@ class GameScreen(Screen):
         self.height, self.width = self.terminal.getmaxyx()
 
         # player info
-        self.player_panel_x = 0
-        self.player_panel_y = 0
-        self.player_panel_width = 15
-        self.player_panel_height = 18
+        self.player_panel = Panel(self.terminal, 0, 0, 15, 18, 'info')
 
-        self.map_panel_x = self.player_panel_width + 1
+        self.map_panel_x = self.player_panel.width + 1
         self.map_panel_y = 0
         self.map_panel_width = 50
         self.map_panel_height = 18
@@ -63,7 +61,7 @@ class GameScreen(Screen):
         self.map_height = self.map_panel_height -1
 
         # enemy panel border and coordinates
-        self.enemy_panel_x = self.player_panel_width + self.map_panel_width + 2
+        self.enemy_panel_x = self.player_panel.width + self.map_panel_width + 2
         self.enemy_panel_y = 0
         self.enemy_panel_width = self.width - self.enemy_panel_x - 1
         self.enemy_panel_height = self.map_panel_height
@@ -102,90 +100,33 @@ class GameScreen(Screen):
         cast_light(self.engine)
 
     def render_player_panel_details(self, render, info, health) -> bool:
-        self.render_string(
-            self.player_panel_x + 1,
-            self.player_panel_y + 1,
-            info.name
-        )
+        # player name
+        self.player_panel.add_string(1, 1, info.name)
         # player hp
-        self.render_string(
-            self.player_panel_x + 1,
-            self.player_panel_y + 2,
-            "HP: "
-        )
+        self.player_panel.add_string(1, 2, "HP: ")
         cur_hp = str(health.cur_hp)
-        self.render_string(
-            self.player_panel_x + 5,
-            self.player_panel_y + 2,
-            cur_hp,
-            curses.color_pair(197)
-        )
-        self.render_string(
-            self.player_panel_x + len(cur_hp) + 6,
-            self.player_panel_y + 2,
-            f"/ {health.max_hp}",
-            curses.color_pair(125)
-        )
+        max_hp = f"/ {health.max_hp}"
+        self.player_panel.add_string(5, 2, cur_hp, 197)
+        self.player_panel.add_string(len(cur_hp) + 6, 2, max_hp, 125)
         # player mp
         mana = self.engine.manas.find(self.engine.player)
-        self.render_string(
-            self.player_panel_x + 1,
-            self.player_panel_y + 3,
-            "MP: "
-        )
         cur_mp = str(mana.cur_mp)
-        self.render_string(
-            self.player_panel_x + 5,
-            self.player_panel_y + 3,
-            cur_mp,
-            curses.color_pair(22)
-        )
-        self.render_string(
-            self.player_panel_x + len(cur_mp) + 6,
-            self.player_panel_y + 3,
-            f"/ {mana.max_mp}",
-            curses.color_pair(20)
-        )
+        max_hp = f"/ {mana.max_mp}"
+        self.player_panel.add_string(1, 3, "MP: ")
+        self.player_panel.add_string(5, 3, cur_mp, 22)
+        self.player_panel.add_string(len(cur_mp) + 6, 3, max_hp, 20)
         # player weapon damage
         equipment = self.engine.equipments.find(self.engine.player)
         weapon = self.engine.weapons.find(equipment.hand)
         damage = weapon.damage_swing if weapon else 1
-        self.render_string(
-            self.player_panel_x + 1,
-            self.player_panel_y + 5,
-            "DMG: "
-        )
-        self.render_string(
-            self.player_panel_x + 6,
-            self.player_panel_y + 5,
-            damage
-        )
+        self.player_panel.add_string(1, 5, f"DMG: {damage}")
+        # player armor stats
         armor = 0
         for eq_slot in (equipment.head, equipment.body, equipment.feet):
             eq = self.engine.armors.find(eq_slot)
             if eq:
                 armor += eq.defense
-
-        self.render_string(
-            self.player_panel_x + 1,
-            self.player_panel_y + 6,
-            "DEF: "
-        )
-        self.render_string(
-            self.player_panel_x + 6,
-            self.player_panel_y + 6,
-            str(armor)
-        )
-
-    def render_player_panel(self):
-        border(
-            self.terminal,
-            self.player_panel_x,
-            self.player_panel_y,
-            self.player_panel_width,
-            self.player_panel_height
-        )
-        self.terminal.addstr(0, 1, '[info]')
+        self.player_panel.add_string(1, 6, f"DEF: {armor}")
 
     def render_inventory_panel(self):
         border(
@@ -254,10 +195,8 @@ class GameScreen(Screen):
             '[enemies]'
         )
 
-    #  0.000    0.000    1.858    0.093
     def render_map_panel(self):
         # calculate offsets on scrolling map
-        print('player', self.engine.player)
         player = self.engine.positions.find(self.engine.player)
         tilemap = self.engine.tilemaps.find(eid=player.map_id)
         if tilemap.width < self.map_width:
@@ -344,14 +283,42 @@ class GameScreen(Screen):
         # self.render_char(x_offset+3, y_offset, curses.ACS_BULLET)
 
     def render_cursor(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
-        cursor = self.engine.positions.find(self.engine.cursor)
+        position = self.engine.positions.find(self.engine.cursor)
         x_offset = self.map_x - cam_x
         y_offset = self.map_y - cam_y
-        if self.engine.mode in (GameMode.LOOKING, GameMode.DEBUG, GameMode.MAGIC):
-            self.render_char(cursor.x + x_offset, cursor.y + y_offset, 'X')
+        if self.engine.mode in (GameMode.LOOKING, GameMode.DEBUG):
+            self.render_char(position.x + x_offset, position.y + y_offset, 'X')
+        elif self.engine.mode == GameMode.MAGIC:
+            cursor = self.engine.cursors.find(self.engine.cursor)
+            spellname = Spell.identify[cursor.using]
+            render = self.engine.renders.shared[spellname][0]
+            color = curses.color_pair(render.color)
+            if spellname == 'fireball':
+                for xx, yy in diamond():
+                    x = position.x + xx
+                    y = position.y + yy
+                    if (x, y) not in tiles:
+                        continue
+                    self.render_char(x + x_offset, 
+                                     y + y_offset, 
+                                     render.char,
+                                     color)
+            elif spellname == 'crystal nova':
+                 for xx, yy in circle():
+                    x = position.x + xx
+                    y = position.y + yy
+                    if (x, y) not in tiles:
+                        continue
+                    self.render_char(x + x_offset, 
+                                     y + y_offset, 
+                                     render.char,
+                                     color)
+            else:
+                # unhandled or single tile magic
+                self.render_char(position.x + x_offset, position.y + y_offset, 'X')
         else:
             player = self.engine.positions.find(self.engine.player)
-            path = pathfind(self.engine, player, cursor, pathfinder=bresenhams)
+            path = pathfind(self.engine, player, position, pathfinder=bresenhams)
             x_offset = self.map_x - cam_x
             y_offset = self.map_y - cam_y
             for x, y in path[1:]:
@@ -535,10 +502,11 @@ class GameScreen(Screen):
     def render(self):
         self.terminal.clear()
         # self.render_fov()
-        self.render_player_panel()
+        self.player_panel.render()
+        # self.render_player_panel()
         self.render_enemy_panel()
-        self.render_logs_panel()
         self.render_map_panel()
+        self.render_logs_panel()
 
         self.terminal.noutrefresh()
         curses.doupdate()

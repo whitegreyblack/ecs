@@ -3,7 +3,7 @@ from .components import (AI, Armor, Collision, Component, Cursor, Decay,
                          Information, Input, Inventory, Item, Mana,
                          MeleeHitEffect, Movement, Openable, Position,
                          RangeHitEffect, Render, Spell, Spellbook, Tile,
-                         TileMap, Visibility, Weapon, components)
+                         TileMap, Turn, Visibility, Weapon, components)
 
 # __all__ = [
 #     'AI', 'Armor', 'Collision'

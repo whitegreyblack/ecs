@@ -7,7 +7,8 @@ import random
 import time
 from collections import defaultdict
 
-from source.common import GameMode, diamond, join, join_drop_key, squares
+from source.common import (GameMode, circle, diamond, join, join_drop_key,
+                           squares)
 from source.ecs.components import (Collision, Destroyed, Effect, Information,
                                    Item, MeleeHitEffect, Movement, Position,
                                    RangeHitEffect, Render, SpellEffect)
@@ -150,10 +151,13 @@ class CommandSystem(System):
         return True
 
     def cast_magic(self, cursor_id):
+        """Currently hardcoded fireball"""
         cursor = self.engine.cursors.find(cursor_id)
         start = self.engine.positions.find(cursor.entity)
+        mana = self.engine.manas.find(cursor.entity)
         end = self.engine.positions.find(cursor_id)
-        spellname = self.engine.spells.shared[cursor.using]
+        spellname = Spell.identify[cursor.using]
+        spell = self.engine.spells.shared[spellname]
         i = 0
         path = pathfind(self.engine, start, end, pathfinder=bresenhams)
         # TODO: this needs to be reduced from two lists to a zipped list
@@ -185,40 +189,50 @@ class CommandSystem(System):
                 )
                 if (position.x, position.y) in blast[0]
         }
-        print(blast[0])
-        print(units)
+
         # handle effects of spells
         blast_positions = []
         blast_colors = []
         if units:
             units_hit = []
+            log = []
             if spellname == "fireball":
-                log = []
-                for i, j in diamond():
-                    x = i + end.x
-                    y = j + end.y
-                    blast_positions.append((x, y))
-                    blast_colors.append(
-                        random.choice(self.engine.renders.shared[spellname])
-                    )
-                    # just means no units are hit by the blast
-                    if (x, y) not in units:
-                        continue
-                    damage = (2 - abs(i)) + (2 - abs(j)) + 1
-                    log.append(f"{damage}")
-                    units_hit.append((*units[(x, y)], damage))
-                for uid, health, damage in units_hit:
-                    info = self.engine.infos.find(uid)
-                    health.cur_hp -= damage
-                    log.append(f"The {info.name} was {'burned' if damage < 2 else 'scorched'} by fire. ({damage})")
-                    if health.cur_hp < 1:
-                        self.engine.destroyed.add(uid, Destroyed())
-                        log.append(f"The {info.name} takes {damage} and dies!")
-                    self.engine.logger.add(' '.join(log))
+                blast_type = diamond
+                damage_calc = lambda x, y: (2 - abs(x)) + (2 - abs(y)) + 1
+                effect_desc = 'burned'
+                spell_type = 'fire'
+            elif spellname == "crystal nova":            
+                blast_type = circle
+                damage_calc = lambda x, y: 2 if abs(x) + abs(y) < 3 else 1
+                effect_desc = 'frostbitten'
+                spell_type = 'ice'
+            else:
+                return
+            for i, j in blast_type():
+                x = i + end.x
+                y = j + end.y
+                blast_positions.append((x, y))
+                blast_colors.append(
+                    random.choice(self.engine.renders.shared[spellname])
+                )
+                if (x, y) not in units:
+                    # just means no units are hit by the blast point
+                    continue
+                damage = damage_calc(i, j)
+                units_hit.append((*units[(x, y)], damage))
+            for uid, health, damage in units_hit:
+                info = self.engine.infos.find(uid)
+                health.cur_hp -= damage
+                log.append(f"The {info.name} was {effect_desc} by {spell_type}({-damage}).")
+                if health.cur_hp < 1:
+                    self.engine.destroyed.add(uid, Destroyed())
+                    log.append(f"The spell kills the {info.name}!")
+                self.engine.logger.add(' '.join(log))
         else:
             self.engine.logger.add(f"You cast {spellname} at nothing in particular")
         effect = SpellEffect(cursor_id, flight_path)
         self.engine.effects.add(cursor.entity, effect)
+        mana.cur_mp -= spell.mana_cost
         return True
 
     def able_to_target(self, entity: int) -> bool:

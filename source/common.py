@@ -25,10 +25,14 @@ def find_empty_spaces(engine):
                 if not position.blocks_movement
     }
 
+def dot() -> tuple:
+    """Wrapper for a single point"""
+    yield 0, 0
+
 def squares(exclude_center:bool=False) -> tuple:
     """
-    Yields x, y values indicating cardinal directions on a grid
-    @exclude_center: parameter determines if (0, 0) should be returned
+        Yields x, y values indicating cardinal directions on a grid
+        @exclude_center: parameter determines if (0, 0) should be returned
     """
     for x in range(-1, 2):
         for y in range(-1 ,2):
@@ -38,8 +42,8 @@ def squares(exclude_center:bool=False) -> tuple:
 
 def cardinal(exclude_center: bool=False) -> tuple:
     """
-    Yields x, y values indicating axial directions on a grid.
-    @exclude_center: paramaeter deterimes if (0, 0) should be returned:
+        Yields x, y values indicating axial/cross directions on a grid.
+        @exclude_center: parameter determines if (0, 0) should be returned
     """
     yield 0, -1
     yield -1, 0
@@ -48,15 +52,33 @@ def cardinal(exclude_center: bool=False) -> tuple:
     yield 1, 0
     yield 0, 1
 
-def diamond(distance=2, exclude_center: bool=False) -> tuple:
+def diamond(radius=2, exclude_center: bool=False) -> tuple:
     """
-    Yields all x, y, values representing a units withing 2 units
+        Yields all x, y, values representing a units withing 2 units
+        @exclude_center: parameter determines if (0, 0) should be returned
     """
-    for x in range(-distance, distance+1):
-        for y in range(-distance, distance+1):
+    for x in range(-radius, radius+1):
+        for y in range(-radius, radius+1):
             if x == 0 and y == 0 and exclude_center:
                 continue
-            if abs(x) + abs(y) < distance+1:
+            if abs(x) + abs(y) < radius+1:
+                yield x, y
+
+def circle(radius=2, exclude_center: bool=False) -> tuple:
+    """
+        Yields all x, y values representing points in a circle with r=radius
+        @exclude_center: parameter determines if (0, 0) should be returned
+    """
+    if radius < 0:
+        return
+    rr = (radius + 1) * (radius + 1) - (radius >> 1)
+    for x in range(-radius, radius + 1):
+        rxx = x * x
+        for y in range(-radius, radius + 1):
+            ryy = y * y
+            if rxx + ryy < rr:
+                if exclude_center and x == 0 and y== 0:
+                    continue
                 yield x, y
 
 def parse_data(raw: str, fields: int):

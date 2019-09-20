@@ -11,6 +11,28 @@ from source.keyboard import keyboard, movement_keypresses
 from source.raycast import cast_light, raycast
 
 
+class Panel:
+    __slots__ = ['terminal', 'x', 'y', 'width', 'height', 'title']
+    def __init__(self, terminal, x, y, width, height, title):
+        """Just a rectangle"""
+        self.terminal = terminal
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.title = title
+
+    def add_string(self, x, y, string, color=0):
+        if not isinstance(string, str):
+            string = str(string)
+        if color > 0:
+            color = curses.color_pair(color)
+        self.terminal.addstr(y, x, string, color)
+
+    def render(self):
+        border(self.terminal, self.x, self.y, self.width, self.height)
+        self.terminal.addstr(self.x, self.y + 1, f"[{self.title}]")
+
 class Screen:
     def __init__(self, engine, terminal):
         self.engine = engine

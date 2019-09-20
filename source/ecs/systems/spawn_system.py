@@ -132,8 +132,7 @@ class SpawnSystem(System):
         self.engine.inventories.add(player, Inventory())
 
         # add a spellbook with a spell
-        spell = self.engine.spells.shared['fireball'] # => eid
-        spellbook = Spellbook(spells=[spell])
+        spellbook = Spellbook(spells=[0, 1])
         self.engine.spellbooks.add(player, spellbook)
         return player
 

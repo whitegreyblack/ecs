@@ -55,12 +55,12 @@ def build_shared_components(engine):
 def build_spells(engine):
     for spellname, (manacost, char, colors, desc) in spells.items():
         spell_id = engine.entities.create()
+        # spell specific shareed cache
+        Spell.identify[spell_id] = spellname
         # shared cache will hold all spell info that is needed to build a spell
-        engine.spells.shared[spellname] = spell_id
-        engine.spells.shared[spell_id] = spellname
+        engine.spells.shared[spellname] = Spell(manacost)
         engine.renders.shared[spellname] = [Render(char, c) for c in colors]
         engine.infos.shared[spellname] = Information(spellname, desc)
-        engine.infos.add(spell_id, engine.infos.shared[spellname])
 
 def add_world(engine, mappairs):
     world_graph = {}
@@ -115,8 +115,16 @@ def count_objects(engine):
     m = 0
     s = 0
     for c in sorted(components, key=lambda x: x.classname()):
-        l = len(getattr(engine, c.manager).components)
-        g = len(getattr(engine, c.manager).shared)
+        try:
+            l = len(getattr(engine, c.manager).components)
+        except AttributeError:
+            print(f"{c.manager}")
+            raise
+        try:
+            g = len(getattr(engine, c.manager).shared)
+        except AttributeError:
+            print(f"{c.manager}")        
+            raise
         print(c.manager, l, g)
         m += l
         s += g

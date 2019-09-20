@@ -11,6 +11,7 @@ from collections import defaultdict
 from textwrap import wrap
 
 from source.common import GameMode, border, direction_to_keypress, join, scroll
+from source.ecs.components import Spell
 from source.messenger import Logger
 
 from .screen import Screen
@@ -39,7 +40,7 @@ class SpellScreen(Screen):
         current_row = 2
         # spell will be an entity id located in the spells manager
         for i, spell in enumerate(spellbook.spells):
-            info = self.engine.infos.find(spell)
+            info = self.engine.infos.shared[Spell.identify[spell]]
             # current row letter
             self.terminal.addstr(i + current_row, 3, f"{chr(i + 97)}.")
             # name of spell
@@ -58,9 +59,17 @@ class SpellScreen(Screen):
         self.terminal.refresh()
 
     def select_magic(self, index):
+        mana = self.engine.manas.find(self.engine.player)
         spellbook = self.engine.spellbooks.find(self.engine.player)
+        spell_id = spellbook.spells[index]
+        spell_name = Spell.identify[spell_id] # spell name
+        spell = self.engine.spells.shared[spell_name]
+        if mana.cur_mp < spell.mana_cost:
+            self.engine.logger.add(f"You don't have enough mana to cast {spell_name}")
+            return False
         cursor = self.engine.cursors.find(self.engine.cursor)
         cursor.using = spellbook.spells[index]
+        return True
 
     def set_valid_keypresses(self, keys):
         self.valid_keypresses = { 'escape', 'tilde' }.union(keys)
@@ -68,6 +77,8 @@ class SpellScreen(Screen):
     def handle_input(self):
         key = self.engine.keypress
         if key != 'escape' and key != 'tilde':
-            self.select_magic(ord(key) - 97)
+            selected = self.select_magic(ord(key) - 97)
+            if not selected:
+                return
+            self.engine.change_mode(GameMode.MAGIC)
         self.engine.change_screen('gamescreen')
-        self.engine.change_mode(GameMode.MAGIC)

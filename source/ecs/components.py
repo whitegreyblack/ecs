@@ -326,8 +326,11 @@ class Spellbook(Component):
         self.spells = spells if spells else list()
 
 class Spell(Component):
-    __slots__ = ['spellname']
+    __slots__ = ['mana_cost']
     manager: str = 'spells'
+    identify: dict = dict()
+    def __init__(self, mana_cost):
+        self.mana_cost = mana_cost
 
 class Weapon(Component):
     __slots__ = ['damage']
@@ -376,6 +379,21 @@ class Cursor(Component):
         self.entity = entity
         self.using = -1
 
+class StatusType(enum.Enum):
+    BURNING = enum.auto()
+    FROZEN = enum.auto()
+    BLEEDING = enum.auto()
+    POISONED = enum.auto()
+
+class Status(Component):
+    __slots__ = ['status', 'color']
+    manager: str = 'statuses'
+    def __init__(self, status: int):
+        self.status = status
+        if self.status == StatusType.BURNING:
+            self.color = 0
+        elif self.status == StatusType.FROZEN:
+            self.color = 0
 
 components = Component.__subclasses__()
 
