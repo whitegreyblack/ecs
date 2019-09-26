@@ -12,7 +12,7 @@ from textwrap import wrap
 
 from source.common import GameMode, border, direction_to_keypress, join, scroll
 from source.ecs.components import Spell
-from source.messenger import Logger
+from source.logger import Logger
 
 from .screen import Screen
 

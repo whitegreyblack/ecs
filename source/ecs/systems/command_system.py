@@ -16,7 +16,7 @@ from source.ecs.systems.commands import (close_door, collide, go_down, go_up,
                                          melee_attack, move, open_door)
 from source.ecs.systems.system import System
 from source.keyboard import keypress_to_direction, movement_keypresses
-from source.messenger import Logger
+from source.logger import Logger
 from source.pathfind import bresenhams, pathfind
 
 
