@@ -49,6 +49,8 @@ class GameScreen(Screen):
         # player info
         self.player_panel = Panel(self.terminal, 0, 0, 16, 19, 'info')
 
+        # map info and player location
+        # self.map_panel = WorldPanel()
         self.map_panel_x = self.player_panel.width
         self.map_panel_y = 0
         self.map_panel_width = 50
@@ -61,6 +63,7 @@ class GameScreen(Screen):
         self.map_height = self.map_panel_height -1
 
         # enemy panel border and coordinates
+        # self.enemy_panel = EnemyPanel()
         self.enemy_panel_x = self.player_panel.width + self.map_panel_width + 2
         self.enemy_panel_y = 0
         self.enemy_panel_width = self.width - self.enemy_panel_x - 1
@@ -73,15 +76,14 @@ class GameScreen(Screen):
         self.enemy_items_height = self.enemy_panel_height - self.enemy_panel_offset_y * 2
 
         # log panel border and coordinates
-        self.logs_panel = LogPanel(
-            self.terminal, 
-            self.engine.logger,
-            0,
-            self.map_panel_height + 1, 
-            self.width,
-            self.height - self.map_panel_height - 1,
-            'logs'
-            )
+        self.logs_panel = LogPanel(self.terminal, 
+                                   self.engine.logger,
+                                   0,
+                                   self.map_panel_height + 1, 
+                                   self.width,
+                                   self.height - self.map_panel_height - 1,
+                                   'logs'
+                                   )
 
         # initialize a cursor
         self.cursor = self.engine.entities.create()
@@ -126,32 +128,6 @@ class GameScreen(Screen):
             if eq:
                 armor += eq.defense
         self.player_panel.add_string(1, 6, f"DEF: {armor}")
-
-    def render_inventory_panel(self):
-        border(
-            self.terminal, 
-            self.inventory_x, 
-            self.inventory_y, 
-            self.inventory_width, 
-            self.inventory_height
-        )
-        self.terminal.addstr(1, 2, '[equipment]')
-
-        inventory = self.engine.inventories.find(self.engine.player)
-        # self.terminal.addstr(1, 1, f"{inventory}")
-        if not inventory.items:
-            self.terminal.addstr(2, 2, 'empty')
-        else:
-            items = []
-            for eid, (_, info) in join(self.engine.items, self.engine.infos):
-                if eid in inventory.items:
-                    items.append(info)
-            for i, info in enumerate(items):
-                self.render_string(
-                    self.inventory_x + 1, 
-                    self.inventory_y + 1 + i, 
-                    f"{i+1}. {info.name}"
-                )
 
     def render_enemy_panel_detail(self, enemy_count, render, info, health) -> bool:
         if enemy_count < self.enemy_panel_height - 1:
@@ -276,10 +252,6 @@ class GameScreen(Screen):
                     render.char,
                     curses.color_pair(c)
                 )
-        # self.render_char(x_offset, y_offset, curses.ACS_BOARD)
-        # self.render_char(x_offset+1, y_offset, curses.ACS_BLOCK)
-        # self.render_char(x_offset+2, y_offset, curses.ACS_CKBOARD)
-        # self.render_char(x_offset+3, y_offset, curses.ACS_BULLET)
 
     def render_cursor(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
         position = self.engine.positions.find(self.engine.cursor)

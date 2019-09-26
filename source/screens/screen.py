@@ -23,16 +23,33 @@ class Panel:
         self.height = height
         self.title = title
 
+    def add_char(self, x, y, char, color=0):
+        if not isinstance(char, str):
+            char = str(char)
+        if len(char) > 1:
+            raise ValueError("Parameter char is not len(1)")
+        if color > 0:
+            color = curses.color_pair(color)
+        self.terminal.add_char(self.x + x, self.y + y, char, color)
+
     def add_string(self, x, y, string, color=0):
         if not isinstance(string, str):
             string = str(string)
         if color > 0:
             color = curses.color_pair(color)
-        self.terminal.addstr(y, x, string, color)
+        self.terminal.add_string(self.x + x, self.y + y, string, color)
 
     def render(self):
-        border(self.terminal, self.x, self.y, self.width-1, self.height-1)
-        self.terminal.addstr(self.y, self.x + 1, f"[{self.title}]")
+        border(self.terminal, self.x, self.y, self.width - 1, self.height - 1)
+        self.terminal.add_string(0, 1, f"[{self.title}]")
+
+class PlayerPanel(Panel): ...
+class EnemyPanel(Panel): ...
+
+# world will hold an instance of MapPanel. 
+# MapPanel.Render() will override Panel.Render()
+class MapPanel(Panel): ...
+class WorldPanel(Panel): ...
 
 class MessagePanel(Panel):
     __slots__ = ['terminal', 'logger', 'x', 'y', 'width', 'height']
