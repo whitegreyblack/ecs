@@ -2,7 +2,7 @@
 
 """Base system class"""
 
-from source.messenger import Logger
+from source.logger import Logger
 
 
 class System(object):

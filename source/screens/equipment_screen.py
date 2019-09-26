@@ -9,7 +9,7 @@ from collections import defaultdict
 from textwrap import wrap
 
 from source.common import border, direction_to_keypress, join, scroll
-from source.messenger import Logger
+from source.logger import Logger
 
 from .screen import Screen
 

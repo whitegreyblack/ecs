@@ -71,7 +71,8 @@ class AISystem(System):
             #     if not ai.path:
             #         # self.engine.logger.add(f"{i.name}({eid})({eid}) stopped attacking")
             #         ai.behavior = 'wander'
-        self.engine.screen.render_logs_panel()
+        # self.engine.screen.logs_panel.render()
+        # self.engine.screen.render()
 
     def process(self, entity):
         """Computer commands currently only support mindless movement"""
@@ -111,3 +112,4 @@ class AISystem(System):
             elif ai.behavior == 'wait':
                 movement = Movement(0, 0)
         return direction_to_keypress(movement.x, movement.y)
+

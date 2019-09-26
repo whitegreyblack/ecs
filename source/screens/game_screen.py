@@ -10,11 +10,11 @@ from source.common import (
     GameMode, border, circle, diamond, direction_to_keypress, join,
     join_drop_key, join_on, scroll)
 from source.ecs.components import (Effect, MeleeHitEffect, Movement, Position,
-                                   RangeHitEffect, SpellEffect, Spell)
+                                   RangeHitEffect, Spell, SpellEffect)
 from source.pathfind import bresenhams, pathfind
 from source.raycast import cast_light
 
-from .screen import Panel, Screen
+from .screen import LogPanel, Panel, Screen
 
 
 class GameScreen(Screen):
@@ -47,9 +47,9 @@ class GameScreen(Screen):
         self.height, self.width = self.terminal.getmaxyx()
 
         # player info
-        self.player_panel = Panel(self.terminal, 0, 0, 15, 18, 'info')
+        self.player_panel = Panel(self.terminal, 0, 0, 16, 19, 'info')
 
-        self.map_panel_x = self.player_panel.width + 1
+        self.map_panel_x = self.player_panel.width
         self.map_panel_y = 0
         self.map_panel_width = 50
         self.map_panel_height = 18
@@ -73,16 +73,15 @@ class GameScreen(Screen):
         self.enemy_items_height = self.enemy_panel_height - self.enemy_panel_offset_y * 2
 
         # log panel border and coordinates
-        self.logs_panel_x = 0
-        self.logs_panel_y = self.map_panel_height + 1
-        self.logs_panel_width = self.width
-        self.logs_panel_height = self.height - self.map_panel_height - 2
-        self.logs_panel_offset_x = 2
-        self.logs_panel_offset_y = 1
-        self.logs_item_x = self.logs_panel_x + self.logs_panel_offset_x
-        self.logs_item_y = self.logs_panel_y + self.logs_panel_offset_y
-        self.logs_item_width = self.logs_panel_width - self.logs_panel_offset_x * 2
-        self.logs_items_height = self.logs_panel_height - self.logs_panel_offset_y * 2
+        self.logs_panel = LogPanel(
+            self.terminal, 
+            self.engine.logger,
+            0,
+            self.map_panel_height + 1, 
+            self.width,
+            self.height - self.map_panel_height - 1,
+            'logs'
+            )
 
         # initialize a cursor
         self.cursor = self.engine.entities.create()
@@ -476,37 +475,14 @@ class GameScreen(Screen):
                         )
                         previous = positions
 
-    def render_log(self, log, ly, lx):
-        self.terminal.addstr(ly, lx, '> ' + str(log))
-        # log.lifetime -= 1
-
-    def render_logs_panel(self):
-        border(
-            self.terminal, 
-            self.logs_panel_x, 
-            self.logs_panel_y, 
-            self.logs_panel_width - 1,
-            self.logs_panel_height
-        )
-        self.terminal.addstr(self.logs_panel_y, self.logs_panel_x + 1, '[log]')
-
-        logs = self.engine.logger.messages
-        # only iterate slice of logs if it is larger than screen
-        if len(logs) >= self.logs_items_height:
-            l = max(0, len(logs) - self.logs_items_height - 1)
-            logs = logs[l:]
-        for y, log in enumerate(logs):
-            log_y = self.logs_item_y + y
-            self.render_log(log, log_y, self.logs_item_x)
-
     def render(self):
         self.terminal.clear()
-        # self.render_fov()
+        self.terminal.erase()
+
         self.player_panel.render()
-        # self.render_player_panel()
-        self.render_enemy_panel()
-        self.render_map_panel()
-        self.render_logs_panel()
+        self.render_enemy_panel() # TODO: make into a panel
+        self.logs_panel.render()
+        self.render_map_panel() # TODO: make into a panel
 
         self.terminal.noutrefresh()
         curses.doupdate()

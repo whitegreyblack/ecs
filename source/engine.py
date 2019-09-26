@@ -13,7 +13,7 @@ from source.ecs.components import (Collision, Effect, Information, Movement,
                                    Openable, Position, components)
 from source.ecs.managers import ComponentManager, EntityManager
 from source.ecs.systems import RenderSystem
-from source.messenger import Logger
+from source.logger import Logger
 from source.screens import (DeathScreen, EquipmentScreen, GameScreen,
                             InventoryScreen, MenuScreen, SpellScreen,
                             StartScreen)
