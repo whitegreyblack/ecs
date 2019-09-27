@@ -16,9 +16,9 @@ class LevelPanel(Panel):
         super().__init__(terminal, x, y, width, height, None)
         self.engine = engine
     def render(self):
-        # calculate offsets on scrolling map
         player = self.engine.positions.find(self.engine.player)
         tilemap = self.engine.tilemaps.find(player.map_id)
+        # calculate camera bounds on scrolling map
         if tilemap.width < self.width:
             cam_x = 0
         else:
@@ -29,13 +29,12 @@ class LevelPanel(Panel):
         else:
             cam_y = scroll(player.y, self.height, tilemap.height)
         y0, y1 = cam_y, self.height + cam_y
+
         # do line of sight calculations
         cast_light(self.engine, x0, x1, y0, y1)
 
         start = time.time()
         # draw map first, then items, then units
-        # x_offset = self.map_x - cam_x
-        # y_offset = self.map_y - cam_y
         for visibility, position, render in join_drop_key(
             self.engine.visibilities,
             self.engine.positions,
@@ -48,11 +47,12 @@ class LevelPanel(Panel):
             ):
                 c = render.color if visibility.level > 1 else 240
                 self.add_char(
-                    position.x + cam_x,
-                    position.y + cam_y,
+                    position.x - cam_x,
+                    position.y - cam_y,
                     render.char,
                     c
                 )
+
         self.engine.entities_in_view.clear()
         for eid, (health, position, render, info) in join(
             self.engine.healths,
@@ -68,8 +68,8 @@ class LevelPanel(Panel):
                 if self.engine.player != eid:
                     self.engine.entities_in_view.add(eid)
                 self.add_char(
-                    position.x + cam_x,
-                    position.y + cam_y,
+                    position.x - cam_x,
+                    position.y - cam_y,
                     render.char,
                     render.color
                 )
