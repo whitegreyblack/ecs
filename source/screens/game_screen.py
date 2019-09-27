@@ -14,7 +14,10 @@ from source.ecs.components import (Effect, MeleeHitEffect, Movement, Position,
 from source.pathfind import bresenhams, pathfind
 from source.raycast import cast_light
 
-from .screen import LogPanel, Panel, Screen
+from .log_panel import LogPanel
+from .map_panel import MapPanel
+from .panel import PlayerPanel, EnemyPanel
+from .screen import Screen
 
 
 class GameScreen(Screen):
@@ -47,43 +50,35 @@ class GameScreen(Screen):
         self.height, self.width = self.terminal.getmaxyx()
 
         # player info
-        self.player_panel = Panel(self.terminal, 0, 0, 16, 19, 'info')
+        self.player_panel = PlayerPanel(self.terminal, 
+                                        self.engine, 
+                                        0, 0, 16, 18, 
+                                        'info')
 
         # map info and player location
-        # self.map_panel = WorldPanel()
-        self.map_panel_x = self.player_panel.width
-        self.map_panel_y = 0
-        self.map_panel_width = 50
-        self.map_panel_height = 18
-        self.map_offset_x = 1
-        self.map_offset_y = 1
-        self.map_x = self.map_panel_x + self.map_offset_x
-        self.map_y = self.map_panel_y + self.map_offset_y # self.header_y + 1
-        self.map_width = self.map_panel_width - 1
-        self.map_height = self.map_panel_height -1
+        self.map_panel = MapPanel(self.terminal,
+                                  self.engine,
+                                  self.player_panel.width,
+                                  0, 50, 18,
+                                  "map")
 
         # enemy panel border and coordinates
-        # self.enemy_panel = EnemyPanel()
-        self.enemy_panel_x = self.player_panel.width + self.map_panel_width + 2
-        self.enemy_panel_y = 0
-        self.enemy_panel_width = self.width - self.enemy_panel_x - 1
-        self.enemy_panel_height = self.map_panel_height
-        self.enemy_panel_offset_x = 1
-        self.enemy_panel_offset_y = 1
-        self.enemy_item_x = self.enemy_panel_x + self.enemy_panel_offset_x
-        self.enemy_item_y = self.enemy_panel_y + self.enemy_panel_offset_y
-        self.enemy_item_width = self.enemy_panel_width - self.enemy_panel_offset_x * 2
-        self.enemy_items_height = self.enemy_panel_height - self.enemy_panel_offset_y * 2
+        self.enemy_panel = EnemyPanel(self.terminal,
+                                      self.engine,
+                                      self.player_panel.width + self.map_panel.width,
+                                      0,
+                                      self.width - self.player_panel.width - self.map_panel.width,
+                                      self.map_panel.height,
+                                      "enemies")
 
         # log panel border and coordinates
         self.logs_panel = LogPanel(self.terminal, 
                                    self.engine.logger,
                                    0,
-                                   self.map_panel_height + 1, 
+                                   self.map_panel.height, 
                                    self.width,
-                                   self.height - self.map_panel_height - 1,
-                                   'logs'
-                                   )
+                                   self.height - self.map_panel.height,
+                                   'logs')
 
         # initialize a cursor
         self.cursor = self.engine.entities.create()
@@ -99,35 +94,6 @@ class GameScreen(Screen):
 
     def render_fov(self):
         cast_light(self.engine)
-
-    def render_player_panel_details(self, render, info, health) -> bool:
-        # player name
-        self.player_panel.add_string(1, 1, info.name)
-        # player hp
-        self.player_panel.add_string(1, 2, "HP: ")
-        cur_hp = str(health.cur_hp)
-        max_hp = f"/ {health.max_hp}"
-        self.player_panel.add_string(5, 2, cur_hp, 197)
-        self.player_panel.add_string(len(cur_hp) + 6, 2, max_hp, 125)
-        # player mp
-        mana = self.engine.manas.find(self.engine.player)
-        cur_mp = str(mana.cur_mp)
-        max_hp = f"/ {mana.max_mp}"
-        self.player_panel.add_string(1, 3, "MP: ")
-        self.player_panel.add_string(5, 3, cur_mp, 22)
-        self.player_panel.add_string(len(cur_mp) + 6, 3, max_hp, 20)
-        # player weapon damage
-        equipment = self.engine.equipments.find(self.engine.player)
-        weapon = self.engine.weapons.find(equipment.hand)
-        damage = weapon.damage_swing if weapon else 1
-        self.player_panel.add_string(1, 5, f"DMG: {damage}")
-        # player armor stats
-        armor = 0
-        for eq_slot in (equipment.head, equipment.body, equipment.feet):
-            eq = self.engine.armors.find(eq_slot)
-            if eq:
-                armor += eq.defense
-        self.player_panel.add_string(1, 6, f"DEF: {armor}")
 
     def render_enemy_panel_detail(self, enemy_count, render, info, health) -> bool:
         if enemy_count < self.enemy_panel_height - 1:
@@ -452,9 +418,11 @@ class GameScreen(Screen):
         self.terminal.erase()
 
         self.player_panel.render()
-        self.render_enemy_panel() # TODO: make into a panel
+        # self.render_enemy_panel() # TODO: make into a panel
+        self.enemy_panel.render()
         self.logs_panel.render()
-        self.render_map_panel() # TODO: make into a panel
+        # self.render_map_panel() # TODO: make into a panel
+        self.map_panel.render()
 
         self.terminal.noutrefresh()
         curses.doupdate()
