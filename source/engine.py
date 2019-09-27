@@ -42,6 +42,8 @@ class Engine(object):
         self.keypress = None
 
         self.mode = GameMode.NORMAL
+        self.entities_in_view = set()
+        self.tiles_in_view = set()
 
     def __repr__(self):
         attributes = []

@@ -25,7 +25,7 @@ class Panel:
             raise ValueError("Parameter char is not len(1)")
         if color > 0:
             color = curses.color_pair(color)
-        self.terminal.add_char(self.x + x, self.y + y, char, color)
+        self.terminal.addch(self.y + y, self.x + x, char, color)
 
     def add_string(self, x, y, string, color=0):
         if not isinstance(string, str):
@@ -47,7 +47,7 @@ class PlayerPanel(Panel):
         super().__init__(terminal, x, y, width, height, title)
         self.engine = engine
     def render(self):
-        self.border()
+        super().render()
         player = self.engine.player
         info = self.engine.infos.find(player)
         health = self.engine.healths.find(player)
@@ -79,3 +79,19 @@ class EnemyPanel(Panel):
     def __init__(self, terminal, engine, x, y, width, height, title):
         super().__init__(terminal, x, y, width, height, title)
         self.engine = engine        
+    def render(self):
+        super().render()
+        current_height = 0
+        for eid in self.engine.entities_in_view:
+            if current_height >= self.height - 2:
+                break
+            render = self.engine.renders.find(eid)
+            health = self.engine.healths.find(eid)
+            info = self.engine.infos.find(eid)
+            self.add_char(2, 1 + current_height, render.char, render.color)
+            self.add_string(4, 1 + current_height, str(health.cur_hp), 197)
+            self.add_string(len(str(health.cur_hp)) + 5,
+                            current_height + 1,
+                            f"/ {health.max_hp}",
+                            125)
+            current_height += 1

@@ -23,7 +23,8 @@ from .screen import Screen
 class GameScreen(Screen):
     def __init__(self, engine, terminal):
         super().__init__(engine, terminal)
-        self.initialize_coordinates()
+        self.initialize_panels()
+        self.initialize_cursor()
         self.entities = None
         self.entity_index = 0
         self.valid_keypresses.update({
@@ -46,178 +47,53 @@ class GameScreen(Screen):
             'backtick',
         })
 
-    def initialize_coordinates(self):
-        self.height, self.width = self.terminal.getmaxyx()
-
+    def initialize_panels(self):
+        height, width = self.terminal.getmaxyx()
         # player info
-        self.player_panel = PlayerPanel(self.terminal, 
-                                        self.engine, 
-                                        0, 0, 16, 18, 
-                                        'info')
-
+        player_panel = PlayerPanel(
+            self.terminal, 
+            self.engine, 
+            0, 0, 16, 18, 
+            'info'
+        )
         # map info and player location
-        self.map_panel = MapPanel(self.terminal,
-                                  self.engine,
-                                  self.player_panel.width,
-                                  0, 50, 18,
-                                  "map")
-
+        map_panel = MapPanel(
+            self.terminal,
+            self.engine,
+            player_panel.width,
+            0, 50, 18,
+            "map"
+        )
         # enemy panel border and coordinates
-        self.enemy_panel = EnemyPanel(self.terminal,
-                                      self.engine,
-                                      self.player_panel.width + self.map_panel.width,
-                                      0,
-                                      self.width - self.player_panel.width - self.map_panel.width,
-                                      self.map_panel.height,
-                                      "enemies")
+        enemy_panel = EnemyPanel(
+            self.terminal,
+            self.engine,
+            player_panel.width + map_panel.width,
+            0,
+            width - player_panel.width - map_panel.width,
+            map_panel.height,
+            "enemies"
+        )
+        logs_panel = LogPanel(
+            self.terminal, 
+            self.engine.logger,
+            0,
+            map_panel.height, 
+            width,
+            height - map_panel.height,
+            'logs'
+        )
+        self.panels = [
+            map_panel,
+            player_panel,
+            enemy_panel,
+            logs_panel,
+        ]
 
-        # log panel border and coordinates
-        self.logs_panel = LogPanel(self.terminal, 
-                                   self.engine.logger,
-                                   0,
-                                   self.map_panel.height, 
-                                   self.width,
-                                   self.height - self.map_panel.height,
-                                   'logs')
-
+    def initialize_cursor(self):
         # initialize a cursor
         self.cursor = self.engine.entities.create()
         self.engine.positions.add(self.cursor, Position())
-
-    def render_string(self, x, y, string, attr=0):
-        if not isinstance(string, str):
-            string = str(string)
-        self.terminal.addstr(y, x, string, attr)
-
-    def render_char(self, x, y, character, attr=0):
-        self.terminal.addch(y, x, character, attr)
-
-    def render_fov(self):
-        cast_light(self.engine)
-
-    def render_enemy_panel_detail(self, enemy_count, render, info, health) -> bool:
-        if enemy_count < self.enemy_panel_height - 1:
-            # enemy character eg. goblin => <green>g</green>
-            self.render_char(
-                self.enemy_item_x + 1,
-                self.enemy_item_y + enemy_count,
-                render.char,
-                curses.color_pair(render.color)
-            )
-            # enemy character current health
-            self.render_string(
-                self.enemy_item_x + 4,
-                self.enemy_item_y + enemy_count,
-                str(health.cur_hp),
-                curses.color_pair(197)
-            )
-            # enemy character maximum health
-            self.render_string(
-                self.enemy_item_x + len(str(health.cur_hp)) + 5,
-                self.enemy_item_y + enemy_count,
-                f"/ {health.max_hp}",
-                curses.color_pair(125)
-            )
-            return True
-        return False
-
-    def render_enemy_panel(self):
-        """Initializes frame only. Content is filled by render_units"""
-        border(
-            self.terminal, 
-            self.enemy_panel_x,
-            self.enemy_panel_y, 
-            self.enemy_panel_width,
-            self.enemy_panel_height
-        )
-        self.render_string(
-            self.enemy_panel_x + 1,
-            self.enemy_panel_y,
-            '[enemies]'
-        )
-
-    def render_map_panel(self):
-        # calculate offsets on scrolling map
-        player = self.engine.positions.find(self.engine.player)
-        tilemap = self.engine.tilemaps.find(eid=player.map_id)
-        if tilemap.width < self.map_width:
-            cam_x = 0
-        else:
-            cam_x = scroll(player.x, self.map_width, tilemap.width)
-        x0, x1 = cam_x, self.map_width + cam_x
-        if tilemap.height < self.map_height:
-            cam_y = 0
-        else:
-            cam_y = scroll(player.y, self.map_height, tilemap.height)
-        y0, y1 = cam_y, self.map_height + cam_y
-        # do line of sight calculations
-        cast_light(self.engine, x0, x1, y0, y1)
-
-        start = time.time()
-        # draw map panel border
-        self.render_map_border()
-
-        # draw environment
-        self.render_map(player.map_id, cam_x, cam_y, x0, x1, y0, y1)
-        
-        tiles = {
-            (position.x, position.y): render
-                for position, visibility, render in join_drop_key(
-                    self.engine.positions,
-                    self.engine.visibilities,
-                    self.engine.renders
-                )
-                if visibility.level > 1
-        }
-        visible_tiles = set(tiles.keys())
-
-        # draw items
-        self.render_items(visible_tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
-        while True:
-            # draw units
-            self.render_units(visible_tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
-            if not self.engine.effects.components:
-                break
-            if time.time() - start > (1 / 23):
-                self.engine.effects.components.clear()
-                break
-            # draw effects
-            self.render_effects(tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
-            self.update_effects()
-        
-        if self.engine.mode is not GameMode.NORMAL:
-            self.render_cursor(visible_tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
-
-    def render_map_border(self):
-        border(
-            self.terminal,
-            self.map_panel_x,
-            self.map_panel_y,
-            self.map_panel_width,
-            self.map_panel_height
-        )
-
-    def render_map(self, map_id, cam_x, cam_y, x0, x1, y0, y1):
-        x_offset = self.map_x - cam_x
-        y_offset = self.map_y - cam_y
-        
-        for visibility, position, render in join_drop_key(
-            self.engine.visibilities,
-            self.engine.positions,
-            self.engine.renders
-        ):
-            if (visibility.level > 0
-                and map_id == position.map_id
-                and x0 <= position.x < x1 
-                and y0 <= position.y < y1
-            ):
-                c = render.color if visibility.level > 1 else 240
-                self.render_char(
-                    position.x + x_offset,
-                    position.y + y_offset,
-                    render.char,
-                    curses.color_pair(c)
-                )
 
     def render_cursor(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
         position = self.engine.positions.find(self.engine.cursor)
@@ -260,45 +136,6 @@ class GameScreen(Screen):
             y_offset = self.map_y - cam_y
             for x, y in path[1:]:
                 self.render_char(x + x_offset, y + y_offset, 'X')
-
-    def render_units(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
-        # look for all positions not in tile positions and visibilities.
-        # if their positions match and map is visible then show the unit
-        enemy_count = 0
-        x_offset = self.map_x - cam_x
-        y_offset = self.map_y - cam_y
-        for eid, (health, position, render, info) in join(
-            self.engine.healths,
-            self.engine.positions, 
-            self.engine.renders,
-            self.engine.infos
-        ):
-            if (
-                position.map_id == self.engine.world.id
-                and (position.x, position.y) in tiles
-                and x0 <= position.x < x1 
-                and y0 <= position.y < y1
-            ):
-                # current_map_id = position.map_id == map_id
-                color = render.color if (position.x, position.y) in tiles else 0
-                self.render_char(
-                    position.x + x_offset,
-                    position.y + y_offset,
-                    render.char,
-                    curses.color_pair(color)
-                )
-                # check if enemy needs to added to the panel
-                non_player = eid != self.engine.player
-                description_space = enemy_count < self.enemy_panel_height - 1
-                if non_player:
-                        enemy_count += int(self.render_enemy_panel_detail(
-                            enemy_count, 
-                            render, 
-                            info, 
-                            health
-                        ))
-                else:
-                    self.render_player_panel_details(render, info, health)
 
     def render_items(self, tiles, map_id, cam_x, cam_y, x0, x1, y0, y1):
         item_positions = set()
@@ -417,12 +254,8 @@ class GameScreen(Screen):
         self.terminal.clear()
         self.terminal.erase()
 
-        self.player_panel.render()
-        # self.render_enemy_panel() # TODO: make into a panel
-        self.enemy_panel.render()
-        self.logs_panel.render()
-        # self.render_map_panel() # TODO: make into a panel
-        self.map_panel.render()
+        for panel in self.panels:
+            panel.render()
 
         self.terminal.noutrefresh()
         curses.doupdate()
