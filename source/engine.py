@@ -161,7 +161,11 @@ class Engine(object):
         self.ai_system.update()
 
     def clear_databases(self):
-        systems = (v for k, v in self.__dict__.items() if k.endswith('__system'))
+        systems = (
+            system
+                for system_name, system in self.__dict__.items() 
+                    if system_name.endswith('__system')
+            )
         for system in systems:
             system.components.clear()
 

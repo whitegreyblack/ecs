@@ -11,6 +11,8 @@ Panels should be borderable only
 Screens should inherit from Panel and Borderable?
 """
 
+from source.common import border
+
 
 class Screen:
     def __init__(self, engine, terminal):

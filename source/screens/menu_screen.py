@@ -46,7 +46,7 @@ class MenuScreen(Screen):
         if key == 'escape' or (key == 'enter' and option == 'back'):
             self.engine.change_screen('gamescreen')
         if key == 'enter' and option == 'main menu':
-            self.engine.change_screen('mainscreen')
+            self.engine.change_screen('startscreen')
         elif key == 'enter' and option == 'quit':
             self.engine.running = False
         elif key == 'down':
