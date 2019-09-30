@@ -96,16 +96,16 @@ class Engine(object):
 
     def initialize_screens(self):
         self.screens = {
-        screen.__name__.lower(): screen(self, self.terminal)
-            for screen in (
-                GameScreen, 
-                MenuScreen,
-                StartScreen, 
-                InventoryScreen,
-                EquipmentScreen,
-                DeathScreen,
-                SpellScreen,
-            )
+            screen.__name__.lower(): screen(self, self.terminal)
+                for screen in (
+                    GameScreen, 
+                    MenuScreen,
+                    StartScreen, 
+                    InventoryScreen,
+                    EquipmentScreen,
+                    DeathScreen,
+                    SpellScreen,
+                )
         } 
         self.screen = self.screens['startscreen']
 

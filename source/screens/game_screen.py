@@ -53,7 +53,7 @@ class GameScreen(Screen):
         player_panel = PlayerPanel(
             self.terminal, 
             self.engine, 
-            0, 0, 16, 18, 
+            0, 0, 16, 19, 
             'info'
         )
         # map info and player location
@@ -61,7 +61,7 @@ class GameScreen(Screen):
             self.terminal,
             self.engine,
             player_panel.width,
-            0, 50, 18,
+            0, 50, 19,
             "map"
         )
         # enemy panel border and coordinates
@@ -71,7 +71,7 @@ class GameScreen(Screen):
             player_panel.width + map_panel.width,
             0,
             width - player_panel.width - map_panel.width,
-            map_panel.height,
+            player_panel.height,
             "enemies"
         )
         logs_panel = LogPanel(
