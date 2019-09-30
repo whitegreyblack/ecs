@@ -4,7 +4,9 @@
 
 import time
 
-from source.common import join, join_drop_key, scroll
+from source.common import (GameMode, circle, diamond, join, join_drop_key,
+                           scroll)
+from source.ecs.components import Spell
 from source.raycast import cast_light
 
 from .panel import Panel
@@ -88,8 +90,27 @@ class LevelPanel(Panel):
         #     self.render_effects(tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
         #     self.update_effects()
         
-        # if self.engine.mode is not GameMode.NORMAL:
-        #     self.render_cursor(visible_tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
+        if self.engine.mode is not GameMode.NORMAL:
+            # self.render_cursor(visible_tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
+            position = self.engine.positions.find(self.engine.cursor)
+            if self.engine.mode in (GameMode.LOOKING, GameMode.DEBUG):
+                self.add_char(position.x - cam_x, position.y - cam_y, 'X')
+            elif self.engine.mode == GameMode.MAGIC:
+                cursor = self.engine.cursors.find(self.engine.cursor)
+                spellname = Spell.identify[cursor.using]
+                render = self.engine.renders.shared[spellname][0]
+                if spellname == 'fireball':
+                    for xx, yy in diamond():
+                        x = position.x + xx
+                        y = position.y + yy
+                        if (x, y) not in self.engine.tiles_in_view:
+                            continue
+                        self.add_char(
+                            x - cam_x, 
+                            y - cam_y, 
+                            render.char, 
+                            render.color
+                        )
 
 class MapPanel(Panel):
     __slots__ =  "terminal x y width height title level_panel".split()
