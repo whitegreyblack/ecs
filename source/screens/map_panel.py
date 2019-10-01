@@ -13,24 +13,26 @@ from .panel import Panel
 
 
 class LevelPanel(Panel):
-    __slots__ = "terminal engine x y width height".split()
+    __slots__ = "terminal engine x y width height cam_x cam_y".split()
     def __init__(self, terminal, engine, x, y, width, height):
         super().__init__(terminal, x, y, width, height, None)
         self.engine = engine
+        self.cam_x = None
+        self.cam_y = None
     def render(self):
         player = self.engine.positions.find(self.engine.player)
         tilemap = self.engine.tilemaps.find(player.map_id)
         # calculate camera bounds on scrolling map
         if tilemap.width < self.width:
-            cam_x = 0
+            self.cam_x = 0
         else:
-            cam_x = scroll(player.x, self.width, tilemap.width)
-        x0, x1 = cam_x, self.width + cam_x
+            self.cam_x = scroll(player.x, self.width, tilemap.width)
+        x0, x1 = self.cam_x, self.width + self.cam_x
         if tilemap.height < self.height:
-            cam_y = 0
+            self.cam_y = 0
         else:
-            cam_y = scroll(player.y, self.height, tilemap.height)
-        y0, y1 = cam_y, self.height + cam_y
+            self.cam_y = scroll(player.y, self.height, tilemap.height)
+        y0, y1 = self.cam_y, self.height + self.cam_y
 
         # do line of sight calculations
         cast_light(self.engine, x0, x1, y0, y1)
@@ -49,8 +51,8 @@ class LevelPanel(Panel):
             ):
                 c = render.color if visibility.level > 1 else 240
                 self.add_char(
-                    position.x - cam_x,
-                    position.y - cam_y,
+                    position.x - self.cam_x,
+                    position.y - self.cam_y,
                     render.char,
                     c
                 )
@@ -70,8 +72,8 @@ class LevelPanel(Panel):
                 if self.engine.player != eid:
                     self.engine.entities_in_view.add(eid)
                 self.add_char(
-                    position.x - cam_x,
-                    position.y - cam_y,
+                    position.x - self.cam_x,
+                    position.y - self.cam_y,
                     render.char,
                     render.color
                 )
