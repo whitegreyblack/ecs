@@ -25,7 +25,8 @@ class Engine(object):
         self.running = True
         self.logger = Logger()
         self.debugger = Logger()
-        self.entity = 0
+        # set to an invalid value. All entity ids are positive integers (>0)
+        self.entity = -1
         
         self.add_terminal(terminal)
         self.keyboard = keyboard
