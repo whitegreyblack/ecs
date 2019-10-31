@@ -89,7 +89,7 @@ def collide(engine, entity, other):
     health = engine.healths.find(eid=other)
     if not health:
         if is_player:
-            engine.logger.add(f'Collided with a {collidee.name}.')
+            engine.logger.add(f'You walk into a {collidee.name}.')
         return False
     # process unit to unit collision
     collider = engine.infos.find(entity)

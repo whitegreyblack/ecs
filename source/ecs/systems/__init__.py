@@ -16,3 +16,32 @@ from .system import System
 from .turn_system import TurnSystem
 
 systems = System.__subclasses__()
+
+"""
+current game flow:
+    # per unit turn
+    for u in units:
+        turn
+        ai if ai else input
+        command
+        grave
+    # per turn (after all units finish)
+    decay
+    heal
+    mana
+    spawn
+future game flow:
+    # per unit turn
+    for u in units:
+        initative (was turn)
+        energy (was turn)
+        ai if ai else input
+        move (was command)
+        attack (was command)
+        other
+        grave
+    decay
+    heal
+    mana
+    spawn
+"""

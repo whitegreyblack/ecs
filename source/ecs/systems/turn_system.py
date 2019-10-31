@@ -33,9 +33,10 @@ class TurnSystem(System):
             if not self.engine.player:
                 self.engine.change_screen('deathscreen')
                 return True
+            # per turn processes
             self.engine.grave_system.process()
             self.engine.next_entity()
-        # end of turn stuff here
+        # end of all entities turn processes
         self.engine.decay_system.process()
         self.engine.heal_system.process()
         self.engine.manaregen_system.process()

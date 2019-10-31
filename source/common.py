@@ -166,8 +166,11 @@ def direction_to_keypress(x: int, y: int) -> str:
             return keypress
 
 def scroll(position: int, termsize: int, mapsize: int) -> int:
+    # if map can fit entirely in the terminal view, no offset needed
+    if mapsize < termsize:
+        return 0
     halfscreen = termsize // 2
-    # less than half the screen - nothing
+    # less than half the screen - also no offset needed
     if position < halfscreen:
         return 0
     elif position >= mapsize - halfscreen:

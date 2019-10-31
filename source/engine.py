@@ -25,7 +25,8 @@ class Engine(object):
         self.running = True
         self.logger = Logger()
         self.debugger = Logger()
-        self.entity = 0
+        # set to an invalid value. All entity ids are positive integers (>0)
+        self.entity = -1
         
         self.add_terminal(terminal)
         self.keyboard = keyboard
@@ -42,6 +43,8 @@ class Engine(object):
         self.keypress = None
 
         self.mode = GameMode.NORMAL
+        self.entities_in_view = set()
+        self.tiles_in_view = set()
 
     def __repr__(self):
         attributes = []
@@ -94,16 +97,16 @@ class Engine(object):
 
     def initialize_screens(self):
         self.screens = {
-        screen.__name__.lower(): screen(self, self.terminal)
-            for screen in (
-                GameScreen, 
-                MenuScreen,
-                StartScreen, 
-                InventoryScreen,
-                EquipmentScreen,
-                DeathScreen,
-                SpellScreen,
-            )
+            screen.__name__.lower(): screen(self, self.terminal)
+                for screen in (
+                    GameScreen, 
+                    MenuScreen,
+                    StartScreen, 
+                    InventoryScreen,
+                    EquipmentScreen,
+                    DeathScreen,
+                    SpellScreen,
+                )
         } 
         self.screen = self.screens['startscreen']
 
@@ -159,7 +162,11 @@ class Engine(object):
         self.ai_system.update()
 
     def clear_databases(self):
-        systems = (v for k, v in self.__dict__.items() if k.endswith('__system'))
+        systems = (
+            system
+                for system_name, system in self.__dict__.items() 
+                    if system_name.endswith('__system')
+            )
         for system in systems:
             system.components.clear()
 

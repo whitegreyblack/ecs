@@ -11,6 +11,7 @@ from source.tables import sintable, costable
 from source.common import j, join, join_drop_key
 
 
+# -- helper functions -- 
 def no_tilemap_error(world_id, components):
     print(f"""\n
 Exception:
@@ -78,6 +79,7 @@ def raycast(tiles, blocked, width, height, player):
             visible.level = 2
         else:
             visible.level = max(0, min(visible.level, 1))
+    return lighted
 
 def raycast2(tiles, blocked, width, height, player):
     """Sends out 120 rays (more if needed) where each ray is a degree"""
@@ -101,7 +103,6 @@ def raycast2(tiles, blocked, width, height, player):
             if (rx, ry) in blocked:
                 break
 
-
 # `timings for raycast`
 # 15    0.723    0.048    1.573    0.105 raycast.py:135(<listcomp>) (500x100 map)
 # 10    0.175    0.017    0.365    0.037 raycast.py:137(<listcomp>) (200x80 map)
@@ -115,7 +116,7 @@ def cast_light(engine, x0, x1, y0, y1, tilebuilder=get_tiles, blockfunc=get_bloc
         exit(0)
     tiles = tilebuilder(engine, x0, x1, y0, y1)
     blocked = get_blocked(tiles)
-    raycaster(tiles, blocked, tilemap.width, tilemap.height, player)
+    engine.tiles_in_view = raycaster(tiles, blocked, tilemap.width, tilemap.height, player)
 
 def cast_light2(engine, x0, x1, y0, y1, raycaster=raycast2):
     """Wrapper for raycast so that engine is not a parameter to raycast"""
