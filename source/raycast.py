@@ -12,6 +12,7 @@ from source.common import j, join, join_drop_key
 
 
 # -- helper functions -- 
+# TODO: modify print to be an output function so that it can be piped
 def no_tilemap_error(world_id, components):
     print(f"""\n
 Exception:
@@ -19,19 +20,14 @@ Exception:
     Tilemaps: {components}")"""[1:]
     )
 
-def distance(x, y, a, b, d=10):
+def distance(x, y, a, b, d=10) -> float:
     return math.sqrt((x - a) ** 2 + (y - b) ** 2)
 
 # 22    0.382    0.017    0.898    0.041 raycast.py:26(<listcomp>)
-def get_tiles(engine, x0, x1, y0, y1):
+def get_tiles(engine, x0, x1, y0, y1) -> list:
     tiles = []
-    for v, p in join_drop_key(
-        engine.visibilities,
-        engine.positions
-    ):
-        if (p.map_id == engine.world.id
-            and x0 <= p.x < x1
-            and y0 <= p.y < y1):
+    for v, p in join_drop_key(engine.visibilities, engine.positions):
+        if (p.map_id == engine.world.id and x0 <= p.x < x1 and y0 <= p.y < y1):
             tiles.append((v, p))
     return tiles
     # return [
@@ -45,7 +41,7 @@ def get_tiles(engine, x0, x1, y0, y1):
     #             and y0 <= p.y < y1
     # ]
 
-def get_blocked(tiles):
+def get_blocked(tiles) -> set:
     return {
         (position.x, position.y)
             for _, position in tiles
@@ -88,7 +84,7 @@ def raycast2(tiles, blocked, width, height, player):
     for i in range(0, 361, 3):
         ax = sintable[i]
         ay = costable[i]
-
+        # pull values out so access is localized
         x = player.x
         y = player.y
         for z in range(10):
@@ -103,6 +99,10 @@ def raycast2(tiles, blocked, width, height, player):
             if (rx, ry) in blocked:
                 break
 
+"""
+Difference in cast_light1 vs castlight2 is the tiles variable in cl1 is a list and cl2 is a set
+"""
+
 # `timings for raycast`
 # 15    0.723    0.048    1.573    0.105 raycast.py:135(<listcomp>) (500x100 map)
 # 10    0.175    0.017    0.365    0.037 raycast.py:137(<listcomp>) (200x80 map)
@@ -111,9 +111,11 @@ def cast_light(engine, x0, x1, y0, y1, tilebuilder=get_tiles, blockfunc=get_bloc
     """Wrapper for raycast so that engine is not a parameter to raycast"""
     player = engine.positions.find(engine.player)
     tilemap = engine.tilemaps.find(engine.world.id)
+    
     if not tilemap:
         no_tilemap_error(engine.world.id, engine.tilemaps.components.keys())
         exit(0)
+
     tiles = tilebuilder(engine, x0, x1, y0, y1)
     blocked = get_blocked(tiles)
     engine.tiles_in_view = raycaster(tiles, blocked, tilemap.width, tilemap.height, player)
@@ -122,16 +124,16 @@ def cast_light2(engine, x0, x1, y0, y1, raycaster=raycast2):
     """Wrapper for raycast so that engine is not a parameter to raycast"""
     player = engine.positions.find(engine.player)
     tilemap = engine.tilemaps.find(engine.world.id)
+
     if not tilemap:
         no_tilemap_error(engine.world.id, engine.tilemaps.components.keys())
         exit(0)
+    
     tiles = dict()
     blocked = set()
+    
     for v, p in join_drop_key(engine.visibilities, engine.positions):
-        if (p.map_id == engine.world.id 
-            and x0 <= p.x < x1
-            and y0 <= p.y < y1
-        ):
+        if (p.map_id == engine.world.id and x0 <= p.x < x1 and y0 <= p.y < y1):
             v.level = max(0, min(v.level, 1))
             tiles[(p.x, p.y)] = v
             if p.blocks_movement:
@@ -177,6 +179,7 @@ def cast_light2(engine, x0, x1, y0, y1, raycaster=raycast2):
         5    0.008    0.002    0.008    0.002 raycast.py:160(<setcomp>)
 
 191 x 50 ~ 9550 tiles
+Timing comparisons between raycast and cast_light methods in python and c
 +-------------+-------------+-------------+
 | cast_light1 | cast_light2 | cast_light  |
 | raycaster1  | raycaster2  | raycast_c   |

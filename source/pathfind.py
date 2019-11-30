@@ -15,7 +15,7 @@ sqrt_two = math.sqrt(2)
 def octile(a, b, abs=abs):
     dx = abs(a[0] - b[0])
     dy = abs(a[1] - b[1])
-    if (dx < dy):
+    if dx < dy:
         return .4 * dx + dy
     else:
         return .4 * dy + dx
@@ -33,7 +33,8 @@ def astar(tiles, start, end, paths=squares, include_start=False):
 
     while heap:
         current = heappop(heap)[1]
-        # found node: return reversed path
+        
+        # node is found and path is returned in reverse
         if current == (end.x, end.y):
             data = []
             while current in path:
@@ -79,9 +80,9 @@ def astar_gui(tiles, start, end, paths=squares):
     while heap:
         current = heappop(heap)[1]
         closed.add(current)
-        # found node: return reversed path
 
         if current == (end.x, end.y):
+            # found node: return reversed path
             for p in path:
                 yield p, 2
             data = []
@@ -111,6 +112,7 @@ def astar_gui(tiles, start, end, paths=squares):
                 gs[neighbor] = new_g
                 fs[neighbor] = new_g + heuristic(neighbor, (end.x, end.y))
                 heappush(heap, (fs[neighbor], neighbor))
+    # no path is found
     for p in path:
         yield p, 2
 
@@ -164,7 +166,7 @@ def pathfind(engine, start, end, pathfinder=astar):
     """Wrapper for ecs engine to use astar"""
     tiles = {
         (position.x, position.y)
-            for _, position in join_drop_key(engine.tiles,engine.positions)
+            for _, position in join_drop_key(engine.tiles, engine.positions)
                 if not position.blocks_movement
     }
     path = pathfinder(tiles, start, end)
