@@ -582,7 +582,8 @@ def build_cave(width, height):
     return cave
 
 def build_blob(width, height):
+    # TODO: incomplete
     cave = empty_matrix(width, height, ' ')
     # make a random blob
-    ...
+    raise NotImplementedError("Finish building this function")
     return cave
