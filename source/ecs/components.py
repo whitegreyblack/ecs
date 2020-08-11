@@ -1,100 +1,206 @@
 # component.py
 
-"""Component classes"""
+""" `Component classes`
 
+Notes:
+    The current way components are constructed is that they have no reference
+    to the entity id that they link to. This idea is that entity idea is not
+    a necessary property for the component to 'know'. Entity id is only useful
+    to the engine/component manager that holds all linkage//de-linkage between
+    entities and components created. This creates a need for managers in the
+    first place that monitor these components. For example:
+    >>> e = EntityManager.create()  # creates a new id
+    >>> i = Position(x, y)          # creates an position component
+    >>> Position.add(e, i)          # link e to i. e also overwrites existing i
+
+    However...if we provide the entity during component instantiation we can
+    remove the managers and move all linkage functionality within a base class
+    (most likely Component) and let the component types manage themselves.
+    >>> Position(e, *args)
+    or
+    >>> Position(e, 1, 1) # should position take in an entity as a parameter?
+
+    Internally it would call cls.components[e] = (return object from __new__)
+    where components is a dictionary to map entity id to component.
+    >>> Position.components
+    {
+        e: Position(*args),
+    }
+    But sometimes it does not look right as a parameter call. Should these
+    components 'know' about their linked entity id? Allowing them to manage
+    their own list of instances would allow global access using class
+    attributes to those instances instead of creating managers inside the 
+    engine. It is a possible alternate route to consider.
+"""
+
+import enum
 import random
 from dataclasses import dataclass, field
-from source.keyboard import keypress_to_direction
-from source.common import squares
 
-@dataclass
+from source.common import squares
+from source.keyboard import keypress_to_direction
+
+
 class Component(object):
     """
     Base component class that defines subclass agnostic methods
     """
-    __slots__ = []
-
-    def __repr__(self):
-        attributes = [ 
+    def __repr__(self) -> str:
+        attributes = [
             f"{s}={getattr(self, s)}"
                 for s in self.__slots__
-                    if bool(hasattr(self, s) and getattr(self, s) is not None)
         ]
         attr_string = ", ".join(attributes)
         return f"{self.__class__.__name__}({attr_string})"
 
     @classmethod
-    def classname(cls):
+    def classname(cls) -> str:
         return cls.__name__.lower()
 
-@dataclass
 class AI(Component):
-    behavior: str = 'wander'
-    path: list = None
+    __slots__ = ['behavior', 'path']
     manager: str = 'ais'
-
-@dataclass
+    def __init__(self, behavior: str = 'wander'):
+        self.behavior = behavior
+        self.path = None
+    
 class Collision(Component):
-    entity_id: int = -1
-    x: int = 0
-    y: int = 0
+    __slots__ = ['entity', 'x', 'x']
     manager: str = 'collisions'
+    def __init__(self, entity: int = -1, x: int = 0, y: int = 0):
+        self.entity = entity
+        self.x = x
+        self.y = y
 
-@dataclass
 class Decay(Component):
-    lifetime: int = 1000
+    __slots__ = ['lifetime']
     manager: str = 'decays'
+    def __init__(self, lifetime:int=1000):
+        self.lifetime = lifetime
 
-@dataclass
-class Destroy(Component):
+class Destroyed(Component):
+    __slots__ = []
     manager: str = 'destroyed'
 
-@dataclass
 class Effect(Component):
-    entity_id: int
-    char: str
-    color: int
-    ticks: int = 1
+    __slots__ = []
     manager: str = 'effects'
 
-@dataclass
-class Experience(Component):
-    level: int = 1
-    exp: int = 0
-    manager: str = 'experiences'
+class MeleeHitEffect(Effect):
+    __slots__ = ['entity', 'char', 'color']
+    def __init__(self, entity: int, char: str, color:int):
+        self.entity = entity
+        self.char = char
+        self.color = color
 
-@dataclass
+class RangeHitEffect(Effect):
+    __slots__ = ['entity', 'char', 'color', 'path']
+    def __init__(self, entity: int, char: str, color: int, path: list):
+        self.entity = entity
+        self.char = char
+        self.color = color
+        self.path = path
+
+class SpellEffect(Effect):
+    __slots__ = ['entity', 'ticks']
+    def __init__(self, entity, ticks):
+        self.entity = entity
+        self.ticks = ticks
+
+# class Energy(Component):
+#     amount: int
+#     full: int
+#     gain: int
+#     ready: bool
+#     manager: str = 'energies'
+
+# @dataclass
+# class Experience(Component):
+#     level: int = 1
+#     exp: int = 0
+#     manager: str = 'experiences'
+
 class Health(Component):
-    cur_hp: int = 1
-    max_hp: int = 1
+    __slots__ = "cur_hp max_hp tick_amount curr_amount full_amount".split()
     manager: str = 'healths'
+    def __init__(
+        self, 
+        cur_hp: int = 1, 
+        max_hp: int = 1, 
+        tick_amount: int = 200, 
+        full_amount: int = 10000,
+        curr_amount: int = 0
+    ):
+        self.cur_hp = cur_hp
+        self.max_hp = max_hp
+        self.tick_amount = tick_amount
+        self.full_amount = full_amount
+        self.curr_amount = curr_amount
+
     @property
-    def alive(self):
+    def alive(self) -> bool:
         return self.cur_hp > 0
 
-@dataclass
-class Input(Component):
-    needs_input: bool = False
-    manager: str = 'inputs'
+class Mana(Component):
+    __slots__ = "cur_mp max_mp tick_amount curr_amount full_amount".split()
+    manager: str = 'manas'
+    def __init__(
+        self,
+        cur_mp: int = 1,
+        max_mp: int = 1,
+        tick_amount: int = 200,
+        full_amount: int = 10000,
+        curr_amount: int = 0
+    ):
+        self.cur_mp = cur_mp
+        self.max_mp = max_mp
+        self.tick_amount = tick_amount
+        self.full_amount = full_amount
+        self.curr_amount = curr_amount
 
-@dataclass
-class Energy(Component):
-    amount: int
-    full: int
-    gain: int
-    ready: bool
-    manager: str = 'energies'
-
-@dataclass
 class Information(Component):
-    name: str
+    __slots__ = ['name', 'description']
     manager: str = 'infos'
+    def __init__(self, name: str, description: str = None):
+        self.name = name
+        self.description = description
 
-@dataclass
+class Input(Component):
+    __slots__ = ['needs_input']
+    manager: str = 'inputs'
+    def __init__(self, needs_input: bool = False):
+        self.needs_input = needs_input
+
+class CurrentTurn(Component):
+    __slots__ = ['finished']
+    manager = 'current_turns'
+    def __init__(self, finished=False):
+        self.finished = finished
+
+class Turn(Component):
+    __slots__ = ['needs_turn', 'tick_amount', 'curr_amount', 'full_amount']
+    manager = 'turns'
+    def __init__(self,
+                 tick_amount: int = 100,
+                 full_amount: int = 1000,
+                 curr_amount: int = 0):
+        self.needs_turn = False
+        self.tick_amount = tick_amount
+        self.full_amount = full_amount
+        self.curr_amount = curr_amount
+
+class Openable(Component):
+    __slots__ = ['opened']
+    manager: str = 'openables'
+    def __init__(self, opened: bool = False):
+        self.opened = opened
+
 class Movement(Component):
-    x: int
-    y: int
+    __slots__ = ['x', 'y']
     manager: str = 'movements'
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
     @classmethod
     def keypress_to_direction(cls, keypress):
         return cls(*keypress_to_direction[keypress])
@@ -106,98 +212,219 @@ class Movement(Component):
         x, y = possible_spaces[index]
         return cls(x, y)
 
-@dataclass
-class Openable(Component):
-    opened: bool = False
-    manager: str = 'openables'
-
-@dataclass
 class Position(Component):
-    x: int = 0
-    y: int = 0
-    map_id: int = -1
-    moveable: bool = True
-    blocks_movement: bool = True
+    __slots__ = 'x', 'y', 'map_id', 'movement_type', 'blocks'
     manager: str = 'positions'
+    class MovementType(enum.Enum):
+        # no movement
+        NONE = enum.auto()
+        # only land tiles
+        GROUND = enum.auto()
+        # any tiles
+        FLYING = enum.auto()
+        # only water tiles
+        SWIMMING = enum.auto()
+        # cursor - only visible tiles
+        VISIBLE = enum.auto()
+
+    def __init__(
+        self,
+        x: int = 0,
+        y: int = 0,
+        map_id: int = -1,
+        movement_type: int = MovementType.NONE,
+        blocks: bool = True
+    ):
+        self.x = x
+        self.y = y
+        self.map_id = map_id
+        self.movement_type = movement_type
+        self.blocks = blocks
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
     def __add__(self, other):
         return Position(self.x + other.x, self.y + other.y)
     def copy(
-        self, 
-        x=None, 
-        y=None, 
-        map_id=None, 
-        moveable=None, 
-        blocks_movement=None
+        self,
+        x: int = None,
+        y: int = None,
+        map_id: int = None,
+        movement_type: int = None,
+        blocks: bool = None
     ):
-        if x is None:
-            x = self.x
-        if y is None:
-            y = self.y
-        if map_id is None:
-            map_id = self.map_id
-        if moveable is None:
-            moveable = self.moveable
-        if blocks_movement is None:
-            blocks_movement = self.blocks_movement
-        return Position(x, y, map_id, moveable, blocks_movement)
+        return Position(
+            x if x else self.x,
+            y if y else self.y,
+            map_id if map_id else self.map_id,
+            movement_type if movement_type else self.movement_type,
+            blocks if blocks is not None else self.blocks
+        )
 
-@dataclass
 class Render(Component):
-    char: str = '@'
-    depth: int = 0
+    __slots__ = ['char', 'color']
     manager: str = 'renders'
+    def __init__(self, char: str = '@', color: int = 0):
+        self.char = char
+        self.color = color
 
-@dataclass
-class Tile(Component):
-    # entity_id: int
-    manager: str = 'tiles'
+class TileMapType(Component):
+    __slots__ = ['walls', 'doors', 'floors', 'stairs']
+    _walls = ["grey"]
+    _floors = ["white"]
+    _doors = ["orange"]
+    _stairs = ["white"]
+    manager = 'tilemaptypes'
+    def __init__(self, walls=None, floors=None, doors=None, stairs=None):
+        self.walls = walls or self._walls
+        self.floors = floors or self._floors
+        self.doors = doors or self._doors
+        self.stairs = stairs or self._stairs
 
-@dataclass
+# singleton using nested classes
+class Tile:
+    class Tile(Component):
+        __slots__ = []
+        manager: str = 'tiles'
+    instance = None
+    def __new__(self):
+        if not Tile.instance:
+            Tile.instance = Tile.Tile()
+        return Tile.instance
+
 class TileMap(Component):
-    width: int
-    height: int
+    __slots__ = 'width height map_type'.split()
     manager: str = 'tilemaps'
+    def __init__(self, width: int, height: int, map_type='cave'):
+        self.width = width
+        self.height = height
+        self.map_type = map_type
 
-@dataclass
 class Visibility(Component):
-    level: int = 0
+    __slots__ = ['level']
     manager: str = 'visibilities'
+    def __init__(self, level: int = 0):
+        self.level = level
 
-@dataclass
 class Inventory(Component):
-    size: int = 10
-    items: list = field(default_factory=list)
+    __slots__ = ['size', 'items']
     manager: str = 'inventories'
+    categories = [
+        'weapon', 
+        'helmets',
+        'armor',
+        'footwear',
+        'general', 
+        'food', 
+        'crafting', 
+        'other'
+    ]
+    def __init__(self, size: int = 10, items: list = None):
+        self.size = size
+        self.items = items if items else list()
 
-@dataclass
 class Equipment(Component):
-    head: int = None
-    body: int = None
-    hand: int = None
-    feet: int = None
+    equipment = __slots__ = [
+        "head",
+        "body",
+        "hand",
+        "feet",
+        "missile_weapon",
+        "missiles"
+    ]
     manager: str = 'equipments'
+    def __init__(
+        self,
+        head: int = None,
+        body: int = None,
+        hand: int = None,
+        feet: int = None,
+        missile_weapon: int = None,
+        missiles: int = None
+    ):
+        self.head = head
+        self.body = body
+        self.hand = hand
+        self.feet = feet
+        self.missile_weapon = missile_weapon
+        self.missiles = missiles
 
-@dataclass
+class Spellbook(Component):
+    __slots__ = ['spells']
+    manager: str = 'spellbooks'
+    def __init__(self, spells=None):
+        self.spells = spells if spells else list()
+
+class Spell(Component):
+    __slots__ = ['mana_cost']
+    manager: str = 'spells'
+    identify: dict = dict()
+    def __init__(self, mana_cost):
+        self.mana_cost = mana_cost
+
 class Weapon(Component):
-    damage: int = 0
+    __slots__ = ['damage']
     manager: str = 'weapons'
+    def __init__(
+        self, 
+        damage_swing: int = 1, 
+        damage_throw: int = 1,
+        throw_requires_weapon: bool = False
+    ):
+        self.damage_swing = damage_swing
+        self.damage_throw = damage_throw
+        self.throw_requires_missile_weapon = False
 
-@dataclass
+class HealEffect:
+    """
+        Item sub component -- shouldn't inherit from component
+    """
+    __slots__ = ['heal_amount']
+    def __init__(self, heal_amount: int = 0):
+        self.heal_amount = heal_amount
+
 class Item(Component):
-    seen: bool = False
+    __slots__ = ['category', 'equipment_type', 'effect']
     manager: str = 'items'
+    def __init__(
+        self,
+        category: str = 'general',
+        eqtype: list = None,
+        effect: object = None
+    ):
+        self.category = category
+        self.equipment_types = eqtype
+        self.effect = effect
 
-@dataclass
-class Unit(Component):
-    manager: str = 'units'
-
-@dataclass
 class Armor(Component):
-    defense: int = 0
+    __slots__ = ['defense']
     manager: str = 'armors'
+    def __init__(self, defense: int = 0):
+        self.defense = defense
 
+class Cursor(Component):
+    __slots__ = ['entity', 'using']
+    manager: str = 'cursors'
+    def __init__(self, entity: int):
+        self.entity = entity
+        self.using = -1
+
+class StatusType(enum.Enum):
+    BURNING = enum.auto()
+    FROZEN = enum.auto()
+    BLEEDING = enum.auto()
+    POISONED = enum.auto()
+
+class Status(Component):
+    __slots__ = ['status', 'color']
+    manager: str = 'statuses'
+    def __init__(self, status: int):
+        self.status = status
+        if self.status == StatusType.BURNING:
+            self.color = 0
+        elif self.status == StatusType.FROZEN:
+            self.color = 0
+
+# export all component types
 components = Component.__subclasses__()
 
 if __name__ == "__main__":

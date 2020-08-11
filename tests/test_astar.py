@@ -4,7 +4,7 @@
 
 from collections import namedtuple
 
-from source.astar import octile
+from source.pathfind import octile
 
 node = namedtuple("Node", "x y")
 

@@ -1,14 +1,14 @@
 # grave_system
 
-"""Graveyard system class"""
+"""Graveyard system handles entity/components removal"""
 
+import random
 import time
 
 from source.common import join
-from source.ecs.components import Information, Item, Render, Decay
+from source.ecs.components import Decay, Information, Item, Render, Position
 from source.ecs.systems.system import System
 
-alive = lambda message: message.lifetime > 0
 
 class GraveSystem(System):
 
@@ -25,24 +25,38 @@ class GraveSystem(System):
             self.engine.renders,
             self.engine.infos
         )
-        for eid, (_, tile, render, info) in tiles:
+        environment = 'bloodied floor'
+        for entity, (_, tile, render, info) in tiles:
             if position.x == tile.x and position.y == tile.y:
-                if render.char == '.':
-                    render.char = '*'
-                info.name = 'bloodied floor'
+                render = random.choice(self.engine.renders.shared[environment])
+                self.engine.renders.add(entity, render)
+                info = self.engine.infos.shared[environment]
+                self.engine.infos.add(entity, info)
 
     def drop_body(self, entity):
+        # get entity info
         position = self.engine.positions.find(entity)
         info = self.engine.infos.find(entity)
+        render = self.engine.renders.find(entity)
+
+        # build entity corpse
+        name = f"{info.name} corpse"
         body = self.engine.entities.create()
-        self.engine.items.add(body, Item())
-        self.engine.renders.add(body, Render('%'))
-        self.engine.infos.add(body, Information(f"{info.name} corpse"))
-        self.engine.positions.add(body, position.copy(
-            moveable=False,
-            blocks_movement=False
-        ))
-        self.engine.decays.add(body, Decay())
+        self.engine.items.add(body, Item('food'))
+        for r in self.engine.renders.shared[name]:
+            if r.color == render.color:
+                break
+        self.engine.renders.add(body, r)
+        i = self.engine.infos.shared[name]
+        self.engine.infos.add(body, i)
+        self.engine.positions.add(
+            body, 
+            position.copy(
+                movement_type=Position.MovementType.NONE,
+                blocks=False
+            )
+        )
+        self.engine.decays.add(body, Decay(1000))
 
     def drop_inventory(self, entity):
         position = self.engine.positions.find(entity)
@@ -50,20 +64,36 @@ class GraveSystem(System):
         if not inventory:
             return
         while inventory.items:
-            item_id = inventory.items.pop()
-            item = self.engine.entities.find(eid=item_id)
-            item_position = position.copy(moveable=False, blocks_movement=False)
+            item = inventory.items.pop()
+            item_position = position.copy(
+                movement_type=Position.MovementType.NONE,
+                blocks=False
+            )
             self.engine.positions.add(item, item_position)
 
-    def process(self, entity):
-        # remove old messages
-        # messages = self.engine.logger.messages
-        # self.engine.logger.messages = list(filter(alive, messages))
+    def remove_from_inventory(self, entity):
+        inventory = None
+        for eid, inventory in self.engine.inventories:
+            if entity.id in inventory.items:
+                break
+        inventory.items.remove(entity.id)
+
+    def remove_entity(self, entity):
         if entity == self.engine.player:
             self.engine.player = None
             return
+        # if the entity is a unit
         if not self.engine.items.find(entity):
             self.drop_inventory(entity)
             self.drop_body(entity)
             self.color_environment(entity)
+        # if the entity exists inside a container
+        elif not self.engine.positions.find(entity):
+            self.remove_from_inventory(entity)
         self.delete(entity)
+
+    def process(self):
+        while self.engine.destroyed.components:
+            key, _ = self.engine.destroyed.components.popitem()
+            self.remove_entity(key)
+        self.engine.destroyed.components.clear()

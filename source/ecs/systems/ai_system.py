@@ -3,15 +3,30 @@
 """Refactor from input_system.py"""
 
 import random
+import time
 
-from source.astar import pathfind
-from source.common import (direction_to_keypress, eight_square, join,
-                           nine_square, squares)
+from source.common import (direction_to_keypress, join, join_conditional,
+                           squares)
 from source.ecs.components import (Collision, Information, Item, Movement,
                                    Render)
 from source.ecs.systems.system import System
 from source.keyboard import keypress_to_direction, movement_keypresses
+from source.pathfind import pathfind
 
+"""
+    def wander(self, entity):
+        possible_spaces = []
+        for x, y in squares():
+            possible_spaces.append((x, y))
+        index = random.randint(0, len(possible_spaces)-1)
+        x, y = possible_spaces[index]
+        if x == 0 and y == 0:
+            return 'center'
+        return keypress_from_direction(x, y)
+
+    def wait(self, entity):
+        return True
+"""
 
 class AISystem(System):
     def update(self):
@@ -21,14 +36,26 @@ class AISystem(System):
             self.engine.infos,
             self.engine.ais
         )
+        # start = time.time()
         tiles = {
             (p.x, p.y)
                 for _, (p, v) in join(
-                    self.engine.positions, 
+                    self.engine.positions,
                     self.engine.visibilities
                 )
                 if v.level > 1
         }
+        # print('join:', time.time() - start)
+        # start = time.time()
+        # tiles = {
+        #     (p.x, p.y)
+        #         for _, (p, v) in join_conditional(
+        #             self.engine.positions,
+        #             self.engine.visibilities,
+        #             conditions=((1, lambda x: x.level > 1),)
+        #         )
+        # }
+        # print('cond:', time.time() - start)
         # iterate all computers
         for eid, (h, p, i, ai) in units:
             player_visible = (p.x, p.y) in tiles
@@ -44,7 +71,8 @@ class AISystem(System):
             #     if not ai.path:
             #         # self.engine.logger.add(f"{i.name}({eid})({eid}) stopped attacking")
             #         ai.behavior = 'wander'
-        self.engine.screen.render_logs_panel()
+        # self.engine.screen.logs_panel.render()
+        # self.engine.screen.render()
 
     def process(self, entity):
         """Computer commands currently only support mindless movement"""
@@ -55,7 +83,6 @@ class AISystem(System):
             return True
         info = self.engine.infos.find(entity)
         ai = self.engine.ais.find(entity)
-
         # simple ai logic (move, attack if enemy exists, run away)
         # behavior is updated during attack or update()
         movement = None
@@ -71,7 +98,9 @@ class AISystem(System):
                     # self.engine.logger.add(f"{info.name}({entity.id}) saw player and is moving to attack on last path")
                 else:
                     target_position = self.engine.positions.find(self.engine.player)
+                    # s = time.time()
                     ai.path = pathfind(self.engine, position, target_position)
+                    # print(time.time() - s)
                     if not ai.path:
                         ai.behavior = 'wander'
                         # movement = Movement.random_move()

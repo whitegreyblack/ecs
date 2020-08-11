@@ -110,4 +110,6 @@ venv.bak/
 .ionide/
 
 # ecs save files
-/source/saves
+saves/
+source/saves/
+*.pickle
