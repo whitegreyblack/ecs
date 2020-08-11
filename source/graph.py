@@ -9,7 +9,7 @@ Overworld -> array of nodes MxN
 City, Cave, Field, ..., etc. will make up the array
 Each array node can then have any multiple number of children worlds
 
-            + - - - - - - - overworld node (new::world node)
+              + - - - - - - - overworld node (new::world node)
         . _ _ | . _ _ _ .     - neighbors = ne, n, nw, w, sw, s, se, e
        /|     |/|      /|     - parent = None since overworlds are top level
       . _ _ _ o _ _ _ . |     - child = world node (always)

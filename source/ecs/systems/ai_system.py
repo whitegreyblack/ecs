@@ -112,4 +112,3 @@ class AISystem(System):
             elif ai.behavior == 'wait':
                 movement = Movement(0, 0)
         return direction_to_keypress(movement.x, movement.y)
-

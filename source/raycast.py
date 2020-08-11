@@ -63,7 +63,7 @@ def raycast(tiles, blocked, width, height, player):
             lighted.add((rx, ry))
             if (rx, ry) in blocked:
                 break
-    
+
     # all blocks found have their visiblities set to max visibility else
     # their visibility level is set based on their last visibility level
     for visible, position in tiles:
