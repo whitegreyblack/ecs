@@ -2,7 +2,6 @@
 
 """Refactor from input_system.py"""
 
-import curses
 import random
 import time
 from collections import defaultdict
@@ -18,6 +17,8 @@ from source.ecs.systems.system import System
 from source.keyboard import keypress_to_direction, movement_keypresses
 from source.logger import Logger
 from source.pathfind import bresenhams, pathfind
+from source.screens import (ConfirmMenuScreen, EquipmentScreen,
+                            InventoryScreen, GameMenuScreen, SpellScreen)
 
 
 class CommandSystem(System):
@@ -81,7 +82,7 @@ class CommandSystem(System):
                     *path[-1], 
                     self.engine.world.id, 
                     movement_type=Position.MovementType.NONE,
-                    blocks_movement=None
+                    blocks=None
                 ))
                 # check if there is a unit in the path of the throw item
                 # if there is one then calculate damage.
@@ -179,7 +180,7 @@ class CommandSystem(System):
         for uid, (health, position) in join(
                 self.engine.healths, 
                 self.engine.positions):
-            print(uid, position.x, position.y)        
+            print(uid, position.x, position.y)
 
         units = {
             (position.x, position.y): (uid, health)
@@ -260,13 +261,15 @@ class CommandSystem(System):
                 or
                 >>> self.actions[self.engine.mode][command](entity)
         """
-        if command in movement_keypresses:
+        if command == 'close':
+            self.engine.add_screen(ConfirmMenuScreen)
+        elif command in movement_keypresses:
             return move(self.engine, entity, Movement.keypress_to_direction(command))
         elif command == 'escape':
             if self.engine.mode is not GameMode.NORMAL:
                 self.engine.change_mode(GameMode.NORMAL)
             else:
-                self.engine.change_screen('menuscreen')
+                self.engine.add_screen(GameMenuScreen)
         elif command == 'enter':
             if self.engine.mode == GameMode.NORMAL:
                 return False
@@ -277,12 +280,12 @@ class CommandSystem(System):
             self.engine.mode = GameMode.NORMAL
             return t
         elif command == 'i':
-            self.engine.change_screen('inventoryscreen')
+            self.engine.add_screen(InventoryScreen)
         elif command == 'e':
-            self.engine.change_screen('equipmentscreen')
+            self.engine.add_screen(EquipmentScreen)
         elif command == 'tilde':
             if self.engine.mode == GameMode.NORMAL:
-                self.engine.change_screen('spellscreen')
+                self.engine.add_screen(SpellScreen)
             elif self.engine.mode == GameMode.MAGIC:
                 self.engine.change_mode(GameMode.NORMAL)
         elif command == 'l':

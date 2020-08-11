@@ -5,43 +5,54 @@
 import random
 
 from source.common import join, join_drop_key
-from source.ecs import (AI, Armor, Cursor, Decay, Equipment, HealEffect, Spell, 
+from source.ecs import (AI, Armor, Cursor, Decay, Equipment, HealEffect,
                         Health, Information, Input, Inventory, Item, Mana,
-                        Position, Render, Spellbook, Weapon)
+                        Position, Render, Spell, Spellbook, Weapon)
+from source.maps import MapType
 
 from .system import System
 
 
 class SpawnSystem(System):
-    def __init__(self, engine, logger=None):
+    def __init__(self, engine, logger=None) -> None:
         super().__init__(engine, logger)
         # TODO: move to a new spawn Component attached to the tilemap
         self.respawn_rate = 50
         self.current_tick = self.respawn_rate
 
     def find_valid_spaces(self) -> list:
-        return [
+        tiles = {
             (position.x, position.y)
                 for _, position, visible in join_drop_key(
-                    self.engine.tiles, 
-                    self.engine.positions, 
+                    self.engine.tiles,
+                    self.engine.positions,
                     self.engine.visibilities
                 )
-                if visible.level < 2 and not position.blocks_movement
-        ]
-
-    def find_empty_spaces(self):
-        return [
+                if visible.level < 2 and not position.blocks
+        }
+        units = {
             (position.x, position.y)
                 for _, position in join_drop_key(
-                    self.engine.tiles, 
+                    self.engine.inputs,
                     self.engine.positions
                 )
-                if not position.blocks_movement
-        ]
+        }
+        return tiles - units
 
-    def find_unlit_spaces(self):
-        g = join_drop_key(self.engine.tiles, self.engine.positions)
+    def find_valid_space(self) -> (int, int):
+        return self.find_valid_spaces().pop()
+
+    def find_empty_spaces(self) -> list:
+        return {
+            (position.x, position.y)
+                for _, position in join_drop_key(
+                    self.engine.tiles,
+                    self.engine.positions
+                )
+                if not position.blocks
+        }
+
+    def find_unlit_spaces(self) -> set:
         return {
             (position.x, position.y)
                 for (_, position, visible) in join_drop_key(
@@ -49,19 +60,18 @@ class SpawnSystem(System):
                     self.engine.positions,
                     self.engine.visibilities
                 )
-                if visible.level > 1
-                    and not position.blocks_movement
+                if visible.level > 1 and not position.blocks
         }
     
-    def spawn_player(self, space):
-        player = self.engine.entities.create()
+    def spawn_player(self) -> int:
+        self.engine.player = player = self.engine.entities.create()
         # add components
         self.engine.inputs.add(player, Input())
         self.engine.positions.add(
-            player, 
+            player,
             Position(
-                *space, 
-                map_id=self.engine.world.id, 
+                *self.find_valid_space(),
+                map_id=self.engine.world.id,
                 movement_type=Position.MovementType.GROUND
             )
         )
@@ -97,13 +107,19 @@ class SpawnSystem(System):
         ironboots = self.engine.entities.create()
         self.engine.items.add(ironboots, Item('armor', ('feet',)))
         self.engine.renders.add(ironboots, Render('['))
-        self.engine.infos.add(ironboots, Information('iron boots', 'Reinforced footwear.'))
+        self.engine.infos.add(
+            ironboots,
+            Information('iron boots', 'Reinforced footwear.')
+        )
         self.engine.armors.add(ironboots, Armor(3))
 
         # create a weapon for player
         spear = self.engine.entities.create()
         self.engine.items.add(spear, Item('weapon', ('hand', 'missiles')))
-        self.engine.renders.add(spear, random.choice(self.engine.renders.shared['spear']))
+        self.engine.renders.add(
+            spear,
+            random.choice(self.engine.renders.shared['spear'])
+        )
         self.engine.infos.add(spear, self.engine.infos.shared['spear'])
         self.engine.weapons.add(spear, Weapon(4, 3))
         
@@ -112,7 +128,7 @@ class SpawnSystem(System):
         self.engine.items.add(stone, Item('weapon', ('hand', 'missiles')))
         self.engine.renders.add(stone, Render('*'))
         self.engine.infos.add(stone, Information(
-            'stone', 
+            'stone',
             'A common item useful for throwing.'
         ))
         self.engine.weapons.add(stone, Weapon(1))
@@ -121,7 +137,7 @@ class SpawnSystem(System):
         e = Equipment(
             head=helmet,
             body=platemail,
-            hand=spear, 
+            hand=spear,
             feet=ironboots,
             missiles=stone
         )
@@ -136,20 +152,20 @@ class SpawnSystem(System):
         self.engine.spellbooks.add(player, spellbook)
         return player
 
-    def spawn_cursor(self, entity):
-        cursor = self.engine.entities.create()
-        self.engine.cursors.add(cursor, Cursor(entity))
-        self.engine.positions.add(cursor, Position(blocks_movement=False))
+    def spawn_player_cursor(self) -> int:
+        self.engine.cursor = cursor = self.engine.entities.create()
+        self.engine.cursors.add(cursor, Cursor(self.engine.player))
+        self.engine.positions.add(cursor, Position(blocks=False))
         return cursor
 
-    def spawn_unit(self, space):
+    def spawn_unit(self, space) -> None:
         # create unit entity
         computer = self.engine.entities.create()
         self.engine.inputs.add(computer, Input())
         self.engine.positions.add(
             computer,
             Position(
-                *space, 
+                *space,
                 map_id=self.engine.world.id,
                 movement_type=Position.MovementType.GROUND
             )
@@ -169,13 +185,13 @@ class SpawnSystem(System):
         self.engine.infos.add(item, self.engine.infos.shared['spear'])
         self.engine.inventories.add(computer, Inventory(items=[item]))
 
-    def spawn_item(self, space):
+    def spawn_item(self, space) -> None:
         item = self.engine.entities.create()
         self.engine.positions.add(item, Position(
-            *space, 
-            map_id=self.engine.world.id, 
-            movement_type=Position.MovementType.NONE, 
-            blocks_movement=False
+            *space,
+            map_id=self.engine.world.id,
+            movement_type=Position.MovementType.NONE,
+            blocks=False
         ))
         r = random.choice(self.engine.renders.shared['food'])
         self.engine.renders.add(item, r)
@@ -184,7 +200,12 @@ class SpawnSystem(System):
         self.engine.decays.add(item, Decay())
         return item
     
-    def process(self):
+    def process(self) -> None:
+        # check map type. town maps do not spawn enemies
+        map_info = self.engine.tilemaps.find(self.engine.world.id)
+        if map_info.map_type == 'town':
+            return
+        # spawn a unit if the spawn timer expires and space is available
         units = [
             (eid, health, position)
                 for eid, (health, position) in join(

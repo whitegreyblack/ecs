@@ -10,7 +10,7 @@ from .controller import Controller
 
 class InventoryController(Controller):
     __slots__ = ['engine']
-    router_name = 'inventory'
+    router = 'inventory'
 
     def get_inventory_size(self, entity):
         inventory = self.engine.inventories.find(entity)
@@ -131,7 +131,7 @@ class InventoryController(Controller):
         item_position = position.copy(
             map_id = position.map_id,
             movement_type = Position.MovementType.NONE,
-            blocks_movement = False
+            blocks = False
         )
         self.engine.positions.add(item, item_position)
         self.engine.logger.add(f"You drop the {info.name} onto the ground.")

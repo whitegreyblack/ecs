@@ -1,6 +1,8 @@
 # generate.py
 
-"""Holds functions for map generation"""
+"""
+Holds functions for map generation
+"""
 
 import math
 import random
@@ -118,8 +120,8 @@ def distribution(array: list) -> list:
     return d
 
 def replace_cell_with_stairs(
-        matrix: list, 
-        upstairs: tuple=None, 
+        matrix: list,
+        upstairs: tuple=None,
         downstairs: tuple=None
     ) -> list:
     w, h = dimensions(matrix)
@@ -142,16 +144,16 @@ def replace_cell_with_stairs(
     return matrix
 
 def array_to_matrix(
-        array: list, 
-        width: int, 
-        height: int, 
-        filterer: object,
+        array: list,
+        width: int,
+        height: int,
+        filter: object,
         chars: tuple = ('#', '.')
     ) -> list:
     matrix = [[None for _ in range(width)] for _ in range(height)]
     for i in range(width):
         for j in range(height):
-            if filterer(array[j * width + i]):
+            if filter(array[j * width + i]):
                 matrix[j][i] = chars[0]
             else:
                 matrix[j][i] = chars[1]
@@ -286,6 +288,9 @@ def drunkards_walk(width: int, height: int, limit=.45, m=None) -> list:
         m[y][x] = '.'
     return m
 
+def slope(x1: int, y1: int, x2: int, y2: int) -> float:
+    return abs((max(y1, y2) - min(y1, y2)) / ((max(x1, x2) - min(x1, x2))))
+
 def lpath(b1, b2):
     x1, y1 = center(b1)
     x2, y2 = center(b2)
@@ -294,18 +299,20 @@ def lpath(b1, b2):
     if x1 == x2 or y1 == y2:
         return bresenhams((x1, y1), (x2, y2))
 
-    # check if points are within x bounds of each other == returns the midpoint vertical line
+    # check if points are within x bounds of each other
+    # returns the midpoint vertical line
     elif b2[0] <= x1 < b2[2] and b1[0] <= x2 < b1[2]:
-        x = (x1+x2)//2
+        x = (x1 + x2) // 2
         return bresenhams((x, y1), (x, y2))
 
-    # check if points are within y bounds of each other -- returns the midpoint horizontal line
+    # check if points are within y bounds of each other
+    # returns the midpoint horizontal line
     elif b2[1] <= y1 < b2[3] and b1[1] <= y2 < b2[3]:
-        y = (y1+y2)//2
+        y = (y1 + y2) // 2
         return bresenhams((x1, y), (x2, y))
     else:
         # we check the slope value between two boxes to plan the path
-        slope = abs((max(y1, y2) - min(y1, y2))/((max(x1, x2) - min(x1, x2)))) <= 1.0
+        sloped = slope(x1, y1, x2, y2) <= 1.0
     
         # low slope -- go horizontal
         if slope:
@@ -318,7 +325,7 @@ def lpath(b1, b2):
             return bresenhams((x1, y1), (x2, y1)) \
                 + bresenhams((x2, y1), (x2, y2))
 
-def bresenhams(start, end):
+def bresenhams(start, end) -> list:
     """Bresenham's Line Algo -- returns list of tuples from start and end"""
 
     # Setup initial conditions
@@ -384,10 +391,10 @@ def maze(matrix: list):
 
 def wall_coordinates(room):
     for y in (room[1], room[3]):
-        for x in range(room[0], room[2]+1):
+        for x in range(room[0], room[2] + 1):
             yield x, y
     for x in (room[0], room[2]):
-        for y in range(room[1]+1, room[3]):
+        for y in range(room[1] + 1, room[3]):
             yield x, y
 
 def add_maze(cave, rooms):

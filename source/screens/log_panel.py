@@ -2,11 +2,11 @@
 
 """Panel for Logs and Inner Message Panel. Log Panel is basically a wrapper"""
 
-from .panel import Panel
+from source.screens.panel import Panel
 
 
 class MessagePanel(Panel):
-    __slots__ = ['terminal', 'logger', 'x', 'y', 'width', 'height']
+    __slots__ = "terminal logger x y width height".split()
     def __init__(self, terminal, logger, x, y, width, height):
         super().__init__(terminal, x, y, width, height, None)
         self.logger = logger
@@ -30,33 +30,24 @@ class MessagePanel(Panel):
             logs += strings
         logs.reverse()
         for y, (i, log) in enumerate(logs):
-            self.terminal.addstr(self.y + y,
-                                 self.x, 
-                                 f"{'>' if i == 0 else ' '} {log}")
+            self.terminal.printf(
+                self.x,
+                self.y + y,
+                f"{'>' if i == 0 else ' '} {log}"
+            )
 
 class LogPanel(Panel):
     __slots__ = "terminal x y width height title message_panel".split()
-    def __init__(
-            self, 
-            terminal, 
-            logger, 
-            x, y, 
-            width, 
-            height, 
-            title, 
-            x_offset=2, 
-            y_offset=1
-    ):
-        """Just a rectangle"""
-        super().__init__(terminal, x, y, width, height, title)
+    def __init__(self, term, logger, x, y, width, height, title, dx=2, dy=1):
+        super().__init__(term, x, y, width, height, title)
         self.message_panel = MessagePanel(
-            terminal,
+            term,
             logger,
-            x + x_offset,
-            y + y_offset,
-            width - x_offset * 2,
-            height - y_offset * 2
-            )
+            x + dx,
+            y + dy,
+            width - dx * 2,
+            height - dy * 2
+        )
     
     def render(self):
         super().render()

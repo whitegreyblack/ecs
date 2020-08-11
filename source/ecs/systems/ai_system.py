@@ -40,7 +40,7 @@ class AISystem(System):
         tiles = {
             (p.x, p.y)
                 for _, (p, v) in join(
-                    self.engine.positions, 
+                    self.engine.positions,
                     self.engine.visibilities
                 )
                 if v.level > 1
@@ -50,7 +50,7 @@ class AISystem(System):
         # tiles = {
         #     (p.x, p.y)
         #         for _, (p, v) in join_conditional(
-        #             self.engine.positions, 
+        #             self.engine.positions,
         #             self.engine.visibilities,
         #             conditions=((1, lambda x: x.level > 1),)
         #         )

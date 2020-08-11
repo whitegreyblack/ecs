@@ -10,7 +10,7 @@ from source.ecs.components import (AI, Armor, Equipment, Health, Information,
 def find_empty_space(engine):
     open_spaces = set()
     for entity_id, (tile, pos) in join(engine.tiles, engine.positions):
-        if not pos.blocks_movement:
+        if not pos.blocks:
             open_spaces.add((pos.x, pos.y))
     for entity_id, (hp, pos) in join(engine.healths, engine.positions):
         open_spaces.remove((pos.x, pos.y))
@@ -37,7 +37,7 @@ def create_unit(engine, name):
         render = Render(char='r')
         health = Health(2, 2)
     elif name == 'goblin':
-        render = Render(char='g')
+        render = Render(char='g', color="brown")
         health = Health(5, 5)
     elif name == 'bat':
         render = Render(char='b')
@@ -94,7 +94,10 @@ def create_player():
     ironboots = engine.entities.create()
     engine.items.add(ironboots, Item('armor', ('feet',)))
     engine.renders.add(ironboots, Render('['))
-    engine.infos.add(ironboots, Information('iron boots', 'Reinforced footwear.'))
+    engine.infos.add(
+        ironboots,
+        Information('iron boots', 'Reinforced footwear.')
+    )
     engine.armors.add(ironboots, Armor(3))
 
     # create a weapon for player

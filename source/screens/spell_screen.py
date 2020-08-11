@@ -4,13 +4,12 @@
 Displays magic spell list
 """
 
-import curses
 import random
 import time
 from collections import defaultdict
 from textwrap import wrap
 
-from source.common import GameMode, border, direction_to_keypress, join, scroll
+from source.common import GameMode, direction_to_keypress, join, scroll
 from source.ecs.components import Spell
 from source.logger import Logger
 
@@ -18,9 +17,9 @@ from .screen import Screen
 
 
 class SpellScreen(Screen):
-    menu_title: str = "spell book"
     def __init__(self, engine, terminal):
         super().__init__(engine, terminal)
+        self.title: str = "spell book"
         self.index = -1
         self.last_spell_id = -1
         # add the keypress to return back to game screen
@@ -54,7 +53,7 @@ class SpellScreen(Screen):
 
     def render(self):
         self.terminal.erase()
-        self.border()
+        self.add_border()
         self.render_spells()
         self.terminal.refresh()
 

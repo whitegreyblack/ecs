@@ -167,7 +167,7 @@ def pathfind(engine, start, end, pathfinder=astar):
     tiles = {
         (position.x, position.y)
             for _, position in join_drop_key(engine.tiles, engine.positions)
-                if not position.blocks_movement
+                if not position.blocks
     }
     path = pathfinder(tiles, start, end)
     return path

@@ -53,7 +53,7 @@ class GraveSystem(System):
             body, 
             position.copy(
                 movement_type=Position.MovementType.NONE,
-                blocks_movement=False
+                blocks=False
             )
         )
         self.engine.decays.add(body, Decay(1000))
@@ -67,7 +67,7 @@ class GraveSystem(System):
             item = inventory.items.pop()
             item_position = position.copy(
                 movement_type=Position.MovementType.NONE,
-                blocks_movement=False
+                blocks=False
             )
             self.engine.positions.add(item, item_position)
 

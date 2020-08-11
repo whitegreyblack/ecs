@@ -1,6 +1,6 @@
 # map_panel.py
 
-"""World and Map panels. World panel is a wrapper class for Map"""
+"""Map and Level panels. Map panel is a wrapper class for Level"""
 
 import time
 
@@ -19,6 +19,7 @@ class LevelPanel(Panel):
         self.engine = engine
         self.cam_x = None
         self.cam_y = None
+
     def render(self):
         player = self.engine.positions.find(self.engine.player)
         tilemap = self.engine.tilemaps.find(player.map_id)
@@ -49,8 +50,8 @@ class LevelPanel(Panel):
                 and x0 <= position.x < x1 
                 and y0 <= position.y < y1
             ):
-                c = render.color if visibility.level > 1 else 240
-                self.add_char(
+                c = render.color if visibility.level > 1 else "darkest grey"
+                self.add_string(
                     position.x - self.cam_x,
                     position.y - self.cam_y,
                     render.char,
@@ -60,18 +61,18 @@ class LevelPanel(Panel):
         self.engine.entities_in_view.clear()
         for eid, (health, position, render, info) in join(
             self.engine.healths,
-            self.engine.positions, 
+            self.engine.positions,
             self.engine.renders,
             self.engine.infos
         ):
             if (position.map_id == self.engine.world.id
                 and (position.x, position.y) in self.engine.tiles_in_view
-                and x0 <= position.x < x1 
+                and x0 <= position.x < x1
                 and y0 <= position.y < y1
             ):
                 if self.engine.player != eid:
                     self.engine.entities_in_view.add(eid)
-                self.add_char(
+                self.add_string(
                     position.x - self.cam_x,
                     position.y - self.cam_y,
                     render.char,
@@ -96,7 +97,11 @@ class LevelPanel(Panel):
             # self.render_cursor(visible_tiles, player.map_id, cam_x, cam_y, x0, x1, y0, y1)
             position = self.engine.positions.find(self.engine.cursor)
             if self.engine.mode in (GameMode.LOOKING, GameMode.DEBUG):
-                self.add_char(position.x - cam_x, position.y - cam_y, 'X')
+                self.add_string(
+                    position.x - self.cam_x,
+                    position.y - self.cam_y,
+                    'X'
+                )
             elif self.engine.mode == GameMode.MAGIC:
                 cursor = self.engine.cursors.find(self.engine.cursor)
                 spellname = Spell.identify[cursor.using]
@@ -107,10 +112,10 @@ class LevelPanel(Panel):
                         y = position.y + yy
                         if (x, y) not in self.engine.tiles_in_view:
                             continue
-                        self.add_char(
-                            x - cam_x, 
-                            y - cam_y, 
-                            render.char, 
+                        self.add_string(
+                            x - cam_x,
+                            y - cam_y,
+                            render.char,
                             render.color
                         )
 
@@ -119,13 +124,10 @@ class MapPanel(Panel):
     def __init__(self, terminal, engine, x, y, width, height, title):
         super().__init__(terminal, x, y, width, height, title)
         self.level_panel = LevelPanel(
-            terminal, 
-            engine, 
-            x + 1, 
-            y + 1, 
-            width - 2, 
-            height - 2
-            )
+            terminal,
+            engine,
+            x + 1, y + 1, width - 2, height - 2
+        )
     def render(self):
         super().render()
         self.level_panel.render()

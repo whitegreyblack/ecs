@@ -7,7 +7,7 @@ from .system import System
 
 
 """
-    Maybe need a camera component?
+    TODO: Maybe implement a camera component?
 """
 
 class LightingSystem(System):

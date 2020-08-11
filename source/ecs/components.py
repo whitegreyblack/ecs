@@ -3,27 +3,34 @@
 """ `Component classes`
 
 Notes:
-    The way components are used is that they have no reference to the entity id
-    that they link to:
-    >>> e = EntityManager.create() # creates a new id
-    >>> i = Information(x, y)  # creates an information component
-    The component manager holds all linkage//de-linkage between entities and 
-    components created.
-    >>> ComponentManager.add(e, i) # link e to i. e also overwrites existing i
-    However...if we provide the entity during component instantiation we can 
+    The current way components are constructed is that they have no reference
+    to the entity id that they link to. This idea is that entity idea is not
+    a necessary property for the component to 'know'. Entity id is only useful
+    to the engine/component manager that holds all linkage//de-linkage between
+    entities and components created. This creates a need for managers in the
+    first place that monitor these components. For example:
+    >>> e = EntityManager.create()  # creates a new id
+    >>> i = Position(x, y)          # creates an position component
+    >>> Position.add(e, i)          # link e to i. e also overwrites existing i
+
+    However...if we provide the entity during component instantiation we can
     remove the managers and move all linkage functionality within a base class
     (most likely Component) and let the component types manage themselves.
-    >>> AI(e)
-    Internally it would call cls.components[e] = (return object from __new__)
-    >>> AI.components
-    { 
-        e: AI()
-    }
-    But sometimes it does not look right as a parameter call
+    >>> Position(e, *args)
+    or
     >>> Position(e, 1, 1) # should position take in an entity as a parameter?
-    Allowing them to manage their own list of instances would allow global
-    access to those instances instead of creating managers inside the engine.
-    It is a possible route to consider.
+
+    Internally it would call cls.components[e] = (return object from __new__)
+    where components is a dictionary to map entity id to component.
+    >>> Position.components
+    {
+        e: Position(*args),
+    }
+    But sometimes it does not look right as a parameter call. Should these
+    components 'know' about their linked entity id? Allowing them to manage
+    their own list of instances would allow global access using class
+    attributes to those instances instead of creating managers inside the 
+    engine. It is a possible alternate route to consider.
 """
 
 import enum
@@ -114,7 +121,7 @@ class SpellEffect(Effect):
 #     manager: str = 'experiences'
 
 class Health(Component):
-    __slots__ = ['cur_hp', 'max_hp', 'tick_amount', 'curr_amount', 'full_amount']
+    __slots__ = "cur_hp max_hp tick_amount curr_amount full_amount".split()
     manager: str = 'healths'
     def __init__(
         self, 
@@ -135,7 +142,7 @@ class Health(Component):
         return self.cur_hp > 0
 
 class Mana(Component):
-    __slots__ = ['cur_mp', 'max_mp', 'tick_amount', 'curr_amount', 'full_amount']
+    __slots__ = "cur_mp max_mp tick_amount curr_amount full_amount".split()
     manager: str = 'manas'
     def __init__(
         self,
@@ -206,7 +213,7 @@ class Movement(Component):
         return cls(x, y)
 
 class Position(Component):
-    __slots__ = 'x', 'y', 'map_id', 'movement_type', 'blocks_movement'
+    __slots__ = 'x', 'y', 'map_id', 'movement_type', 'blocks'
     manager: str = 'positions'
     class MovementType(enum.Enum):
         # no movement
@@ -220,36 +227,37 @@ class Position(Component):
         # cursor - only visible tiles
         VISIBLE = enum.auto()
 
-    def __init__(self, 
+    def __init__(
+        self,
         x: int = 0,
         y: int = 0,
         map_id: int = -1,
         movement_type: int = MovementType.NONE,
-        blocks_movement: bool = True
+        blocks: bool = True
     ):
         self.x = x
         self.y = y
         self.map_id = map_id
         self.movement_type = movement_type
-        self.blocks_movement = blocks_movement
+        self.blocks = blocks
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
     def __add__(self, other):
         return Position(self.x + other.x, self.y + other.y)
     def copy(
         self,
-        x: int = None, 
-        y: int = None, 
-        map_id: int = None, 
-        movement_type: int = None, 
-        blocks_movement: bool = None
+        x: int = None,
+        y: int = None,
+        map_id: int = None,
+        movement_type: int = None,
+        blocks: bool = None
     ):
         return Position(
-            x if x else self.x, 
-            y if y else self.y, 
-            map_id if map_id else self.map_id, 
-            movement_type if movement_type else self.movement_type, 
-            blocks_movement if blocks_movement is not None else self.blocks_movement
+            x if x else self.x,
+            y if y else self.y,
+            map_id if map_id else self.map_id,
+            movement_type if movement_type else self.movement_type,
+            blocks if blocks is not None else self.blocks
         )
 
 class Render(Component):
@@ -258,6 +266,19 @@ class Render(Component):
     def __init__(self, char: str = '@', color: int = 0):
         self.char = char
         self.color = color
+
+class TileMapType(Component):
+    __slots__ = ['walls', 'doors', 'floors', 'stairs']
+    _walls = ["grey"]
+    _floors = ["white"]
+    _doors = ["orange"]
+    _stairs = ["white"]
+    manager = 'tilemaptypes'
+    def __init__(self, walls=None, floors=None, doors=None, stairs=None):
+        self.walls = walls or self._walls
+        self.floors = floors or self._floors
+        self.doors = doors or self._doors
+        self.stairs = stairs or self._stairs
 
 # singleton using nested classes
 class Tile:
@@ -271,11 +292,12 @@ class Tile:
         return Tile.instance
 
 class TileMap(Component):
-    __slots__ = ['width', 'height']
+    __slots__ = 'width height map_type'.split()
     manager: str = 'tilemaps'
-    def __init__(self, width: int, height: int):
+    def __init__(self, width: int, height: int, map_type='cave'):
         self.width = width
         self.height = height
+        self.map_type = map_type
 
 class Visibility(Component):
     __slots__ = ['level']
@@ -301,10 +323,17 @@ class Inventory(Component):
         self.items = items if items else list()
 
 class Equipment(Component):
-    equipment = __slots__ = ['head', 'body', 'hand', 'feet', 'missile_weapon', 'missiles']
+    equipment = __slots__ = [
+        "head",
+        "body",
+        "hand",
+        "feet",
+        "missile_weapon",
+        "missiles"
+    ]
     manager: str = 'equipments'
     def __init__(
-        self, 
+        self,
         head: int = None,
         body: int = None,
         hand: int = None,
@@ -357,9 +386,9 @@ class Item(Component):
     __slots__ = ['category', 'equipment_type', 'effect']
     manager: str = 'items'
     def __init__(
-        self, 
-        category: str = 'general', 
-        eqtype: list = None, 
+        self,
+        category: str = 'general',
+        eqtype: list = None,
         effect: object = None
     ):
         self.category = category
@@ -395,6 +424,7 @@ class Status(Component):
         elif self.status == StatusType.FROZEN:
             self.color = 0
 
+# export all component types
 components = Component.__subclasses__()
 
 if __name__ == "__main__":

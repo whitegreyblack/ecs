@@ -2,7 +2,7 @@
 
 """Handles internal equipment functions"""
 
-from source.common import join
+from source.common import colorize, join
 from source.ecs.components import Equipment, Position
 
 from .controller import Controller
@@ -10,7 +10,7 @@ from .controller import Controller
 
 class EquipmentController(Controller):
     __slots__ = ['engine']
-    router_name = 'equipment'
+    router = 'equipment'
     
     def get_all(self, entity):
         e = self.engine.equipments.find(entity)
@@ -51,7 +51,7 @@ class EquipmentController(Controller):
         item_position = position.copy(
             map_id = position.map_id,
             movement_type = Position.MovementType.NONE,
-            blocks_movement = False
+            blocks = False
         )
         self.engine.positions.add(iid, item_position)
         self.engine.logger.add(f"You drop the {info.name} onto the ground.")

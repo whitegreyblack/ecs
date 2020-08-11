@@ -3,7 +3,10 @@
 """Handles door opening/closing"""
 
 import random
+
 from source.common import join, squares
+from source.ecs.components import Movement
+from source.keyboard import keypress_to_direction
 
 
 def open_door(engine, entity):
@@ -24,13 +27,7 @@ def open_door(engine, entity):
         if valid_coordinate and not openable.opened:
             x = coordinate.x - position.x
             y = coordinate.y - position.y
-            doors[(x, y)] = (
-                openable_id, 
-                openable, 
-                coordinate, 
-                render, 
-                info
-            )
+            doors[(x, y)] = (openable_id, openable, coordinate, render, info)
     door_to_open = None
     if not doors:
         engine.logger.add(f"No closed doors to open.")
@@ -48,23 +45,20 @@ def open_door(engine, entity):
         door = doors.get((movement.x, movement.y), None)
         if not door:
             engine.logger.add(
-                f"You cancel opening a door direction invalid error."
+                f"You cancel opening a door. Direction invalid error."
             )
         else:
             door_to_open = door
     if door_to_open:
         door, openable, position, render, info = door_to_open
         openable.opened = True
-        position.blocks_movement = False
+        position.blocks = False
         # replace info
-        engine.infos.add(
-            door,
-            engine.infos.shared['opened wooden door']
-        )
+        engine.infos.add(door, engine.infos.shared['opened door'])
         # replace the render
         engine.renders.add(
-            door, 
-            random.choice(engine.renders.shared['opened wooden door'])
+            door,
+            random.choice(engine.renders.shared['opened door'])
         )
         engine.logger.add(f"You open the door.")
         turn_over = True
@@ -110,7 +104,7 @@ def close_door(engine, entity):
     if door_to_close:
         door, closeable, position, render = door_to_close
         closeable.opened = False
-        position.blocks_movement = True
+        position.blocks = True
         engine.renders.add(
             door, 
             random.choice(engine.renders.shared['closed wooden door'])

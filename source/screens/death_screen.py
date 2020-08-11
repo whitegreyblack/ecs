@@ -1,10 +1,9 @@
 # death_screen.py
 
-import curses
 import time
 
-from source.common import border, join
-from source.keyboard import keyboard, movement_keypresses
+from source.common import join
+from source.keyboard import blt_keyboard as keyboard, movement_keypresses
 from source.raycast import cast_light, raycast
 
 from .screen import Screen
@@ -24,9 +23,9 @@ class DeathScreen(Screen):
         message = "you died"
 
         self.terminal.erase()
-        border(self.terminal, 0, 0, self.engine.width - 1, self.engine.height - 1)
-        self.terminal.addstr(0, 1, f"{title}")
-        self.terminal.addstr(y, x - len(message) // 2, message)
+        # border(self.terminal, 0, 0, self.engine.width - 1, self.engine.height - 1)
+        self.terminal.printf(1, 0, f"{title}")
+        self.terminal.printf(x - len(message) // 2, y, message)
         self.terminal.refresh()
     
     def handle_input(self):

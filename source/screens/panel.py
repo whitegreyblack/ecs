@@ -2,9 +2,10 @@
 
 """Panel class and subclasses"""
 
-import curses
+import textwrap
 
-from source.common import border, join
+from source.border import border
+from source.common import colorize, join
 
 
 class Panel:
@@ -18,28 +19,19 @@ class Panel:
         self.height = height
         self.title = title
 
-    def add_char(self, x, y, char, color=0):
-        if not isinstance(char, str):
-            char = str(char)
-        if len(char) > 1:
-            raise ValueError("Parameter char is not len(1)")
-        if color > 0:
-            color = curses.color_pair(color)
-        self.terminal.addch(self.y + y, self.x + x, char, color)
+    def add_string(self, x, y, string, color=None):
+        if color:
+            string = colorize(string, color)
+        self.terminal.printf(self.x + x, self.y + y, string)
 
-    def add_string(self, x, y, string, color=0):
-        if not isinstance(string, str):
-            string = str(string)
-        if color > 0:
-            color = curses.color_pair(color)
-        self.terminal.addstr(self.y + y, self.x + x, string, color)
-
-    def border(self):
-        border(self.terminal, self.x, self.y, self.width - 1, self.height - 1)        
+    def add_border(self):
+        g = border(self.x, self.y, self.x + self.width, self.y + self.height)
+        for i, j, c in g:
+            self.terminal.printf(i, j, c)
 
     def render(self):
-        self.border()
-        self.terminal.addstr(self.y, self.x+1, f"[{self.title}]")
+        self.add_border()
+        self.terminal.printf(self.x + 1, self.y, f"[[{self.title}]]")
 
 class PlayerPanel(Panel):
     __slots__ = "terminal engine x y width height title".split()
@@ -48,14 +40,11 @@ class PlayerPanel(Panel):
         self.engine = engine
     def render(self):
         super().render()
+        c = colorize
         player = self.engine.player
         info = self.engine.infos.find(player)
-        health = self.engine.healths.find(player)
-        cur_hp = str(health.cur_hp)
-        max_hp = f"/ {health.max_hp}"
-        mana = self.engine.manas.find(player)
-        cur_mp = str(mana.cur_mp)
-        max_mp = f"/ {mana.max_mp}"
+        hp = self.engine.healths.find(player)
+        mp = self.engine.manas.find(player)
         equipment = self.engine.equipments.find(player)
         weapon = self.engine.weapons.find(equipment.hand)
         damage = weapon.damage_swing if weapon else 1
@@ -64,34 +53,32 @@ class PlayerPanel(Panel):
             eq = self.engine.armors.find(eq_slot)
             if eq:
                 armor += eq.defense
-        self.add_string(1, 1, info.name)
-        self.add_string(1, 2, "HP: ")
-        self.add_string(5, 2, cur_hp, 197)
-        self.add_string(len(cur_hp) + 6, 2, max_hp, 125)
-        self.add_string(1, 3, "MP: ")
-        self.add_string(5, 3, cur_mp, 22)
-        self.add_string(len(cur_mp) + 6 , 3, max_mp, 20)
-        self.add_string(1, 5, f"DMG: {damage}")
-        self.add_string(1, 6, f"DEF: {armor}")
+        self.terminal.printf(1, 1, textwrap.dedent(f"""
+            {info.name}
+            [0xE200+0] {c(hp.cur_hp, 'flame')} / {c(hp.max_hp, 'amber')}
+            [0xE300+0] {c(mp.cur_mp, 'sky')} / {c(mp.max_mp, 'azure')}
+            [0xE100+0] {damage} [0xE400+0] {armor}"""[1:]))
 
 class EnemyPanel(Panel):
     __slots__ = "terminal engine x y width height title".split()
     def __init__(self, terminal, engine, x, y, width, height, title):
         super().__init__(terminal, x, y, width, height, title)
-        self.engine = engine        
+        self.engine = engine
     def render(self):
         super().render()
+        c = colorize
         current_height = 0
+        enemies = []
         for eid in self.engine.entities_in_view:
             if current_height >= self.height - 2:
                 break
-            render = self.engine.renders.find(eid)
-            health = self.engine.healths.find(eid)
+            gui = self.engine.renders.find(eid)
+            hp = self.engine.healths.find(eid)
             info = self.engine.infos.find(eid)
-            self.add_char(2, 1 + current_height, render.char, render.color)
-            self.add_string(4, 1 + current_height, str(health.cur_hp), 197)
-            self.add_string(len(str(health.cur_hp)) + 5,
-                            current_height + 1,
-                            f"/ {health.max_hp}",
-                            125)
+            enemies.append("{} {} / {}".format(
+                c(gui.char, gui.color),
+                c(hp.cur_hp, 'flame'),
+                c(hp.max_hp, 'amber')
+            ))
             current_height += 1
+        self.add_string(2, 1, '\n'.join(enemies))

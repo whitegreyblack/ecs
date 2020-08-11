@@ -5,7 +5,7 @@ class Screen(object):
     menu_title = "base screen"
     def __init__(self, game):
         self.game = game
-        self.valid_keypresses = set()
+        self.valid_keypresses: set = set()
 
     def render(self, terminal):
         ...
@@ -46,6 +46,7 @@ class MenuScreen(Screen):
                                 f"{'> ' if current_option else ''}{option}")
 
     def handle_input(self, keypress):
+        print('got', keypress)
         if keypress == 'up':
             self.index = (self.index - 1) % len(self.options)
         elif keypress == 'down':

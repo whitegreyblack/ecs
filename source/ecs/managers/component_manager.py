@@ -2,7 +2,7 @@
 
 
 #  364.2 KiB with this class
-class ComponentManager(object):
+class ComponentManager:
 
     __slots__ = ['ctype', 'components', 'shared']
 

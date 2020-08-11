@@ -1,7 +1,7 @@
 # turn_system.py
 
-from .system import System
-
+from source.ecs.systems import System
+from source.screens import DeathScreen
 
 class TurnSystem(System):
     def process(self):
@@ -16,7 +16,7 @@ class TurnSystem(System):
             if not takes_turn:
                 self.engine.next_entity()
                 continue
-            # if entity needs input from user then return early indicating input
+            # if requires input from user then return early indicating input
             if takes_turn.needs_input:
                 if self.engine.requires_input:
                     return False
@@ -31,7 +31,7 @@ class TurnSystem(System):
                 else:
                     self.engine.ai_system.update()
             if not self.engine.player:
-                self.engine.change_screen('deathscreen')
+                self.engine.add_screen(DeathScreen)
                 return True
             # per turn processes
             self.engine.grave_system.process()
@@ -42,7 +42,3 @@ class TurnSystem(System):
         self.engine.manaregen_system.process()
         self.engine.spawn_system.process()
         return True
-
-    def __del__(self):
-        if __debug__:
-            print('TURNS: ', self.engine.turns)

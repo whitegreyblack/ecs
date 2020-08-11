@@ -3,7 +3,10 @@
 """Handles stair climbing/descending"""
 
 import random
+
 from source.common import join, join_drop_key, squares
+from source.maps import MapType
+
 
 def go_up(engine, entity):
     """Check if entity position is on stairs. If true go up"""
@@ -41,7 +44,7 @@ def go_up(engine, entity):
     
     position = tile_position.copy(
         movement_type=position.movement_type,
-        blocks_movement=position.blocks_movement
+        blocks=position.blocks
     )
     engine.positions.remove(engine.player)
     engine.positions.add(engine.player, position)
@@ -74,7 +77,7 @@ def go_down(engine, entity):
         # TODO: generate child map to go down. For now return False
         # engine.logger.add('Could not go down since no child map')
         # return went_down
-        engine.map_system.generate_map()
+        engine.map_system.generate_map(MapType.CAVE)
         engine.world.go_down()
     else:
         engine.map_system.regenerate_map(old_id)
@@ -96,7 +99,7 @@ def go_down(engine, entity):
     # send entity to the position of stairs on child map
     position = tile_position.copy(
         movement_type=position.movement_type,
-        blocks_movement=position.blocks_movement
+        blocks=position.blocks
     )
     engine.positions.remove(engine.player)
     engine.positions.add(engine.player, position)

@@ -2,7 +2,6 @@
 
 """Holds commonly used classes or functions"""
 
-import curses
 import math
 import random
 import time
@@ -22,7 +21,7 @@ def find_empty_spaces(engine):
     return {
         (position.x, position.y)
             for _, position in join_drop_key(engine.tiles, engine.positions)
-                if not position.blocks_movement
+                if not position.blocks
     }
 
 def dot() -> tuple:
@@ -106,7 +105,7 @@ def join(*managers) -> tuple:
     for eid in j(*managers):
         yield eid, (m.components[eid] for m in managers)
 
-def join_on(keys, *managers):
+def join_on(keys, *managers) -> tuple:
     ks = set.intersection(*map(set, (m.components for m in managers)))
     ks.intersection_upate(keys)
     for eid in keys:
@@ -143,22 +142,6 @@ def distance(a: int, b: int) -> float:
     '''Returns a value that represents distance between two points'''
     return math.sqrt(math.pow((b[0] - a[0]), 2) + math.pow((b[1] - a[1]), 2))
 
-def border(screen: object, x: int, y: int, dx: int, dy: int) -> None:
-    """
-    Draws a box with given input parameters using the default characters
-    """
-    screen.vline(y, x, curses.ACS_SBSB, dy)
-    screen.vline(y, x + dx, curses.ACS_SBSB, dy)
-    screen.hline(y, x, curses.ACS_BSBS, dx)
-    screen.hline(y + dy, x, curses.ACS_BSBS, dx)
-    screen.addch(y, x, curses.ACS_BSSB)
-    screen.addch(y, x + dx, curses.ACS_BBSS)
-    screen.addch(y + dy, x, curses.ACS_SSBB)
-    try:
-        screen.addch(y + dy, x + dx, curses.ACS_SBBS)
-    except:
-        screen.insch(y + dy, x + dx, curses.ACS_SBBS)
-
 def direction_to_keypress(x: int, y: int) -> str:
     """Returns the keypress that correlates with a given (x, y) direction"""
     for keypress, direction in keypress_to_direction.items():
@@ -177,3 +160,10 @@ def scroll(position: int, termsize: int, mapsize: int) -> int:
         return mapsize - termsize
     else:
         return position - halfscreen
+
+def colorize(string, color=None, bkcolor=None):
+    if color and bkcolor:
+        return f"[color={color}][bkcolor={bkcolor}]{string}[/bkcolor][/color]"
+    elif not color:
+        return f"[bkcolor={bkcolor}]{string}[/bkcolor]"
+    return f"[color={color}]{string}[/color]"

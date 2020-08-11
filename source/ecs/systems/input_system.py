@@ -2,7 +2,6 @@
 
 """Input system"""
 
-import curses
 import random
 import time
 from dataclasses import dataclass, field

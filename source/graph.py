@@ -1,6 +1,7 @@
 # graph.py
 
-"""
+""" `World Graph`
+
 Creates a world graph of nodes holding an entity id
 
 
@@ -8,24 +9,21 @@ Overworld -> array of nodes MxN
 City, Cave, Field, ..., etc. will make up the array
 Each array node can then have any multiple number of children worlds
 
-
-          + - - - - - - - overworld node (new::world node)
-    . _ _ | . _ _ _ .     - neighbors = ne, n, nw, w, sw, s, se, e
-   /|     |/|      /|     - parent = None since overworlds are top level
-  . _ _ _ o _ _ _ . |     - child = world node (always)
- /| .    /| .    /| .
-. _ _ _ . _ _ _ . |
-| .     | .     | o - - - world node (new::dungeon node)
-|       |       |         - no neighbors
-.       .       .         - parent = overworld || dungeon node
-                          - child = world node (always)
+            + - - - - - - - overworld node (new::world node)
+        . _ _ | . _ _ _ .     - neighbors = ne, n, nw, w, sw, s, se, e
+       /|     |/|      /|     - parent = None since overworlds are top level
+      . _ _ _ o _ _ _ . |     - child = world node (always)
+     /| .    /| .    /| .
+    . _ _ _ . _ _ _ . |
+    | .     | .     | o - - - world node (new::dungeon node)
+    |       |       |         - no neighbors
+    .       .       .         - parent = overworld || dungeon node
+                              - child = world node (always)
 """
 
 from dataclasses import dataclass
 from math import inf
 from random import choice
-
-# from source.maps import dungeons
 
 
 class WorldGraph(dict):
@@ -56,12 +54,11 @@ class Node:
     parent_id: int = None
     child_id: int = None
 
-# renamed from overworld
 class WorldNode(Node):
     def __init__(
         self,
-        entity_id: int, 
-        child_id: int = None, 
+        entity_id: int,
+        child_id: int = None,
         neighbors: dict = None
     ):
         super().__init__(entity_id, child_id=child_id)
@@ -86,22 +83,21 @@ class WorldNode(Node):
         attributes = f"eid={eid}, cid={cid}, neighbors={neighbors}"
         return f"{self.__class__.__name__}({attributes})"
 
-# renamed from world node
 class DungeonNode(Node):
     def __init__(
-        self, 
-        entity_id: int, 
-        parent_id: int = None, 
+        self,
+        entity_id: int,
+        parent_id: int = None,
         child_id: int = None
     ):
         super().__init__(entity_id, parent_id, child_id)
 
 class DungeonMap(DungeonNode):
     def __init__(
-        self, 
-        entity_id: int, 
-        dungeon: str, 
-        parent_id: int, 
+        self,
+        entity_id: int,
+        dungeon: str,
+        parent_id: int,
         child_id: int = None
     ):
         super().__init__(entity_id, parent_id, child_id)
@@ -117,7 +113,7 @@ def find_child(graph, start_id, end_id):
             return True
         n = graph.get(n.child_id, None)
         if not n:
-            return False        
+            return False
 
 def find_parent(graph, start_id, end_id):
     n = graph[start_id]
@@ -131,37 +127,27 @@ def find_parent(graph, start_id, end_id):
         if not n:
             return False
 
-# graph = {
-#     0: (DungeonNode(0, None, child_id=1), dungeons['parent']),
-#     1: (DungeonNode(1, 0), dungeons['child'])
-# }
-
 def create_mst(graph):
-    """
-        Minimum spanning tree
-    """
-    q, p = {}, {}
-
-    for key in graph.keys(): 
+    # Minimum spanning tree
+    p, q = {}, {}
+    for key in graph.keys():
         q[key] = inf
         p[key] = 0
-
-    q[0] = 0
-    p[0] = 0
-    
+    p[0], q[0] = 0, 0
+    choices = [0, 1]
     while q:
         u = min(k for k in q.keys())
         for z in graph[u].keys():
-            if z in q.keys() and 0 < graph[u][z] < q[z]: 
+            if z in q.keys() and 0 < graph[u][z] < q[z]:
                 p[z] = u
                 q[z] = graph[u][z]
         q.pop(u)
-        if choice([0, 1]) == 1 and q.keys():
+        if choice(choices) == 1 and q.keys():
             u = min(k for k in q.keys())
             for z in graph[u].keys():
-                if z in q.keys() and 0 < graph[u][z] < q[z]: 
+                if z in q.keys() and 0 < graph[u][z] < q[z]:
                     p[z] = u
-                    q[z] = graph[u][z]  
+                    q[z] = graph[u][z]
     return p
 
 if __name__ == "__main__":

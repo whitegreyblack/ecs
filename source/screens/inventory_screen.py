@@ -4,22 +4,22 @@
 Inventory screen class that renders and processes inputs for the inventory menu
 """
 
-import curses
 import random
 import time
 from collections import defaultdict
 from textwrap import wrap
 
-from source.common import border, direction_to_keypress, join, scroll
+import source.screens as screens
+from source.common import direction_to_keypress, join, scroll
 from source.logger import Logger
 
 from .screen import Screen
 
 
 class InventoryScreen(Screen):
-    menu_title = 'inventory'
     def __init__(self, engine, terminal):
         super().__init__(engine, terminal)
+        self.title = 'inventory'
         self.logger = Logger()
         self.page = 0
         self.max_items = 14
@@ -29,16 +29,16 @@ class InventoryScreen(Screen):
 
     def render_items(self):
         items = list(self.engine.router.route(
-            'inventory', 
-            'get_all', 
+            'inventory',
+            'get_all',
             self.engine.player
         ))
 
         if not items:
             string = 'no items in inventory'
-            self.terminal.addstr(
-                self.engine.height // 2, 
-                self.engine.width // 2 - len(string) // 2, 
+            self.add_string(
+                self.engine.width // 2 - len(string) // 2,
+                self.engine.height // 2,
                 string
             )
             return
@@ -54,17 +54,17 @@ class InventoryScreen(Screen):
             if current_category is not item.category:
                 current_category = item.category
                 self.terminal.addstr(
-                    i + current_row, 
-                    2, 
+                    i + current_row,
+                    2,
                     item.category.capitalize()
                 )
                 current_row += 1
             self.terminal.addstr(i + current_row, 3, f"{chr(i + 97)}.")
             self.terminal.addch(
                 i + current_row,
-                6, 
-                render.char, 
-                curses.color_pair(render.color)
+                6,
+                render.char,
+                # curses.color_pair(render.color)
             )
             self.terminal.addstr(i + current_row, 8, info.name)
 
@@ -75,9 +75,9 @@ class InventoryScreen(Screen):
     def render_item(self):
         # get item information
         self.last_item_id = self.engine.router.route(
-            'inventory', 
-            'get_item_id', 
-            self.engine.player, 
+            'inventory',
+            'get_item_id',
+            self.engine.player,
             self.index
         )
         item, render, info = self.engine.router.route(
@@ -98,10 +98,10 @@ class InventoryScreen(Screen):
 
         # add the character representing item selected
         self.terminal.addch(
-            h // 4 + 1, 
-            w // 4 + 3, 
+            h // 4 + 1,
+            w // 4 + 3,
             render.char,
-            curses.color_pair(render.color)
+            # curses.color_pair(render.color)
         ) 
         self.terminal.addstr(h // 4 + 1, w // 4 + 5, info.name)
         self.terminal.addstr(h // 4 + 2, w // 4 + 3, item.category)
@@ -121,8 +121,8 @@ class InventoryScreen(Screen):
         if actions:
             for y, (key, info) in enumerate(actions.items()):
                 self.terminal.addstr(
-                    h // 4 + 4 + save_y + y + 2, 
-                    w // 4 + 3, 
+                    h // 4 + 4 + save_y + y + 2,
+                    w // 4 + 3,
                     f'{key}: {info}'
                 )
         self.set_valid_keypresses(actions.keys())
@@ -138,8 +138,9 @@ class InventoryScreen(Screen):
 
     def render(self):
         if self.index < 0:
-            self.terminal.erase()
-            self.border()
+            self.terminal.clear()
+            self.add_border()
+            self.add_title()
             self.render_items()
         else:
             self.render_item()
@@ -164,11 +165,12 @@ class InventoryScreen(Screen):
         key = self.engine.keypress
         if key == 'escape':
             if self.index < 0:
-                self.engine.change_screen('gamescreen')
+                self.engine.remove_screen()
             else:
                 self.index = -1
         elif key == 'e' and self.index == -1:
-            self.engine.change_screen('equipmentscreen')
+            self.engine.remove_screen()
+            self.engine.add_screen(screens.EquipmentScreen)
         elif self.index > -1:
             self.handle_keypress(key)
         else:

@@ -1,8 +1,13 @@
 # command_move.py
 
 """Handles movement/collision"""
+import random
+import textwrap
+
 from source.common import join, join_drop_key
-from source.ecs.components import Position, Destroyed, Collision, MeleeHitEffect
+from source.ecs.components import (Collision, Destroyed, MeleeHitEffect,
+                                   Position)
+from source.ecs.systems.commands import open_door
 
 
 # helper functions
@@ -14,7 +19,8 @@ def check_for_floor_items(engine, position):
             items.append(info.name)
     if items:
         if len(items) > 2:
-            item_str = f"a {', a'.join(items[:len(items)-1])}, and a {items[-1]}"
+            all_but_last_items = ', a'.join(items[:len(items)-1])
+            item_str = f"a {all_but_last_items}, and a {items[-1]}"
         elif len(items) == 2:
             item_str = f"a {items[0]} and a {items[1]}"
         else:
@@ -24,8 +30,8 @@ def check_for_floor_items(engine, position):
 def check_tile_info(engine, position):
     describeables = list()
     for p, i in join_drop_key(engine.positions, engine.infos):
-        if (position.x == p.x and 
-            position.y == p.y and 
+        if (position.x == p.x and
+            position.y == p.y and
             i.name is not 'floor'
         ):
             describeables.append(i.name)
@@ -41,7 +47,7 @@ def move(engine, entity, movement) -> bool:
     # save temp positions for collision checking
     x, y = position.x + movement.x, position.y + movement.y
 
-    # check map collisions
+    # check map out-of-bounds collisions
     tilemap = engine.tilemaps.find(eid=position.map_id)
     if not (0 <= x < tilemap.width and 0 <= y < tilemap.height):
         return collide(engine, entity, -1)
@@ -50,12 +56,32 @@ def move(engine, entity, movement) -> bool:
     if position.movement_type == Position.MovementType.GROUND:
         # check unit collisions
         for entity_id, entity_position in engine.positions:
-            if (entity_position.x == x and 
-                entity_position.y == y and 
+            if (entity_position.x == x and
+                entity_position.y == y and
                 entity_position.map_id == engine.world.id and 
-                entity_id != entity and 
-                entity_position.blocks_movement is True
+                entity_id != entity and
+                entity_position.blocks is True
             ):
+                # if door is an unlocked door, open door and move positions
+                entity_openable = engine.openables.find(entity_id)
+                if entity_openable:
+                    # replace info
+                    engine.infos.add(
+                        entity_id,
+                        engine.infos.shared['opened door']
+                    )
+                    engine.renders.add(
+                        entity_id,
+                        random.choice(engine.renders.shared['opened door'])
+                    )
+                    entity_openable = True
+                    entity_position.blocks = False
+                    position.x += movement.x
+                    position.y += movement.y
+                    engine.logger.add(
+                        "You open the door and enter the doorway"
+                    )
+                    return True
                 return collide(engine, entity, entity_id)
 
     if position.movement_type == Position.MovementType.VISIBLE:
@@ -72,7 +98,7 @@ def move(engine, entity, movement) -> bool:
     position.x += movement.x
     position.y += movement.y
 
-    # check 
+    # check
     if entity == engine.player:
         check_for_floor_items(engine, position)
     elif entity == engine.cursor:
@@ -105,6 +131,7 @@ def melee_attack(engine, entity, other):
 
     # attackee properties
     attackee = engine.infos.find(other)
+    render = engine.infos.find(other)
     health = engine.healths.find(other)
     armor = engine.armors.find(other)
     
@@ -127,7 +154,11 @@ def melee_attack(engine, entity, other):
     if entity == engine.player:
         strings.append(f"You attack the {attackee.name} for {damage} damage")
     else:
-        strings.append(f"The {attacker.name} attacks the {attackee.name} for {damage} damage")
+        strings.append("The {} attacks the {} for {} damage".format(
+            attacker.name,
+            attackee.name,
+            damage
+        ))
     if damage < 1:
         strings.append(f", but the attack did no damage!")
     else:

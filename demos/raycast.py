@@ -9,9 +9,9 @@ from source.common import join_drop_key, scroll
 from source.ecs.components import Position, TileMap, Visibility
 from source.ecs.managers import ComponentManager, EntityManager
 from source.engine import Engine
+from source.generate import (array_to_matrix, dimensions,
+                             generate_poisson_array, string)
 from source.graph import DungeonNode, WorldGraph
-from source.maps import (array_to_matrix, dimensions, generate_poisson_array,
-                         string)
 from source.raycast import cast_light, cast_light2
 from source.raycast import raycast as py_raycast
 from source.raycast import raycast2 as py_raycast2
@@ -36,7 +36,7 @@ x, y = 58, 17
 m = array_to_matrix(
     generate_poisson_array(x, y), 
     width=x, height=y, 
-    filterer=filterer
+    filter=filterer
 )
 
 # define world
@@ -55,7 +55,7 @@ for y, row in enumerate(m):
         engine.positions.add(e, Position(
             x, y, 
             map_id=w,
-            blocks_movement=cell is '#'
+            blocks=cell is '#'
         ))
         engine.visibilities.add(e, Visibility())
 
@@ -67,7 +67,7 @@ engine.player = e
 walkable = [
     (p.x, p.y)
         for p in engine.positions.components.values()
-            if not p.blocks_movement
+            if not p.blocks
 ]
 random.shuffle(walkable)
 p = Position(*walkable.pop(0))
@@ -100,7 +100,14 @@ while True:
     for recorder, caster, raycaster in combinations:
         # do some calculations
         t = time.time()
-        caster(engine, off_x, 57 + off_x, off_y, 17 + off_y, raycaster=raycaster)
+        caster(
+            engine, 
+            off_x, 
+            57 + off_x, 
+            off_y, 
+            17 + off_y, 
+            raycaster=raycaster
+        )
         s = time.time()
 
         # save the timing result

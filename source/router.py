@@ -4,18 +4,8 @@
 
 
 class Router:
-    def __init__(self, engine, controllers):
-        self.engine = engine
-        self.init_controllers(controllers)
-
-    def init_controllers(self, controllers):
-        if not controllers:
-            self.controllers = dict()
-        else:
-            self.controllers = {
-                controller.router_name: controller(self.engine)
-                    for controller in controllers
-            }
+    def __init__(self, controllers=None):
+        self.controllers = controllers or dict()
 
     def add_controller(self, name, controller):
         self.controllers[name] = controller

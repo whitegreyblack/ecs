@@ -10,7 +10,7 @@ from .controller import Controller
 
 class ArmorController(Controller):
     __slots__ = ['engine']
-    router_name = 'armor'
+    router = 'armor'
 
     def get_total_armor_value(self, entity):
         armors = list(self.engine.router.route(
