@@ -15,5 +15,5 @@ class Stack:
         if self.items:
             return self.items[-1]
         return None
-    def empty():
+    def empty(self):
         self.items.clear()
