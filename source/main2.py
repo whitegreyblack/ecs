@@ -51,11 +51,10 @@ class Engine(object):
         return self.entity_manager.find(entity_id)
 
 class Screen:
-    title = None
     manager = None
-    keys = dict()
-    def __init__(self, keys=None):
-        self.keys = {'close', 'escape', 'enter'}.union(keys or {})
+    def __init__(self, title, keys):
+        self.title = title
+        self.keys = {'close', 'escape', 'enter'}.union(keys)
         self.key = None
 
     def add_border(self, engine, terminal):
@@ -103,20 +102,9 @@ class Screen:
             self.manager.pop()
 
 class MenuScreen(Screen):
-    options = []
-    keys = {
-        'close',
-        'escape',
-        'enter',
-        'mouse-left',
-        'mouse-move'
-    }
-    def __init__(self, options=None, keys=None):
-        if not options:
-            options = self.__class__.options
-        if not keys:
-            keys = self.__class__.keys
-        super().__init__(keys)
+    def __init__(self, title, options, keys):
+        super().__init__(title, {'mouse-left', 'mouse-move'}.union(keys))
+        self.options = options
         self.index = 0
         self.options = options
         self.mapper = dict()
@@ -163,9 +151,13 @@ class MenuScreen(Screen):
                 self.mapper[(option_x + i, option_y)] = option
 
 class StartMenuScreen(MenuScreen):
-    title = "main menu"
-    options = ('new game', 'options', 'quit')
-    keys = {'up', 'down', 'mouse-left', 'mouse-move'}
+    def __init__(self):
+        super().__init__(
+            "main menu",
+            ('new game', 'options', 'quit'),
+            {'up', 'down'}
+        )
+
     def input_handle(self, engine, terminal):
         key = self.key
         option = self.get_option()
@@ -195,14 +187,20 @@ class StartMenuScreen(MenuScreen):
                 self.index = self.options.index(option)
 
 class GameMenuScreen(MenuScreen):
-    title = "game menu"
-    options = ('back', 'main menu', 'settings', 'quit')
-    keys = {'up', 'down', 'mouse-left', 'mouse-move'}
+    def __init__(self):
+        super().__init__(
+            "game menu",
+            ('back', 'main menu', 'settings', 'quit'),
+            {'up', 'down', 'mouse-left', 'mouse-move'}
+        )
 
 class ConfirmMenuScreen(MenuScreen):
-    title = "confirm menu"
-    options = ('yes', 'no')
-    keys = {'left', 'right', 'mouse-left', 'mouse-move'}
+    def __init__(self):
+        super().__init__(
+            title="confirm menu",
+            options=('yes', 'no'),
+            keys={'left', 'right', 'mouse-left', 'mouse-move'}
+        )
 
     def get_draw_methods(self):
         yield from super().get_draw_methods()
@@ -260,67 +258,76 @@ class ConfirmMenuScreen(MenuScreen):
                 self.index = self.options.index(option)
 
 class OptionScreen(MenuScreen):
-    title = "options"
-    options = ('back',)
-    keys = {'up', 'down', 'mouse-left', 'mouse-move'}
+    def __init__(self):
+        super().__init__(
+            title="options",
+            options=('back',),
+            keys={'up', 'down', 'mouse-left', 'mouse-move'}
+        )
     def input_handle(self, engine, terminal):
         key = self.key
         option = self.get_option()
         if (key == 'enter' and option == 'back'):
             self.manager.pop()
 
+class ChessTile:
+    def __init__(self, tile):
+        self._bkcolor = tile
+        self._piece = None
+        self.highlighted = False
+    @property
+    def bkcolor(self): 
+        if not self.highlighted:
+            return self._bkcolor
+        if self._piece:
+            return "blue" if self._piece.color == "white" else "yellow"
+        return "grey"
+    @property
+    def color(self): return self._piece.color if self._piece else "white"
+    @property
+    def piece(self): return self._piece.char if self._piece else " "
+    @piece.setter
+    def piece(self, piece): self._piece = piece
+
 class ChessGameScreen(Screen):
-    title = "game"
-    keys = {
-        # # arrowkeys/keypad arrows
-        # 'up-left', 'up', 'up-right',
-        # 'left', 'center', 'right',
-        # 'down-left', 'down', 'down-right',
-        'mouse-move'
-    }
     def __init__(self, keys=None):
-        if not keys:
-            keys = self.__class__.keys
-        super().__init__(keys)
-        self.board = [[
-            colorize(' ', "white", "#642b09" if (y*7+x)%2 == 1 else "#c46404")
-                for x in range(8)] for y in range(8)
-        ]
+        super().__init__("game", {'mouse-move'})
+        self.bkcolors = ("#642b09","#c46404")
         self.mapper = dict()
         self.selection = None
 
     def get_draw_methods(self):
         yield from super().get_draw_methods()
-        yield self.add_board
+        yield self.draw_board
 
-    def add_board(self, engine, terminal):
+    def draw_board(self, engine, terminal):
         width = terminal.state(terminal.TK_WIDTH) // 2 - 4
         height = terminal.state(terminal.TK_HEIGHT) // 2 - 4
-        board = deepcopy(self.board)
+        tiles = {
+            (i, j): ChessTile(self.bkcolors[(j * 7 + i) % 2])
+                for i in range(8) for j in range(8)
+        }
         for (p, r) in join_drop_key(engine.positions, engine.renders):
-            x, y = p.x, p.y
-            if self.selection == (x + width, y + height):
-                if r.color == "black":
-                    color = "yellow"
-                else:
-                    color = "blue"
-            elif (y * 7 + x) % 2 == 1:
-                color = "#642b09"
-            else:
-                color = "#c46404"
-            board[y][x] = colorize(r.char, r.color, color)
-            self.mapper[(x + width, y + height)] = r.char
-        terminal.printf(width, height, string(board))
+            tile = tiles[(p.x, p.y)]
+            self.mapper[(p.x + width, p.y + height)] = r.char
+            tile.piece = r
+            tile.highlighted = self.selection == (p.x + width, p.y + height)
+
+        for (i, j), tile in tiles.items():
+            terminal.printf(width + i, height + j, colorize(tile.piece, tile.color, tile.bkcolor))
+
 
     def input_handle(self, engine, terminal):
         if self.key in ('close', 'escape'):
             self.manager.push(ConfirmMenuScreen())
         elif self.key == 'mouse-move':
             piece = self.mapper.get(self.get_mouse_state(terminal), None)
+            print(piece)
             if piece:
                 self.selection = self.get_mouse_state(terminal)
             else:
                 self.selection = None
+            print(self.selection)
 
 def initialize_board(engine):
     p_info = Information("pawn", "move 1 or two spaces forward")
