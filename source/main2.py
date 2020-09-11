@@ -4,7 +4,12 @@ from bearlibterminal import terminal
 
 from source.border import border
 from source.common import colorize
+from source.ecs.components import Information, Position
+from source.ecs.managers.component_manager import ComponentManager
+from source.ecs.managers.entity_manager import EntityManager
 from source.keyboard import blt_keyboard as keyboard
+from source.logger import Logger
+from source.router import Router
 from source.scenemanager import SceneManager
 
 
@@ -14,36 +19,38 @@ def keypress_from_input(value):
         return keys[int(terminal.state(terminal.TK_SHIFT))]
     return keys
 
-def action_main_menu_system(scene, engine, terminal):
-    key = scene.key
-    option = scene.get_option()
-    if key == 'enter' and option == 'quit':
-        scene.manager.pop()
-    elif key in ('escape', 'close'):
-        scene.manager.push(ConfirmMenuScreen())
-    # elif key == 'enter' and option == 'new game':
-    #     self.engine.add_screen(GameScreen)
-    # elif key == 'enter' and option == 'options':
-    #     self.engine.running = False
-    #     self.engine.add_screen(OptionScreen)
-    elif key == 'down':
-        scene.next_option()
-    elif key == 'up':
-        scene.prev_option()
-    # elif key == 'mouse-left':
-    #     option = self.mapper.get(self.engine.get_mouse_state(), None)
-    #     if option == 'quit' or option == 'options':
-    #         self.engine.running = False
-    #     elif option == 'new game':
-    #         self.engine.add_screen(GameScreen)
-    # elif key == 'mouse-move':
-    #     option = self.mapper.get(self.engine.get_mouse_state(), None)
-    #     if option:
-    #         self.index = self.options.index(option)
+
+class Engine(object):
+
+    def __init__(self, components):
+        self.logger = Logger()
+
+        # set to an invalid value. All entity ids are positive integers (>0)
+        self.entity: int = -1
+        self.world = None
+        self.entities = EntityManager()
+        self.init_managers(components)
+
+        # self.router: Router = Router()
+
+        # TODO: send this variable to the game screen instead
+        # self.mode = GameMode.NORMAL
+        # probably remove this too
+        # self.entities_in_view: set = set()
+        # self.tiles_in_view: set = set()
+
+    def init_managers(self, components):
+        self.components = components
+        for component in components:
+            self.__setattr__(component.manager, ComponentManager(component))
+
+    def find_entity(self, entity_id):
+        return self.entity_manager.find(entity_id)
 
 class Screen:
     manager = None
-    systems = tuple()
+    systems = list()
+    keys = dict()
     def __init__(self, systems, keys):
         self.systems = systems or self.__class__.systems
         self.keys = {'close', 'escape', 'enter'}.union(keys)
@@ -166,10 +173,10 @@ class StartMenuScreen(MenuScreen):
             self.manager.empty()
         elif key in ('escape', 'close'):
             self.manager.push(ConfirmMenuScreen())
-        # elif key == 'enter' and option == 'new game':
-        #     self.engine.add_screen(GameScreen)
-        # elif key == 'enter' and option == 'options':
-        #     self.engine.add_screen(OptionScreen)
+        elif key == 'enter' and option == 'new game':
+            self.manager.push(GameScreen)
+        elif key == 'enter' and option == 'options':
+            self.manager.push(OptionScreen())
         elif key == 'down':
             self.next_option()
         elif key == 'up':
@@ -248,8 +255,37 @@ class ConfirmMenuScreen(MenuScreen):
             if option:
                 self.index = self.options.index(option)
 
+class OptionScreen(MenuScreen):
+    title = "options"
+    options = ('back',)
+    keys = {'up', 'down', 'mouse-left', 'mouse-move'}
+    def input_handle(self, engine, terminal):
+        key = self.key
+        option = self.get_option()
+        if (key == 'enter' and option == 'back'):
+            self.manager.pop()
+
+class GameScreen(Screen):
+    keys = {
+        # arrowkeys/keypad arrows
+        'up-left', 'up', 'up-right',
+        'left', 'center', 'right',
+        'down-left', 'down', 'down-right',
+    }
+    def __init__(self, systems):
+        super().__init__(None, self.__class__.keys)
+
+    @classmethod
+    def get_systems(self):
+        return [
+            
+        ]
+
 if __name__ == "__main__":
     terminal.open()
     terminal.set("input: filter=[keyboard,mouse]")
+    engine = Engine(components=(
+        Position, Information
+    ))
     sm = SceneManager(StartMenuScreen())
-    sm.run(None, terminal)
+    sm.run(engine, terminal)
