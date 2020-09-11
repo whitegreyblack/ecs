@@ -1,12 +1,15 @@
 # main2.py
 
+from copy import deepcopy
+
 from bearlibterminal import terminal
 
 from source.border import border
-from source.common import colorize
-from source.ecs.components import Information, Position
+from source.common import colorize, join, join_drop_key
+from source.ecs.components import Information, Position, Render
 from source.ecs.managers.component_manager import ComponentManager
 from source.ecs.managers.entity_manager import EntityManager
+from source.generate import string
 from source.keyboard import blt_keyboard as keyboard
 from source.logger import Logger
 from source.router import Router
@@ -48,21 +51,20 @@ class Engine(object):
         return self.entity_manager.find(entity_id)
 
 class Screen:
+    title = None
     manager = None
-    systems = list()
     keys = dict()
-    def __init__(self, systems, keys):
-        self.systems = systems or self.__class__.systems
-        self.keys = {'close', 'escape', 'enter'}.union(keys)
+    def __init__(self, keys=None):
+        self.keys = {'close', 'escape', 'enter'}.union(keys or {})
         self.key = None
 
-    def add_border(self, terminal):
+    def add_border(self, engine, terminal):
         width = terminal.state(terminal.TK_WIDTH)
         height = terminal.state(terminal.TK_HEIGHT)
         for x, y, char in border(0, 0, width, height):
             terminal.printf(x, y, char)
 
-    def add_title(self, terminal):
+    def add_title(self, engine, terminal):
         terminal.printf(1, 0, f'[[{self.title}]]')
 
     def add_string(self, terminal, x, y, string, color=None):
@@ -73,8 +75,6 @@ class Screen:
     def process(self, engine, terminal):
         for system in (self.render, self.input_receive, self.input_handle):
             system(engine, terminal)
-        for system in self.systems:
-            system(self, engine, terminal)
 
     def get_mouse_state(self, terminal):
         return (
@@ -89,7 +89,7 @@ class Screen:
     def render(self, engine, terminal):
         terminal.clear()
         for draw_method in self.get_draw_methods():
-            draw_method(terminal)
+            draw_method(engine, terminal)
         terminal.refresh()
 
     def input_receive(self, engine, terminal):
@@ -111,12 +111,12 @@ class MenuScreen(Screen):
         'mouse-left',
         'mouse-move'
     }
-    def __init__(self, systems=None, options=None, keys=None):
+    def __init__(self, options=None, keys=None):
         if not options:
             options = self.__class__.options
         if not keys:
             keys = self.__class__.keys
-        super().__init__(systems, keys)
+        super().__init__(keys)
         self.index = 0
         self.options = options
         self.mapper = dict()
@@ -140,7 +140,7 @@ class MenuScreen(Screen):
         yield from super().get_draw_methods()
         yield self.add_options
 
-    def add_options(self, terminal):
+    def add_options(self, engine, terminal):
         x = terminal.state(terminal.TK_WIDTH) // 2
         y = terminal.state(terminal.TK_HEIGHT) // 2
 
@@ -174,7 +174,7 @@ class StartMenuScreen(MenuScreen):
         elif key in ('escape', 'close'):
             self.manager.push(ConfirmMenuScreen())
         elif key == 'enter' and option == 'new game':
-            self.manager.push(GameScreen)
+            self.manager.push(ChessGameScreen())
         elif key == 'enter' and option == 'options':
             self.manager.push(OptionScreen())
         elif key == 'down':
@@ -183,8 +183,12 @@ class StartMenuScreen(MenuScreen):
             self.prev_option()
         elif key == 'mouse-left':
             option = self.mapper.get(self.get_mouse_state(terminal), None)
-            if option == 'quit' or option == 'options' or option == 'new game':
+            if option == 'quit':
                 self.manager.pop()
+            elif option == 'options':
+                self.manager.push(OptionScreen())
+            elif option == 'new game':
+                self.manager.push(ChessGameScreen())
         elif key == 'mouse-move':
             option = self.mapper.get(self.get_mouse_state(terminal), None)
             if option:
@@ -204,13 +208,13 @@ class ConfirmMenuScreen(MenuScreen):
         yield from super().get_draw_methods()
         yield self.add_text
 
-    def add_text(self, terminal):
+    def add_text(self, engine, terminal):
         text = "Do you really want to quit?"
         x = terminal.state(terminal.TK_WIDTH) // 2 - len(text) // 2
         y = terminal.state(terminal.TK_HEIGHT) // 2 - 1
         terminal.printf(x, y, text)
 
-    def add_options(self, terminal):
+    def add_options(self, engine, terminal):
         x = terminal.state(terminal.TK_WIDTH) // (len(self.options) + 1)
         y = terminal.state(terminal.TK_HEIGHT) // 2
 
@@ -265,27 +269,86 @@ class OptionScreen(MenuScreen):
         if (key == 'enter' and option == 'back'):
             self.manager.pop()
 
-class GameScreen(Screen):
+class ChessGameScreen(Screen):
+    title = "game"
     keys = {
-        # arrowkeys/keypad arrows
-        'up-left', 'up', 'up-right',
-        'left', 'center', 'right',
-        'down-left', 'down', 'down-right',
+        # # arrowkeys/keypad arrows
+        # 'up-left', 'up', 'up-right',
+        # 'left', 'center', 'right',
+        # 'down-left', 'down', 'down-right',
+        'mouse-move'
     }
-    def __init__(self, systems):
-        super().__init__(None, self.__class__.keys)
-
-    @classmethod
-    def get_systems(self):
-        return [
-            
+    def __init__(self, keys=None):
+        if not keys:
+            keys = self.__class__.keys
+        super().__init__(keys)
+        self.board = [[
+            colorize(' ', "white", "#642b09" if (y*7+x)%2 == 1 else "#c46404")
+                for x in range(8)] for y in range(8)
         ]
+        self.mapper = dict()
+        self.selection = None
+
+    def get_draw_methods(self):
+        yield from super().get_draw_methods()
+        yield self.add_board
+
+    def add_board(self, engine, terminal):
+        width = terminal.state(terminal.TK_WIDTH) // 2 - 4
+        height = terminal.state(terminal.TK_HEIGHT) // 2 - 4
+        board = deepcopy(self.board)
+        for (p, r) in join_drop_key(engine.positions, engine.renders):
+            x, y = p.x, p.y
+            if self.selection == (x + width, y + height):
+                if r.color == "black":
+                    color = "yellow"
+                else:
+                    color = "blue"
+            elif (y * 7 + x) % 2 == 1:
+                color = "#642b09"
+            else:
+                color = "#c46404"
+            board[y][x] = colorize(r.char, r.color, color)
+            self.mapper[(x + width, y + height)] = r.char
+        terminal.printf(width, height, string(board))
+
+    def input_handle(self, engine, terminal):
+        if self.key in ('close', 'escape'):
+            self.manager.push(ConfirmMenuScreen())
+        elif self.key == 'mouse-move':
+            piece = self.mapper.get(self.get_mouse_state(terminal), None)
+            if piece:
+                self.selection = self.get_mouse_state(terminal)
+            else:
+                self.selection = None
+
+def initialize_board(engine):
+    p_info = Information("pawn", "move 1 or two spaces forward")
+    k_info = Information("knight", "move in an L shape")
+    b_info = Information("bishop", "move diagonally")
+    r_info = Information("rook", "move in a straight line")
+    q_info = Information("queen", "move n spaces in any direction")
+    K_info = Information("king", "move one space in any direction")
+    for color, row in (("white", 0), ("white", 1), ("black", 6), ("black", 7)):
+        for column in range(8):
+            entity_id = engine.entities.create()
+            if row in (1, 6): render, info = Render("i", color), p_info
+            elif column in (0, 7): render, info = Render("r", color), k_info
+            elif column in (1, 6): render, info = Render("b", color), b_info
+            elif column in (2, 5): render, info = Render("k", color), r_info
+            elif column == 3: render, info = Render("Q", color), q_info
+            elif column == 4: render, info = Render("K", color), K_info
+            position = Position(column, row)
+            engine.infos.add(entity_id, info)
+            engine.renders.add(entity_id, render)
+            engine.positions.add(entity_id, position)
 
 if __name__ == "__main__":
     terminal.open()
     terminal.set("input: filter=[keyboard,mouse]")
     engine = Engine(components=(
-        Position, Information
+        Position, Render, Information
     ))
+    initialize_board(engine)
     sm = SceneManager(StartMenuScreen())
     sm.run(engine, terminal)
