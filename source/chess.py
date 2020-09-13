@@ -314,7 +314,11 @@ class ChessGameScreen(Screen):
             tile.highlighted = self.selection == (p.x + width, p.y + height)
 
         for (i, j), tile in tiles.items():
-            terminal.printf(width + i, height + j, colorize(tile.piece, tile.color, tile.bkcolor))
+            terminal.printf(
+                width + i,
+                height + j,
+                colorize(tile.piece, tile.color, tile.bkcolor)
+            )
 
 
     def input_handle(self, engine, terminal):
@@ -322,12 +326,10 @@ class ChessGameScreen(Screen):
             self.manager.push(ConfirmMenuScreen())
         elif self.key == 'mouse-move':
             piece = self.mapper.get(self.get_mouse_state(terminal), None)
-            print(piece)
             if piece:
                 self.selection = self.get_mouse_state(terminal)
             else:
                 self.selection = None
-            print(self.selection)
 
 def initialize_board(engine):
     p_info = Information("pawn", "move 1 or two spaces forward")
