@@ -21,6 +21,11 @@ class SpawnSystem(System):
         self.current_tick = self.respawn_rate
 
     def find_valid_spaces(self) -> list:
+        """
+            Finds all available tile positions that is not currently in the
+            view of the player and can spawn an object. Removes any positions
+            that are currently occupied by non-player units
+        """
         tiles = {
             (position.x, position.y)
                 for _, position, visible in join_drop_key(
@@ -37,7 +42,7 @@ class SpawnSystem(System):
                     self.engine.positions
                 )
         }
-        return tiles - units
+        return list(tiles - units)
 
     def find_valid_space(self) -> (int, int):
         return self.find_valid_spaces().pop()
@@ -216,12 +221,15 @@ class SpawnSystem(System):
                     and eid != self.engine.player
         ]
         if len(units) < 3:
+            print("spawn_system: < 3 units on field. checking spawn timer...")
             if self.current_tick < 0:
                 self.current_tick = self.respawn_rate
             # self.engine.logger.add(self.current_tick)
             self.current_tick -= 1
             if self.current_tick == 0:
+                print("spawn_system: spawn timer reached. spawning...")
                 spaces = self.find_valid_spaces()
+                print(spaces)
                 # probably wouldn't happen but if it does then exit early
                 if not spaces:
                     return
