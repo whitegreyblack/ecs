@@ -204,12 +204,27 @@ class SpawnSystem(System):
         self.engine.items.add(item, Item('food', effect=HealEffect(3)))
         self.engine.decays.add(item, Decay())
         return item
-    
-    def process(self) -> None:
+
+    def process(self) -> list:
+        """
+            Check if map type allows for spawns by counting number of units
+            currently existing on the map. If number of units found is less
+            than the map unit limit then the spawn timer decrements. Once the
+            spawn timer reaches 0 and an available spawn position is available,
+            then a random unit is spawned on the map. Returns a list of log
+            messages.
+        """
+        log = []
         # check map type. town maps do not spawn enemies
         map_info = self.engine.tilemaps.find(self.engine.world.id)
         if map_info.map_type == 'town':
-            return
+            log.append((
+                "debug",
+                "spawn_system",
+                "process",
+                "map type is town. no spawn processing"
+            ))
+            return log
         # spawn a unit if the spawn timer expires and space is available
         units = [
             (eid, health, position)
@@ -220,19 +235,50 @@ class SpawnSystem(System):
                 if position.map_id == self.engine.world.id
                     and eid != self.engine.player
         ]
+        log.append((
+            "debug",
+            "spawn_system",
+            "process",
+            f"number of units found on field: {len(units)}"
+        ))
         if len(units) < 3:
-            print("spawn_system: < 3 units on field. checking spawn timer...")
+            log.append((
+                "debug",
+                "spawn_system",
+                "process",
+                "less than 3 units on field. checking spawn timer..."
+            ))
             if self.current_tick < 0:
                 self.current_tick = self.respawn_rate
             # self.engine.logger.add(self.current_tick)
             self.current_tick -= 1
             if self.current_tick == 0:
-                print("spawn_system: spawn timer reached. spawning...")
+                log.append((
+                    "debug",
+                    "spawn_system",
+                    "process",
+                    "spawn timer reached. checking spawn positions..."
+                ))
                 spaces = self.find_valid_spaces()
-                print(spaces)
                 # probably wouldn't happen but if it does then exit early
                 if not spaces:
-                    return
+                    # readd the tick so timer does not loop fully again
+                    self.current_tick += 1
+                    log.append((
+                        "debug",
+                        "spawn_system",
+                        "process",
+                        "no avialable positions found. skipping..."
+                    ))
+                    return log
                 random.shuffle(spaces)
                 space = spaces.pop()
                 self.spawn_unit(space)
+                log.append((
+                    "debug",
+                    "spawn_system",
+                    "process",
+                    "unit created on map"
+                ))
+                # TODO: add a chance game message for hearing? monster weight?
+            return log
