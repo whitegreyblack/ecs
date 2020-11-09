@@ -1,4 +1,4 @@
-# chess.py
+# rogue.py
 
 from copy import deepcopy
 
@@ -22,7 +22,6 @@ def keypress_from_input(value):
         return keys[int(terminal.state(terminal.TK_SHIFT))]
     return keys
 
-
 class Engine(object):
 
     def __init__(self, components):
@@ -33,7 +32,7 @@ class Engine(object):
         self.world = None
         self.entities = EntityManager()
         self.init_managers(components)
-
+        self.systems = list()
         # self.router: Router = Router()
 
         # TODO: send this variable to the game screen instead
@@ -42,6 +41,16 @@ class Engine(object):
         # self.entities_in_view: set = set()
         # self.tiles_in_view: set = set()
 
+        # def init_systems(self, *systems):
+        #     # systems are name unique so they can be called specifically by named
+        #     for system in systems:
+        #         # name = f"{system_type.classname().replace('system', '')}_system"
+        #         # system = system_type(self)
+        #         # self.__setattr__(name, system)
+        #     self.systems.append(name)
+    def add_system(self, system):
+        self.systems.append(system)
+
     def init_managers(self, components):
         self.components = components
         for component in components:
@@ -49,6 +58,10 @@ class Engine(object):
 
     def find_entity(self, entity_id):
         return self.entity_manager.find(entity_id)
+
+    def process(self):
+        for system in systems:
+            system.process()
 
 class Screen:
     manager = None
@@ -166,7 +179,7 @@ class StartMenuScreen(MenuScreen):
         elif key in ('escape', 'close'):
             self.manager.push(ConfirmMenuScreen())
         elif key == 'enter' and option == 'new game':
-            self.manager.push(ChessGameScreen())
+            self.manager.push(RogueGameScreen())
         elif key == 'enter' and option == 'options':
             self.manager.push(OptionScreen())
         elif key == 'down':
@@ -180,7 +193,7 @@ class StartMenuScreen(MenuScreen):
             elif option == 'options':
                 self.manager.push(OptionScreen())
             elif option == 'new game':
-                self.manager.push(ChessGameScreen())
+                self.manager.push(RogueGameScreen())
         elif key == 'mouse-move':
             option = self.mapper.get(self.get_mouse_state(terminal), None)
             if option:
@@ -270,55 +283,37 @@ class OptionScreen(MenuScreen):
         if (key == 'enter' and option == 'back'):
             self.manager.pop()
 
-class ChessTile:
-    def __init__(self, tile):
-        self._bkcolor = tile
-        self._piece = None
-        self.highlighted = False
-    @property
-    def bkcolor(self): 
-        if not self.highlighted:
-            return self._bkcolor
-        if self._piece:
-            return "blue" if self._piece.color == "white" else "yellow"
-        return "grey"
-    @property
-    def color(self): return self._piece.color if self._piece else "white"
-    @property
-    def piece(self): return self._piece.char if self._piece else " "
-    @piece.setter
-    def piece(self, piece): self._piece = piece
 
-class ChessGameScreen(Screen):
+class RogueGameScreen(Screen):
     def __init__(self, keys=None):
         super().__init__("game", {'mouse-move'})
         self.bkcolors = ("#642b09","#c46404")
         self.mapper = dict()
         self.selection = None
 
-    def get_draw_methods(self):
-        yield from super().get_draw_methods()
-        yield self.draw_board
+    # def get_draw_methods(self):
+    #     yield from super().get_draw_methods()
+    #     yield self.draw_board
 
-    def draw_board(self, engine, terminal):
-        width = terminal.state(terminal.TK_WIDTH) // 2 - 4
-        height = terminal.state(terminal.TK_HEIGHT) // 2 - 4
-        tiles = {
-            (i, j): ChessTile(self.bkcolors[(j * 7 + i) % 2])
-                for i in range(8) for j in range(8)
-        }
-        for (p, r) in join_drop_key(engine.positions, engine.renders):
-            tile = tiles[(p.x, p.y)]
-            self.mapper[(p.x + width, p.y + height)] = r.char
-            tile.piece = r
-            tile.highlighted = self.selection == (p.x + width, p.y + height)
+    # def draw_board(self, engine, terminal):
+    #     width = terminal.state(terminal.TK_WIDTH) // 2 - 4
+    #     height = terminal.state(terminal.TK_HEIGHT) // 2 - 4
+    #     tiles = {
+    #         (i, j): ChessTile(self.bkcolors[(j * 7 + i) % 2])
+    #             for i in range(8) for j in range(8)
+    #     }
+    #     for (p, r) in join_drop_key(engine.positions, engine.renders):
+    #         tile = tiles[(p.x, p.y)]
+    #         self.mapper[(p.x + width, p.y + height)] = r.char
+    #         tile.piece = r
+    #         tile.highlighted = self.selection == (p.x + width, p.y + height)
 
-        for (i, j), tile in tiles.items():
-            terminal.printf(
-                width + i,
-                height + j,
-                colorize(tile.piece, tile.color, tile.bkcolor)
-            )
+    #     for (i, j), tile in tiles.items():
+    #         terminal.printf(
+    #             width + i,
+    #             height + j,
+    #             colorize(tile.piece, tile.color, tile.bkcolor)
+    #         )
 
     def input_handle(self, engine, terminal):
         if self.key in ('close', 'escape'):
@@ -330,33 +325,25 @@ class ChessGameScreen(Screen):
             else:
                 self.selection = None
 
-def initialize_board(engine):
-    p_info = Information("pawn", "move 1 or two spaces forward")
-    k_info = Information("knight", "move in an L shape")
-    b_info = Information("bishop", "move diagonally")
-    r_info = Information("rook", "move in a straight line")
-    q_info = Information("queen", "move n spaces in any direction")
-    K_info = Information("king", "move one space in any direction")
-    for color, row in (("white", 0), ("white", 1), ("black", 6), ("black", 7)):
-        for column in range(8):
-            entity_id = engine.entities.create()
-            if row in (1, 6): render, info = Render("i", color), p_info
-            elif column in (0, 7): render, info = Render("r", color), k_info
-            elif column in (1, 6): render, info = Render("b", color), b_info
-            elif column in (2, 5): render, info = Render("k", color), r_info
-            elif column == 3: render, info = Render("Q", color), q_info
-            elif column == 4: render, info = Render("K", color), K_info
-            position = Position(column, row)
-            engine.infos.add(entity_id, info)
-            engine.renders.add(entity_id, render)
-            engine.positions.add(entity_id, position)
+    def process(self, engine, terminal):
+        """
+            Draw/Render
+            Handle Input/Inject Engine
+            Engine Process/Update
+        """
+        for system in (self.render, self.input_receive, self.input_handle):
+            system(engine, terminal)
+        engine.process()
+
+def initialize_game_engine():
+    engine = Engine(components=(
+        Position, Render, Information
+    ))
+    engine.add_system()
 
 if __name__ == "__main__":
     terminal.open()
     terminal.set("input: filter=[keyboard,mouse]")
-    engine = Engine(components=(
-        Position, Render, Information
-    ))
-    initialize_board(engine)
+    engine = initialize_game_engine()
     sm = SceneManager(StartMenuScreen())
     sm.run(engine, terminal)
