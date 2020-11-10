@@ -41,13 +41,6 @@ class Engine(object):
         # self.entities_in_view: set = set()
         # self.tiles_in_view: set = set()
 
-        # def init_systems(self, *systems):
-        #     # systems are name unique so they can be called specifically by named
-        #     for system in systems:
-        #         # name = f"{system_type.classname().replace('system', '')}_system"
-        #         # system = system_type(self)
-        #         # self.__setattr__(name, system)
-        #     self.systems.append(name)
     def add_system(self, system):
         self.systems.append(system)
 

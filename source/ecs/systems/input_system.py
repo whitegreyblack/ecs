@@ -2,15 +2,9 @@
 
 """Input system"""
 
-import random
 import time
-from dataclasses import dataclass, field
 
-from source.common import join, squares
-from source.ecs.components import (Collision, Information, Item, Movement,
-                                   Position, Render)
 from source.ecs.systems.system import System
-from source.pathfind import pathfind
 
 
 class InputSystem(System):
