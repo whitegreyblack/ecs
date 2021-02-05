@@ -47,7 +47,7 @@ def system_info(debug):
         def call(*args):
             arg, *args = args
             if debug:
-                print(fn.__name__, 
+                print(fn.__name__,
                     arg.entity,
                     arg.current_turns.find(arg.entity))
             fn(arg)
@@ -100,14 +100,14 @@ def ai_system(engine):
         room = engine.tilemaps.find(engine.room)
         position = engine.positions.find(engine.entity)
         spaces = {
-            (x, y) 
-                for y in range(1, room.height-1) 
+            (x, y)
+                for y in range(1, room.height-1)
                     for x in range(1, room.width-1)
         }
-        moveable = [ 
-            (x, y) 
-                for x, y in squares(exclude_center=True) 
-                    if (position.x+x, position.y+y) in spaces 
+        moveable = [
+            (x, y)
+                for x, y in squares(exclude_center=True)
+                    if (position.x + x, position.y + y) in spaces
         ]
         engine.movements.add(engine.entity, 
                              Movement.random_move(moveable))
@@ -120,11 +120,18 @@ def cleanup_system(engine):
 # def turn_system(engine):
 #     room = engine.tilemaps.find(engine.room)
 #     spaces = {
-#         (x, y) for y in range(1, room.height-1) for x in range(1, room.width-1)
+#         (x, y)
+#               for y in range(1, room.height-1)
+#                   for x in range(1, room.width-1)
 #     }
 #     for e, p in engine.positions:
-#         moveable = [ (x, y) for x, y in squares() if (p.x+x, p.y+y) in spaces ]
-#         engine.movements.add(e, Movement.random_move(possible_spaces=moveable))
+#         moveable = [
+#           (x, y)
+#               for x, y in squares()
+#                   if (p.x+x, p.y+y) in spaces
+#         ]
+#         movement = Movement.random_move(possible_spaces=moveable)
+#         engine.movements.add(e, movement)
 
 class Engine:
     def __init__(self):
@@ -225,6 +232,10 @@ class Engine:
         manager.add(self.player, self.action)
         self.action = None
 
+    def run(self):
+        while True:
+            self.process()
+
     # @timeout(tick_duration=.33)
     def process(self):
         global tick_time
@@ -249,13 +260,15 @@ class Engine:
     @classmethod
     def demo(self):
         e = Engine()
-        e.add_components(Position, 
-                         Information, 
-                         AI, 
-                         Movement,
-                         Input, 
-                         TileMap, 
-                         CurrentTurn)
+        e.add_components(
+            Position,
+            Information,
+            AI,
+            Movement,
+            Input,
+            TileMap,
+            CurrentTurn
+        )
         # e.add_player()
         e.add_enemy()
         e.add_enemy()
@@ -268,3 +281,7 @@ class Engine:
                       move_system,
                       cleanup_system)
         return e
+
+if __name__ == "__main__":
+    e = Engine.demo()
+    e.run()
