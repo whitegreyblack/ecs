@@ -91,10 +91,17 @@ def entity_component(eid, *managers):
     for m in managers:
         yield m.components[eid]
 
+def condition(manager, *conditions):
+    return dict(
+        (k, v)
+            for k, v in manager.items()
+                if all(c(v) for c in conditions)
+    )
+
 def j(first, *rest) -> set:
-    keys = set(first.components)
+    keys = first.components.keys()
     for d in rest:
-        keys.intersection_update(d.components)
+        keys &= d.components.keys()
     for k in keys:
         yield k
 
@@ -119,12 +126,11 @@ def join_drop_key(*managers) -> tuple:
         yield (m.components[eid] for m in managers)
 
 def join_conditional(*managers, key=True, conditions=None) -> tuple:
+    return NotImplemented
     # at least two needed else returns dict items
     if len(managers) == 1:
         return managers.components.items()
-    # filter by id matching
-    keys = set.intersection(*map(set, (m.components for m in managers)))
-    for eid in keys:
+    for eid in j(*managers):
         # with conditional, additional filters by conditions
         components = list(m.components[eid] for m in managers)
         skip = False
@@ -138,7 +144,7 @@ def join_conditional(*managers, key=True, conditions=None) -> tuple:
             else:
                 yield components
 
-def distance(a: int, b: int) -> float:
+def distance(a: tuple, b: tuple) -> float:
     '''Returns a value that represents distance between two points'''
     return math.sqrt(math.pow((b[0] - a[0]), 2) + math.pow((b[1] - a[1]), 2))
 
