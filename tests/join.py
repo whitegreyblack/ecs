@@ -1,176 +1,185 @@
 # tests\join.py
 
-"""
-def join(*ds):
-    # at least two needed else yields dict items
-    if len(ds) == 1:
-        yield ds.components.items()
-    first, *rest = ds
-    keys = set(first.components.keys())
-    for manager in rest:
-        keys = keys.intersection(set(manager.components.keys()))
-    for eid in keys:
-        yield eid, (m.components[eid] for m in ds)
+# Timing test of different join methods using set/dict operations
+
+""" Final Test as of 06/18/2021
+0.000539 first_keys_intersection_update_op_rest_keys
+0.000979 first_set_intersection_rest_set
+0.000989 first_set_intersection_update_rest_dict
+0.001095 first_set_intersection_update_op_rest_keys
+0.001227 first_keys_intersection_update_op_rest_set
+0.001283 first_keys_set_intersection_update_dict
+0.001589 first_set_intersection_update_rest_set
+0.001644 first_set_intersection_update_op_rest_set
+0.001644 set_intersection_update_on_mapped_manager_keys_set
+0.001645 first_set_intersection_generate_rest_set
+0.001659 reduce_intersection_all_set
+0.001669 set_intersection_on_all_mapped_manager_keys_dict
+0.001685 first_set_intersection_mapped_rest_set
+0.001693 set_intersection_update_on_local_mapped_manager_keys_set
+0.001805 set_intersection_update_on_first_manager_keys_dict
+0.001843 first_keys_set_intersection_rest_keys_set
+0.002161 set_intersection_on_all_mapped_manager_keys_iter_dict
+0.002298 set_intersection_update_on_first_manager_keys_set
 """
 
-import time
 from functools import reduce
+from source.contextmanagers import Timer
 
-# def test(engine):
-#     start = time.time()
-#     g = engine.tiles.join(engine.positions, engine.renders)
-#     for entity_id, components in g:
-#         pass
-#     t1 = time.time() - start
+DATASETS = [
+    {i: i for i in range(20000)},
+    {i: i for i in range(5000, 15000)},  # reduces to 10000
+    {i: i for i in range(4000, 12000, 2)},  # reduces to 4000 (8000 / 2)
+    {i: i for i in range(6000, 8000, 5)},
+]
 
-#     start = time.time()
-#     g = engine.positions.join(engine.tiles, engine.renders)
-#     for entity_id, components in g:
-#         pass
-#     t2 = time.time() - start
 
-#     start = time.time()
-#     g = engine.renders.join(engine.tiles, engine.positions)
-#     for entity_id, components in g:
-#         pass
-#     t3 = time.time() - start
-
-#     start = time.time()
-#     g = join(engine.positions, engine.tiles, engine.renders)
-#     for entity_id, components in g:
-#         pass
-#     t4 = time.time() - start
-
-#     return t1, t2, t3, t4
-
-# def test_loop(engine):
-#     t1s, t2s, t3s, t4s = [], [], [], []
-#     for _ in range(1000):
-#         t1, t2, t3, t4 = test(engine)
-#         t1s.append(t1)
-#         t2s.append(t2)
-#         t3s.append(t3)
-#         t4s.append(t4)
-#     print(sum(t1s) / len(t1s))
-#     print(sum(t2s) / len(t2s))
-#     print(sum(t3s) / len(t3s))
-#     print(sum(t4s) / len(t4s))
-
-a = {i:i for i in range(20000)}
-b = {i:i for i in range(5000, 15000)}     # reduces to 10000
-c = {i:i for i in range(4000, 12000, 2)}  # reduces to 4000 (8000 / 2)
-diff = set(a) & set(b) & set(c)
-
-def joiner1(*ds):
-    start = time.time()
-    first, *rest = ds
+def first_keys_set_intersection_rest_keys_set(first, *rest):
     keys = set(first.keys())
     for d in rest:
         keys = keys.intersection(d.keys())
-    end = time.time() - start
-    return end, len(keys)
+    return len(keys)
 
-def joiner2(*ds):
-    start = time.time()
-    first, *rest = ds
+
+def set_intersection_update_on_first_manager_keys_set(first, *rest):
     keys = set(first.keys())
     for d in rest:
         keys.intersection_update(set(d.keys()))
-    end = time.time() - start
-    return end, len(keys)
+    return len(keys)
 
-def joiner3(*ds):
-    start = time.time()
-    keys = reduce(set.intersection, map(set, ds))
-    end = time.time() - start
-    return end, len(keys)
 
-def joiner4(*ds):
-    start = time.time()
-    first, *rest = ds
+def reduce_intersection_all_set(*ds):
+    return len(reduce(set.intersection, map(set, ds)))
+
+
+def set_intersection_update_on_first_manager_keys_dict(first, *rest):
     keys = set(first.keys())
     for d in rest:
         keys.intersection_update(d.keys())
-    end = time.time() - start
-    return end, len(keys)
+    return len(keys)
 
-def joiner5(*ds):
-    start = time.time()
-    for d in ds:
-        keys = set.intersection(*map(set, (d for d in ds)))
-    end = time.time() - start
-    return end, len(keys)
 
-def joiner6(*ds):
-    start = time.time()
-    keys = set.intersection(*map(set, ds))
-    end = time.time() - start
-    return end, len(keys)
+def first_keys_set_intersection_update_dict(first, *rest):
+    keys = set(first.keys())
+    for d in rest:
+        keys.intersection_update(d)
+    return len(keys)
 
-def joiner7(*ds):
-    start = time.time()
-    first, *rest = ds
+
+def set_intersection_on_all_mapped_manager_keys_iter_dict(*ds):
+    return len(set.intersection(*map(set, (d.keys() for d in ds))))
+
+
+def set_intersection_on_all_mapped_manager_keys_dict(*ds):
+    return len(set.intersection(*map(set, ds)))
+
+
+def first_set_intersection_update_op_rest_set(first, *rest):
     keys = set(first)
-    for r in rest:
-        keys &= set(r)
-    end = time.time() - start
-    return end, len(keys)
+    for d in rest:
+        keys &= set(d)
+    return len(keys)
 
-def joiner8(*ds):
-    start = time.time()
-    first, *rest = ds
+
+def first_set_intersection_update_op_rest_keys(first, *rest):
+    keys = set(first)
+    for d in rest:
+        keys &= d.keys()
+    return len(keys)
+
+
+def first_keys_intersection_update_op_rest_keys(first, *rest):
+    keys = first.keys()
+    for d in rest:
+        keys &= d.keys()
+    return len(keys)
+
+
+def first_keys_intersection_update_op_rest_set(first, *rest):
+    keys = first.keys()
+    for d in rest:
+        keys &= set(d)
+    return len(keys)
+
+
+def set_intersection_update_on_mapped_manager_keys_set(first, *rest):
     keys = set(first)
     keys.intersection_update(*map(set, rest))
-    end = time.time() - start
-    return end, len(keys)
+    return len(keys)
 
-def joiner9(*ds, m=map):
-    start = time.time()
+
+def set_intersection_update_on_local_mapped_manager_keys_set(*ds, m=map):
     first, *rest = ds
     keys = set(first)
     keys.intersection_update(*m(set, rest))
-    end = time.time() - start
-    return end, len(keys)
+    return len(keys)
 
-def joiner10(*ds):
-    start = time.time()
-    first, *rest = ds
-    keys = set(first).intersection(*map(set, rest))
-    end = time.time() - start
-    return end, len(keys)
+
+def first_set_intersection_mapped_rest_set(first, *rest):
+    return len(set(first).intersection(*map(set, rest)))
+
+
+def first_set_intersection_generate_rest_set(first, *rest):
+    return len(set(first).intersection(*(set(d) for d in rest)))
+
+
+def first_set_intersection_rest_set(first, *rest):
+    keys = set(first)
+    for d in rest:
+        keys = keys.intersection(d)
+    return len(keys)
+
+
+def first_set_intersection_update_rest_set(first, *rest):
+    keys = set(first)
+    for d in rest:
+        keys.intersection_update(set(d))
+    return len(keys)
+
+
+def first_set_intersection_update_rest_dict(first, *rest):
+    keys = set(first)
+    for d in rest:
+        keys.intersection_update(d)
+    return len(keys)
+
+
+DIFF = first_keys_intersection_update_op_rest_keys(*DATASETS)
+JOINS = (
+    first_keys_set_intersection_rest_keys_set,
+    set_intersection_update_on_first_manager_keys_dict,
+    set_intersection_update_on_first_manager_keys_set,
+    reduce_intersection_all_set,
+    set_intersection_on_all_mapped_manager_keys_iter_dict,
+    set_intersection_on_all_mapped_manager_keys_dict,
+    set_intersection_update_on_mapped_manager_keys_set,
+    set_intersection_update_on_local_mapped_manager_keys_set,
+    first_set_intersection_mapped_rest_set,
+    first_set_intersection_update_op_rest_keys,
+    first_set_intersection_update_op_rest_set,
+    first_keys_intersection_update_op_rest_keys,
+    first_keys_intersection_update_op_rest_set,
+    first_set_intersection_rest_set,
+    first_set_intersection_update_rest_set,
+    first_set_intersection_update_rest_dict,
+    first_set_intersection_generate_rest_set,
+    first_keys_set_intersection_update_dict,
+)
+
+
+def time_joins(joins, *datasets):
+    num_times = 50
+    timings = {j.__name__: None for j in JOINS}
+    for join in JOINS:
+        times, counts = [], []
+        for _ in range(num_times):
+            with Timer() as timer:
+                join(*datasets)
+            times.append(timer.secs)
+        timings[join.__name__] = sum(times) / num_times
+    return sorted(timings.items(), key=lambda x: x[1])
+
 
 if __name__ == "__main__":
-    # print(len(a), len(b), len(c))
-
-    joiners = (joiner1, joiner2, joiner3, joiner4, joiner5, joiner6, joiner7, joiner8, joiner9, joiner10)
-    r = len(joiners)
-    counter = {i+1: 0 for i in range(r)}
-    iterations = 5
-    for iteration in range(iterations):
-        n = 50
-        timings = {i+1: None for i in range(r)}
-        countings = {i+1: None for i in range(r)}
-        for i, join in enumerate(joiners):
-            times = []
-            counts = []
-            for _ in range(n):
-                a = {i:i for i in range(20000)}
-                b = {i:i for i in range(5000, 15000)}     # reduces to 10000
-                c = {i:i for i in range(4000, 12000, 2)}  # reduces to 4000 (8000 / 2)
-                timing, count = join(a, b, c)
-                while not count:
-                    a = {i:i for i in range(20000)}
-                    b = {i:i for i in range(5000, 15000)}     # reduces to 10000
-                    c = {i:i for i in range(4000, 12000, 2)}  # reduces to 4000 (8000 / 2)
-                    timing, count = join(a, b, c)
-                times.append(timing)
-                counts.append(count)
-            timings[i+1] = sum(times) / n
-            countings[i+1] = int(sum(counts) / n)
-        l = sorted(timings.items(), key=lambda x: x[1])
-        for place, (i, timer) in enumerate(l):
-            counter[i] += place+1
-            print(i, timer, countings[i])
-        print()
-    c = sorted(counter.items(), key=lambda x: x[1])
-    print(c)
+    for j, t in time_joins(JOINS, *DATASETS):
+        print(f"{t:.6f} {j}")
